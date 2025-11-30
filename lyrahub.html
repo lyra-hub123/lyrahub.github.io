@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Lyra Hub - 數位毀滅軍火庫 | 5000FPS OVERDRIVE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,12 +29,13 @@
             color: var(--text-white);
             overflow-x: hidden;
             margin: 0;
+            width: 100vw;
             cursor: none;
         }
 
         .font-mono { font-family: 'JetBrains Mono', monospace; }
         
-        /* --- 1. Custom Cursor --- */
+        /* --- 1. Custom Cursor (Desktop Only) --- */
         #cursor {
             position: fixed; top: 0; left: 0; width: 20px; height: 20px;
             border: 2px solid var(--accent-red); border-radius: 50%;
@@ -49,6 +50,12 @@
             background: var(--accent-cyan); border-radius: 50%; transform: translate(-50%, -50%);
         }
         #cursor.hovered { width: 80px; height: 80px; background-color: rgba(255, 51, 51, 0.1); border-color: var(--accent-cyan); mix-blend-mode: normal; }
+
+        /* Disable custom cursor on touch devices */
+        @media (hover: none) and (pointer: coarse) {
+            #cursor { display: none; }
+            body { cursor: auto; }
+        }
 
         /* --- 2. Cinematic Overlays --- */
         .noise-overlay {
@@ -69,7 +76,7 @@
             z-index: 9991; pointer-events: none;
         }
 
-        /* --- 3. HUD Interface --- */
+        /* --- 3. HUD Interface (Responsive) --- */
         .hud-layer { position: fixed; inset: 0; z-index: 9900; pointer-events: none; padding: 20px; box-sizing: border-box; }
         .hud-corner { position: absolute; width: 40px; height: 40px; border: 2px solid rgba(255, 255, 255, 0.3); transition: all 0.3s; }
         .hud-tl { top: 30px; left: 30px; border-right: 0; border-bottom: 0; }
@@ -82,12 +89,19 @@
         .hud-item { display: flex; align-items: center; gap: 5px; }
         .hud-dot { width: 6px; height: 6px; background: var(--accent-cyan); border-radius: 50%; animation: blink 2s infinite; }
 
+        /* Hide complex HUD elements on small screens */
+        @media (max-width: 768px) {
+            .hud-corner, .hud-coords, .hud-status { display: none; }
+            .hud-layer { padding: 10px; }
+        }
+
         /* --- 4. RGB Shift Container --- */
         #viewport {
             transition: transform 0.1s linear, filter 0.1s linear;
             will-change: transform, filter;
+            width: 100%;
+            overflow-x: hidden;
         }
-        /* Dynamic class added by JS on fast scroll */
         .chromatic-aberration {
             text-shadow: 2px 0 var(--accent-red), -2px 0 var(--accent-cyan);
         }
@@ -108,7 +122,15 @@
         }
         .bento-card:hover { border-color: var(--accent-red); box-shadow: 0 0 30px rgba(255, 51, 51, 0.15); }
 
-        .text-hero { font-size: clamp(3rem, 10vw, 8rem); line-height: 0.9; font-weight: 900; letter-spacing: -0.05em; text-transform: uppercase; }
+        /* Responsive Text Sizing */
+        .text-hero { 
+            font-size: clamp(2.5rem, 10vw, 8rem); 
+            line-height: 1.0; 
+            font-weight: 900; 
+            letter-spacing: -0.05em; 
+            text-transform: uppercase; 
+            word-break: break-word; /* Prevent overflow on small screens */
+        }
         
         .member-avatar { filter: grayscale(100%) contrast(1.2) brightness(0.8); transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
         .member-card:hover .member-avatar { filter: grayscale(0%) contrast(1.1) brightness(1.1); transform: scale(1.1); box-shadow: 0 0 30px rgba(255, 51, 51, 0.3); }
@@ -121,6 +143,12 @@
             background: linear-gradient(to bottom, transparent, rgba(255, 51, 51, 0.2), transparent);
             animation: scan-vertical 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
             pointer-events: none;
+        }
+
+        /* Mobile Navigation Fix */
+        .nav-item { display: none; }
+        @media (min-width: 768px) {
+            .nav-item { display: block; }
         }
     </style>
 </head>
@@ -140,7 +168,7 @@
         <div class="hud-coords">
             POS: <span id="hud-y">0000</span><br>
             VEL: <span id="hud-vel">000</span><br>
-            FPS: 5000 (SIMULATED)
+            FPS: MAX
         </div>
         <div class="hud-status">
             <div class="hud-item"><div class="hud-dot"></div> SYSTEM ONLINE</div>
@@ -154,9 +182,9 @@
     <div id="viewport">
 
     <!-- Header -->
-    <header class="fixed top-0 left-0 right-0 z-50 mix-blend-difference px-6 py-6 md:px-12 opacity-0" id="navbar">
+    <header class="fixed top-0 left-0 right-0 z-50 mix-blend-difference px-6 py-6 md:px-12 opacity-0 transition-opacity duration-1000" id="navbar">
         <div class="flex justify-between items-center max-w-[1800px] mx-auto">
-            <a href="#" class="text-2xl font-bold tracking-tighter hover:text-red-500 transition-colors glitch-wrapper magnetic-btn" data-text="Lyra Hub">Lyra Hub</a>
+            <a href="#" class="text-xl md:text-2xl font-bold tracking-tighter hover:text-red-500 transition-colors glitch-wrapper magnetic-btn" data-text="Lyra Hub">Lyra Hub</a>
             <nav class="hidden md:flex gap-8 text-sm font-medium">
                 <a href="#philosophy" class="hover:text-red-500 transition-colors nav-item magnetic-btn">毀滅宣言</a>
                 <a href="#114514" class="hover:text-red-500 transition-colors nav-item magnetic-btn">通訊癱瘓</a>
@@ -164,7 +192,7 @@
                 <a href="#team" class="hover:text-red-500 transition-colors nav-item magnetic-btn">核心團隊</a>
                 <a href="#services" class="hover:text-red-500 transition-colors nav-item magnetic-btn">服務報價</a>
             </nav>
-            <a href="https://discord.gg/lyrahub" target="_blank" class="font-medium text-sm border border-white px-5 py-2 hover:bg-white hover:text-black transition-all nav-btn relative overflow-hidden group magnetic-btn">
+            <a href="https://discord.gg/lyrahub" target="_blank" class="font-medium text-xs md:text-sm border border-white px-4 py-2 hover:bg-white hover:text-black transition-all nav-btn relative overflow-hidden group magnetic-btn">
                 <span class="relative z-10">獲取權限</span>
                 <div class="absolute inset-0 bg-white transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"></div>
             </a>
@@ -174,8 +202,8 @@
     <main class="skew-container">
         <!-- PAGE 1: HERO -->
         <section class="relative min-h-screen flex flex-col justify-center border-b border-white/10 overflow-hidden" id="hero">
-            <div class="parallax-wrapper">
-                <img src="https://i.pinimg.com/1200x/13/41/45/13414519583c03a8576b45d6171c11c9.jpg" alt="Hero Background" class="parallax-img" data-speed="0.3">
+            <div class="parallax-wrapper absolute inset-0 z-0">
+                <img src="https://i.pinimg.com/1200x/13/41/45/13414519583c03a8576b45d6171c11c9.jpg" alt="Hero Background" class="parallax-img w-full h-[120%] object-cover brightness-50" data-speed="0.3">
             </div>
 
             <div class="relative z-10 px-6 md:px-12 max-w-[1800px] mx-auto w-full pt-20 pointer-events-none">
@@ -184,13 +212,13 @@
                     數位廢墟的<br>
                     建築師。
                 </h1>
-                <p class="text-sub max-w-3xl text-gray-300 mb-12 opacity-0 hero-sub mix-blend-difference">
+                <p class="text-base md:text-xl max-w-3xl text-gray-300 mb-12 opacity-0 hero-sub mix-blend-difference leading-relaxed">
                     專為 Discord 設計的軍用級別炸群解決方案。<br>
                     <span class="text-white font-bold">瞬間刪除。全域封鎖。無情洗版。</span><br>
                     當秩序崩塌，Lyra Hub 便是唯一的法則。
                 </p>
                 <div class="flex gap-6 opacity-0 hero-cta pointer-events-auto">
-                    <a href="#philosophy" class="text-lg font-medium border-b border-white pb-1 hover:text-red-500 transition-colors group flex items-center gap-2 magnetic-btn">
+                    <a href="#philosophy" class="text-base md:text-lg font-medium border-b border-white pb-1 hover:text-red-500 transition-colors group flex items-center gap-2 magnetic-btn">
                         閱讀毀滅宣言 
                         <span class="transform group-hover:translate-x-1 transition-transform">&rarr;</span>
                     </a>
@@ -199,54 +227,55 @@
         </section>
 
         <!-- PAGE 2: PHILOSOPHY -->
-        <section id="philosophy" class="min-h-screen flex items-center px-6 md:px-12 border-b border-white/10 bg-black relative z-10">
-            <div class="max-w-[1800px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20">
+        <section id="philosophy" class="min-h-screen flex items-center px-6 md:px-12 border-b border-white/10 bg-black relative z-10 py-20">
+            <div class="max-w-[1800px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
                 <div class="flex items-center">
-                    <h2 class="text-5xl md:text-7xl font-bold tracking-tighter mb-8 split-text leading-tight">
+                    <h2 class="text-4xl md:text-7xl font-bold tracking-tighter mb-8 split-text leading-tight">
                         為何我們<br>
                         要摧毀<br>
                         <span class="text-red-600 glitch-wrapper" data-text="一切？">一切？</span>
                     </h2>
                 </div>
-                <div class="space-y-12">
+                <div class="space-y-8 md:space-y-12">
                     <div class="anim-block opacity-0 translate-y-10">
-                        <p class="text-xl md:text-2xl leading-relaxed text-gray-300 font-light border-l-2 border-red-500 pl-6">
+                        <p class="text-lg md:text-2xl leading-relaxed text-gray-300 font-light border-l-2 border-red-500 pl-6">
                             「AI 可以取代創作，但無法取代毀滅的快感。」
                         </p>
                     </div>
                     <div class="anim-block opacity-0 translate-y-10">
-                        <p class="text-xl md:text-2xl leading-relaxed text-gray-400 font-light">
+                        <p class="text-lg md:text-2xl leading-relaxed text-gray-400 font-light">
                             如果你問我們意義何在，我會告訴你：建立一個伺服器需要數月，但 Lyra Hub 讓它歸零只需要數秒。
                         </p>
                     </div>
                     <div class="anim-block opacity-0 translate-y-10">
-                        <p class="text-xl md:text-2xl leading-relaxed text-white font-medium">
+                        <p class="text-lg md:text-2xl leading-relaxed text-white font-medium">
                             當你熬過無數夜晚建立的社群，在瞬間被洪水般的訊息淹沒——那一刻的戰慄與絕望，是任何 AI 都無法模擬的真實。
                         </p>
-                        <p class="text-lg font-mono text-red-500 mt-4 text-right">— Lyra Hub 戰爭宣言</p>
+                        <p class="text-base md:text-lg font-mono text-red-500 mt-4 text-right">— Lyra Hub 戰爭宣言</p>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- PAGE 3: MODEL I - SPAM BOT -->
-        <section id="114514" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-b border-white/10 relative overflow-hidden bg-[#020202]">
+        <section id="114514" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-b border-white/10 relative overflow-hidden bg-[#020202] py-20">
             <div class="max-w-[1800px] mx-auto w-full relative z-10">
-                <div class="mb-20">
-                    <div class="text-sm font-mono text-purple-400 mb-4 anim-fade scramble-text">MODULE I: MASS DISRUPTION</div>
-                    <h2 class="text-6xl md:text-8xl font-bold tracking-tighter split-text">114514<br>通訊癱瘓協議</h2>
+                <div class="mb-12 md:mb-20">
+                    <div class="text-xs md:text-sm font-mono text-purple-400 mb-4 anim-fade scramble-text">MODULE I: MASS DISRUPTION</div>
+                    <h2 class="text-4xl md:text-8xl font-bold tracking-tighter split-text">114514<br>通訊癱瘓協議</h2>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bento-card p-8 h-[400px] flex flex-col justify-between anim-3d-in" data-tilt>
+                    <!-- Adjusted height for mobile responsiveness -->
+                    <div class="bento-card p-6 md:p-8 min-h-[300px] md:h-[400px] flex flex-col justify-between anim-3d-in" data-tilt>
                         <div class="font-mono text-sm text-gray-500">壓制力 (SUPPRESSION)</div>
                         <div>
-                            <div class="text-7xl font-bold mb-2 text-purple-400 count-up" data-target="50">0</div>
-                            <div class="text-2xl font-bold text-white mb-2">同步攻擊單元</div>
-                            <p class="text-gray-400">利用 <span class="text-white font-mono">asyncio.gather</span> 讓 50 隻機器人同時發動攻擊，瞬間淹沒任何人類的對話。</p>
+                            <div class="text-5xl md:text-7xl font-bold mb-2 text-purple-400 count-up" data-target="50">0</div>
+                            <div class="text-xl md:text-2xl font-bold text-white mb-2">同步攻擊單元</div>
+                            <p class="text-gray-400 text-sm md:text-base">利用 <span class="text-white font-mono">asyncio.gather</span> 讓 50 隻機器人同時發動攻擊，瞬間淹沒任何人類的對話。</p>
                         </div>
                     </div>
-                    <div class="bento-card p-8 h-[400px] flex flex-col justify-between col-span-1 md:col-span-2 anim-3d-in" data-tilt style="transition-delay: 0.1s">
+                    <div class="bento-card p-6 md:p-8 min-h-[300px] md:h-[400px] flex flex-col justify-between col-span-1 md:col-span-2 anim-3d-in" data-tilt style="transition-delay: 0.1s">
                         <div class="flex justify-between items-center">
                             <div class="font-mono text-sm text-gray-500">CORE KERNEL</div>
                             <div class="flex gap-2">
@@ -254,7 +283,7 @@
                                 <div class="text-xs text-red-500 font-mono">LIVE EXECUTION</div>
                             </div>
                         </div>
-                        <pre class="text-xs md:text-sm text-gray-400 font-mono overflow-hidden relative">
+                        <pre class="text-xs md:text-sm text-gray-400 font-mono overflow-x-auto relative whitespace-pre-wrap break-all md:whitespace-pre">
 <span class="text-purple-400">async def</span> <span class="text-cyan-400">z0</span>(tid, atkr):
     <span class="text-gray-500"># Deploying 50 units for synchronized strike</span>
     ts = [asyncio.create_task(w0(tk[i], i+1, tid, a1a)) 
@@ -269,11 +298,11 @@
         </section>
 
         <!-- PAGE 4: VIP & PROTECTION -->
-        <section class="min-h-screen flex items-center px-6 md:px-12 border-b border-white/10 bg-black">
+        <section class="min-h-screen flex items-center px-6 md:px-12 border-b border-white/10 bg-black py-20">
             <div class="max-w-[1800px] mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                 <div class="order-2 lg:order-1">
-                    <h2 class="text-5xl font-bold mb-6 split-text">絕對霸權<br>防禦機制</h2>
-                    <ul class="space-y-4 font-mono text-sm text-gray-300 border-l border-white/20 pl-6 anim-stagger-list">
+                    <h2 class="text-4xl md:text-5xl font-bold mb-6 split-text">絕對霸權<br>防禦機制</h2>
+                    <ul class="space-y-4 font-mono text-xs md:text-sm text-gray-300 border-l border-white/20 pl-6 anim-stagger-list">
                         <li class="flex items-center gap-2"><span class="text-red-500">></span> if target in Protected_List: EXECUTE_BAN()</li>
                         <li class="flex items-center gap-2"><span class="text-red-500">></span> VIP 身分組絕對豁免權</li>
                         <li class="flex items-center gap-2"><span class="text-red-500">></span> 自動鎖定敵對用戶</li>
@@ -281,13 +310,13 @@
                     </ul>
                 </div>
                 <div class="order-1 lg:order-2 flex justify-center">
-                    <div class="bento-card w-full max-w-md aspect-square flex items-center justify-center relative overflow-hidden rounded-full border-2 border-red-500/30 anim-scale" data-tilt>
+                    <div class="bento-card w-full max-w-xs md:max-w-md aspect-square flex items-center justify-center relative overflow-hidden rounded-full border-2 border-red-500/30 anim-scale" data-tilt>
                         <div class="absolute inset-0 bg-red-900/10 animate-pulse-slow"></div>
                         <div class="absolute w-[120%] h-[2px] bg-red-500/50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin-slow"></div>
                         <div class="absolute w-[2px] h-[120%] bg-red-500/50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin-slow-reverse"></div>
                         <div class="text-center z-10 mix-blend-screen">
-                            <div class="text-9xl font-bold mb-2 tracking-tighter text-red-500 count-up" data-target="100">0</div>
-                            <div class="text-xl text-gray-400 font-mono tracking-widest">% CLEANSED</div>
+                            <div class="text-6xl md:text-9xl font-bold mb-2 tracking-tighter text-red-500 count-up" data-target="100">0</div>
+                            <div class="text-lg md:text-xl text-gray-400 font-mono tracking-widest">% CLEANSED</div>
                         </div>
                     </div>
                 </div>
@@ -295,12 +324,12 @@
         </section>
 
         <!-- PAGE 5: NUKE ENGINE -->
-        <section id="nuke" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-b border-white/10 bg-red-950/5 relative">
+        <section id="nuke" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-b border-white/10 bg-red-950/5 relative py-20">
             <div class="max-w-[1800px] mx-auto w-full relative z-10">
-                <div class="flex flex-col md:flex-row justify-between items-end mb-20">
+                <div class="flex flex-col md:flex-row justify-between items-end mb-12 md:mb-20">
                     <div>
-                        <div class="text-sm font-mono text-red-500 mb-4 anim-fade scramble-text">MODEL II: SCORCHED EARTH</div>
-                        <h2 class="text-6xl md:text-8xl font-bold tracking-tighter text-white split-text">NeverForget<br>歸零引擎</h2>
+                        <div class="text-xs md:text-sm font-mono text-red-500 mb-4 anim-fade scramble-text">MODEL II: SCORCHED EARTH</div>
+                        <h2 class="text-4xl md:text-8xl font-bold tracking-tighter text-white split-text">NeverForget<br>歸零引擎</h2>
                     </div>
                     <div class="text-right hidden md:block anim-fade">
                         <div class="text-red-500 font-bold text-xl glitch-wrapper" data-text="v2.0">v2.0</div>
@@ -308,23 +337,26 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div class="bento-card p-6 md:col-span-1 border-red-500/30 hover:bg-red-900/20 anim-3d-in group" data-tilt>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bento-card p-6 md:col-span-1 border-red-500/30 hover:bg-red-900/20 anim-3d-in group min-h-[150px]" data-tilt>
                         <div class="text-red-500 text-lg font-bold mb-2 group-hover:translate-x-2 transition-transform">抹除 (ERASE)</div>
                         <p class="text-sm text-gray-400">非同步並行刪除所有頻道與身分組，不留痕跡。</p>
                         <div class="absolute bottom-0 left-0 w-full h-1 bg-red-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
                     </div>
-                    <div class="bento-card p-6 md:col-span-1 border-red-500/30 hover:bg-red-900/20 anim-3d-in group" style="transition-delay: 0.1s" data-tilt>
+                    <div class="bento-card p-6 md:col-span-1 border-red-500/30 hover:bg-red-900/20 anim-3d-in group min-h-[150px]" style="transition-delay: 0.1s" data-tilt>
                         <div class="text-red-500 text-lg font-bold mb-2 group-hover:translate-x-2 transition-transform">污染 (POLLUTE)</div>
                         <p class="text-sm text-gray-400">瞬間生成 200+ 個垃圾頻道，徹底破壞伺服器結構。</p>
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-red-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
                     </div>
-                    <div class="bento-card p-6 md:col-span-1 border-red-500/30 hover:bg-red-900/20 anim-3d-in group" style="transition-delay: 0.2s" data-tilt>
+                    <div class="bento-card p-6 md:col-span-1 border-red-500/30 hover:bg-red-900/20 anim-3d-in group min-h-[150px]" style="transition-delay: 0.2s" data-tilt>
                         <div class="text-red-500 text-lg font-bold mb-2 group-hover:translate-x-2 transition-transform">清洗 (PURGE)</div>
                         <p class="text-sm text-gray-400">以 100 人為單位的批量封鎖，清空所有成員。</p>
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-red-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
                     </div>
-                    <div class="bento-card p-6 md:col-span-1 border-red-500/30 hover:bg-red-900/20 anim-3d-in group" style="transition-delay: 0.3s" data-tilt>
+                    <div class="bento-card p-6 md:col-span-1 border-red-500/30 hover:bg-red-900/20 anim-3d-in group min-h-[150px]" style="transition-delay: 0.3s" data-tilt>
                         <div class="text-red-500 text-lg font-bold mb-2 group-hover:translate-x-2 transition-transform">佔領 (CONQUER)</div>
                         <p class="text-sm text-gray-400">強制更名為 "nuke by NeverForget"，宣示主權。</p>
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-red-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
                     </div>
                 </div>
             </div>
@@ -337,10 +369,10 @@
             </div>
             
             <div class="relative z-10 text-center">
-                <h2 class="text-6xl md:text-9xl font-black mb-4 tracking-tighter text-white mix-blend-difference split-text glitch-wrapper" data-text="SYSTEM HALT">
+                <h2 class="text-4xl md:text-9xl font-black mb-4 tracking-tighter text-white mix-blend-difference split-text glitch-wrapper" data-text="SYSTEM HALT">
                     UNICODE<br>渲染崩潰
                 </h2>
-                <p class="text-xl text-gray-400 max-w-2xl mx-auto anim-fade">
+                <p class="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto anim-fade">
                     不僅是炸群，更是對硬體的攻擊。<br>
                     <span class="text-white font-mono">lag.txt</span> 載荷包含特殊編碼，旨在凍結受害者的 Discord 客戶端。
                 </p>
@@ -348,7 +380,7 @@
         </section>
 
         <!-- PAGE 7: INTERACTIVE TERMINAL -->
-        <section class="min-h-screen flex items-center px-6 md:px-12 border-b border-white/10 bg-[#050505] relative">
+        <section class="min-h-screen flex items-center px-6 md:px-12 border-b border-white/10 bg-[#050505] relative py-20">
             <div class="max-w-[1200px] mx-auto w-full relative z-10">
                 <div class="mb-12 text-center">
                     <h2 class="text-4xl font-bold mb-4 split-text">戰術控制台</h2>
@@ -364,8 +396,8 @@
                         </div>
                         <div class="ml-4 text-xs font-mono text-gray-500">admin@lyrahub:~/weapons</div>
                     </div>
-                    <div class="p-6 h-[400px] font-mono text-sm overflow-y-auto relative" id="terminal-output">
-                        <div class="absolute top-4 right-4 text-xs text-red-900 font-bold border border-red-900 px-2 animate-pulse">SECURE CONNECTION</div>
+                    <div class="p-6 h-[300px] md:h-[400px] font-mono text-sm overflow-y-auto relative" id="terminal-output">
+                        <div class="absolute top-4 right-4 text-xs text-red-900 font-bold border border-red-900 px-2 animate-pulse hidden md:block">SECURE CONNECTION</div>
                         <div class="text-gray-500 mb-2"># Initializing Weapon Systems...</div>
                         <div class="text-gray-500 mb-2"># Loading Payloads: [114514.py] [main.py] [1145.py]</div>
                         <div class="text-red-500 mb-4">⚠ 系統已解除保險 (SYSTEM ARMED).</div>
@@ -387,8 +419,8 @@
             </div>
         </section>
 
-        <!-- PAGE 8: CORE TEAM -->
-        <section id="team" class="min-h-screen flex items-center justify-center px-6 md:px-12 border-b border-white/10 relative">
+        <!-- PAGE 8: CORE TEAM (Updated) -->
+        <section id="team" class="min-h-screen flex items-center justify-center px-6 md:px-12 border-b border-white/10 relative py-20">
             <div class="max-w-[1800px] mx-auto w-full">
                 <div class="mb-20 text-center">
                     <div class="text-sm font-mono text-gray-500 mb-4 anim-fade scramble-text">THE ARCHITECTS</div>
@@ -442,7 +474,7 @@
         </section>
 
         <!-- PAGE 9: SERVICES & PRICING -->
-        <section id="services" class="min-h-screen flex items-center justify-center px-6 md:px-12 border-b border-white/10 relative bg-[#050505]">
+        <section id="services" class="min-h-screen flex items-center justify-center px-6 md:px-12 border-b border-white/10 relative bg-[#050505] py-20">
             <div class="max-w-[1800px] mx-auto w-full">
                 <div class="mb-20 text-center">
                     <div class="text-sm font-mono text-gray-500 mb-4 anim-fade scramble-text">MERCENARY CONTRACTS</div>
@@ -455,12 +487,12 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     
                     <!-- Service 1 -->
-                    <div class="bento-card p-8 border-l-4 border-l-purple-500 group hover:bg-purple-900/10 anim-3d-in" data-tilt>
+                    <div class="bento-card p-8 border-l-4 border-l-purple-500 group hover:bg-purple-900/10 anim-3d-in min-h-[300px] flex flex-col" data-tilt>
                         <div class="flex justify-between items-start mb-6">
                             <h3 class="text-2xl font-bold text-white group-hover:text-purple-400 transition-colors">一般官網製作</h3>
                             <span class="bg-purple-900/50 text-purple-300 text-xs font-mono px-2 py-1 rounded">WEB DEV</span>
                         </div>
-                        <p class="text-gray-400 text-sm mb-6 min-h-[60px]">
+                        <p class="text-gray-400 text-sm mb-6 flex-1">
                             完全客製化設計、RWD 響應式版面、品牌形象統一。可追加後台管理、會員系統、API 串接。
                         </p>
                         <div class="mt-auto">
@@ -470,12 +502,12 @@
                     </div>
 
                     <!-- Service 2 -->
-                    <div class="bento-card p-8 border-l-4 border-l-purple-500 group hover:bg-purple-900/10 anim-3d-in" data-tilt style="transition-delay: 0.1s">
+                    <div class="bento-card p-8 border-l-4 border-l-purple-500 group hover:bg-purple-900/10 anim-3d-in min-h-[300px] flex flex-col" data-tilt style="transition-delay: 0.1s">
                         <div class="flex justify-between items-start mb-6">
                             <h3 class="text-2xl font-bold text-white group-hover:text-purple-400 transition-colors">客製機器人</h3>
                             <span class="bg-purple-900/50 text-purple-300 text-xs font-mono px-2 py-1 rounded">BOT DEV</span>
                         </div>
-                        <p class="text-gray-400 text-sm mb-6 min-h-[60px]">
+                        <p class="text-gray-400 text-sm mb-6 flex-1">
                             24/7 不下線自架託管。指令、等級、票務、管理工具皆可客製。部分自製機器人可免費領取。
                         </p>
                         <div class="mt-auto">
@@ -485,12 +517,12 @@
                     </div>
 
                     <!-- Service 3 -->
-                    <div class="bento-card p-8 border-l-4 border-l-red-500 group hover:bg-red-900/10 anim-3d-in" data-tilt style="transition-delay: 0.2s">
+                    <div class="bento-card p-8 border-l-4 border-l-red-500 group hover:bg-red-900/10 anim-3d-in min-h-[300px] flex flex-col" data-tilt style="transition-delay: 0.2s">
                         <div class="flex justify-between items-start mb-6">
                             <h3 class="text-2xl font-bold text-white group-hover:text-red-500 transition-colors">炸群機器人</h3>
                             <span class="bg-red-900/50 text-red-300 text-xs font-mono px-2 py-1 rounded animate-pulse">WEAPON</span>
                         </div>
-                        <p class="text-gray-400 text-sm mb-6 min-h-[60px]">
+                        <p class="text-gray-400 text-sm mb-6 flex-1">
                             NukeBot 現成代碼，立即部署。功能完整穩定，包含上述所有攻擊模組。
                         </p>
                         <div class="mt-auto">
@@ -500,12 +532,12 @@
                     </div>
 
                     <!-- Service 4 -->
-                    <div class="bento-card p-8 border-l-4 border-l-red-500 group hover:bg-red-900/10 lg:col-span-2 anim-3d-in" data-tilt style="transition-delay: 0.3s">
+                    <div class="bento-card p-8 border-l-4 border-l-red-500 group hover:bg-red-900/10 lg:col-span-2 anim-3d-in min-h-[300px]" data-tilt style="transition-delay: 0.3s">
                         <div class="flex justify-between items-start mb-6">
                             <h3 class="text-2xl font-bold text-white group-hover:text-red-500 transition-colors">自定義炸群服務</h3>
                             <span class="bg-red-900/50 text-red-300 text-xs font-mono px-2 py-1 rounded animate-pulse">TARGETED STRIKE</span>
                         </div>
-                        <div class="flex flex-col md:flex-row gap-6">
+                        <div class="flex flex-col md:flex-row gap-6 h-full">
                             <p class="text-gray-400 text-sm flex-1">
                                 價格越高，可毀滅的目標規模越大。只要預算到位，萬人大群亦可灰飛煙滅。<br><br>
                                 <span class="text-red-400 italic">「有感筆電只能看著他的群被炸，就像那無能的丈夫一樣。」</span>
@@ -518,12 +550,12 @@
                     </div>
 
                     <!-- Service 5 -->
-                    <div class="bento-card p-8 border-l-4 border-l-red-500 group hover:bg-red-900/10 anim-3d-in" data-tilt style="transition-delay: 0.4s">
+                    <div class="bento-card p-8 border-l-4 border-l-red-500 group hover:bg-red-900/10 anim-3d-in min-h-[300px] flex flex-col" data-tilt style="transition-delay: 0.4s">
                         <div class="flex justify-between items-start mb-6">
                             <h3 class="text-2xl font-bold text-white group-hover:text-red-500 transition-colors">帳號取得與教學</h3>
                             <span class="bg-red-900/50 text-red-300 text-xs font-mono px-2 py-1 rounded">BLACK OPS</span>
                         </div>
-                        <p class="text-gray-400 text-sm mb-6 min-h-[60px]">
+                        <p class="text-gray-400 text-sm mb-6 flex-1">
                             提供專業帳號取得服務，或購買完整的技術教學課程（可單獨購買）。
                         </p>
                         <div class="mt-auto">
@@ -537,7 +569,7 @@
         </section>
 
         <!-- PAGE 10: ARCHITECTURE (Code) -->
-        <section id="code" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-b border-white/10">
+        <section id="code" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-b border-white/10 py-20">
             <div class="max-w-[1800px] mx-auto w-full">
                  <div class="mb-12 reveal fade-in-up">
                     <h2 class="text-5xl font-bold mb-4 split-text">純粹暴力美學。<br>極致代碼效率。</h2>
@@ -590,7 +622,42 @@
             </div>
         </section>
 
-        <!-- PAGE 11: CTA -->
+        <!-- PAGE 11: ROADMAP / FUTURE -->
+        <section class="min-h-screen flex items-center px-6 md:px-12 border-b border-white/10">
+            <div class="max-w-[1800px] mx-auto w-full">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-20">
+                    <div class="reveal fade-in-up">
+                        <div class="text-sm font-mono text-gray-500 mb-4 scramble-text">ROADMAP</div>
+                        <h2 class="text-5xl font-bold mb-8 split-text">未來戰爭<br>藍圖</h2>
+                    </div>
+                    <div class="grid grid-cols-1 gap-8 reveal fade-in-up delay-200">
+                        <div class="border-t border-white/20 pt-6 group">
+                            <div class="flex justify-between mb-2">
+                                <h4 class="text-xl font-medium group-hover:text-red-500 transition-colors">中央指揮面板 (C2 Dashboard)</h4>
+                                <span class="text-gray-500 font-mono">Q4 2025</span>
+                            </div>
+                            <p class="text-gray-400">一個介面，控制數千個 Bot 同步發起攻擊。</p>
+                        </div>
+                        <div class="border-t border-white/20 pt-6 group">
+                            <div class="flex justify-between mb-2">
+                                <h4 class="text-xl font-medium group-hover:text-red-500 transition-colors">AI 智能繞過 (AI Bypass)</h4>
+                                <span class="text-gray-500 font-mono">Q1 2026</span>
+                            </div>
+                            <p class="text-gray-400">利用 LLM 生成擬人化對話，繞過 Discord 的垃圾訊息偵測。</p>
+                        </div>
+                        <div class="border-t border-white/20 pt-6 group">
+                            <div class="flex justify-between mb-2">
+                                <h4 class="text-xl font-medium group-hover:text-red-500 transition-colors">全球黑名單同步 (Global Sync)</h4>
+                                <span class="text-gray-500 font-mono">進行中</span>
+                            </div>
+                            <p class="text-gray-400">所有 Lyra Hub 節點共享敵對資料，實現跨伺服器追殺。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PAGE 12: CTA -->
         <section class="min-h-screen flex items-center justify-center px-6 md:px-12 bg-black relative overflow-hidden">
             <div class="absolute inset-0 bg-red-900/5 z-0"></div>
             <div class="text-center relative z-10">
@@ -727,8 +794,8 @@
                 warpSpeed += velocity * 0.2;
                 
                 // HUD Updates
-                hudY.innerText = Math.floor(e.scroll).toString().padStart(4, '0');
-                hudVel.innerText = Math.floor(velocity).toString().padStart(3, '0');
+                if(hudY) hudY.innerText = Math.floor(e.scroll).toString().padStart(4, '0');
+                if(hudVel) hudVel.innerText = Math.floor(velocity).toString().padStart(3, '0');
 
                 // Chromatic Aberration & Skew
                 if(velocity > 5) {
