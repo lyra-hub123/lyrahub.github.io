@@ -3,24 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lyra Hub - 數位毀滅軍火庫 :)</title>
+    <title>Lyra Hub - 數位毀滅軍火庫 | Hyper Warp</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;900&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;900&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
     
     <!-- GSAP & Lenis -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
     <script src="https://unpkg.com/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
     <script src="https://unpkg.com/split-type"></script>
+    
+    <!-- Three.js for Hardware Accelerated Graphics -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <style>
         :root {
-            --bg-black: #030303;
+            --bg-black: #050505;
             --text-white: #ffffff;
             --accent-red: #ff3333;
             --accent-cyan: #00f3ff;
+            --blob-color: rgba(255, 51, 51, 0.25);
         }
 
         body {
@@ -30,38 +34,16 @@
             overflow-x: hidden;
             margin: 0;
             width: 100vw;
-            cursor: none;
+            cursor: default;
         }
 
         .font-mono { font-family: 'JetBrains Mono', monospace; }
         
-        /* --- 1. Custom Cursor (Desktop Only) --- */
-        #cursor {
-            position: fixed; top: 0; left: 0; width: 20px; height: 20px;
-            border: 2px solid var(--accent-red); border-radius: 50%;
-            pointer-events: none; z-index: 10000;
-            transform: translate(-50%, -50%);
-            transition: width 0.2s, height 0.2s, background-color 0.2s;
-            mix-blend-mode: difference;
-            box-shadow: 0 0 20px var(--accent-red);
-        }
-        #cursor::after {
-            content: ''; position: absolute; top: 50%; left: 50%; width: 4px; height: 4px;
-            background: var(--accent-cyan); border-radius: 50%; transform: translate(-50%, -50%);
-        }
-        #cursor.hovered { width: 80px; height: 80px; background-color: rgba(255, 51, 51, 0.1); border-color: var(--accent-cyan); mix-blend-mode: normal; }
-
-        /* Disable custom cursor on touch devices */
-        @media (hover: none) and (pointer: coarse) {
-            #cursor { display: none; }
-            body { cursor: auto; }
-        }
-
-        /* --- 2. Cinematic Overlays --- */
+        /* UI Layers */
         .noise-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.08'/%3E%3C/svg%3E");
-            pointer-events: none; z-index: 9990; opacity: 0.8; mix-blend-mode: overlay;
+            background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyBAMAAADsEZWCAAAAGFBMVEUAAAA5OTkAAABERERmZmYzMzMyMjJEREQN0eLFAAAACHRSTlMAwADw/cgF/45P4jwAAABcSURBVDjLY2AYBaNg2AJGJiBpC2QYgJQVSA4A0hYgOQJIGYFkP5A8ACRvA8m7QHIYkDwCJE8AyRNA8hKQPAskbwHJs0DyHJA8DySvAMkrQPIqkLwKJK8CyatA8igAANC3O1/q/K6AAAAAAElFTkSuQmCC");
+            opacity: 0.05; pointer-events: none; z-index: 9990;
         }
         
         .vignette {
@@ -72,138 +54,174 @@
 
         .scanline {
             position: fixed; left: 0; top: 0; width: 100%; height: 100%;
-            background: repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255, 255, 255, 0.03) 2px, transparent 3px);
-            z-index: 9991; pointer-events: none;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.3) 3px);
+            z-index: 9991; pointer-events: none; opacity: 0.4;
         }
 
-        /* --- 3. HUD Interface (Responsive) --- */
+        /* WebGL Canvas - Hardware Accelerated Layer */
+        #webgl-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; pointer-events: none;
+            /* Force GPU layer promotion */
+            transform: translate3d(0, 0, 0); 
+        }
+
+        /* Mouse Blob */
+        #mouse-blob {
+            position: fixed; top: 0; left: 0; width: 800px; height: 800px;
+            background: radial-gradient(circle, var(--blob-color) 0%, rgba(0,0,0,0) 65%);
+            border-radius: 50%; pointer-events: none; z-index: -1; opacity: 0.7;
+            transform: translate3d(-50%, -50%, 0); will-change: transform; mix-blend-mode: screen;
+        }
+
+        /* HUD */
         .hud-layer { position: fixed; inset: 0; z-index: 9900; pointer-events: none; padding: 20px; box-sizing: border-box; }
-        .hud-corner { position: absolute; width: 40px; height: 40px; border: 2px solid rgba(255, 255, 255, 0.3); transition: all 0.3s; }
-        .hud-tl { top: 30px; left: 30px; border-right: 0; border-bottom: 0; }
-        .hud-tr { top: 30px; right: 30px; border-left: 0; border-bottom: 0; }
-        .hud-bl { bottom: 30px; left: 30px; border-right: 0; border-top: 0; }
-        .hud-br { bottom: 30px; right: 30px; border-left: 0; border-top: 0; }
-        
-        .hud-coords { position: absolute; bottom: 35px; right: 80px; font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent-red); text-align: right; }
-        .hud-status { position: absolute; bottom: 35px; left: 80px; font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent-cyan); display: flex; gap: 20px; }
-        .hud-item { display: flex; align-items: center; gap: 5px; }
-        .hud-dot { width: 6px; height: 6px; background: var(--accent-cyan); border-radius: 50%; animation: blink 2s infinite; }
+        .hud-coords { position: absolute; bottom: 35px; right: 40px; font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent-red); opacity: 0.8; text-align: right; }
+        @media (max-width: 768px) { .hud-coords { display: none; } }
 
-        /* Hide complex HUD elements on small screens */
-        @media (max-width: 768px) {
-            .hud-corner, .hud-coords, .hud-status { display: none; }
-            .hud-layer { padding: 10px; }
-        }
-
-        /* --- 4. RGB Shift Container --- */
-        #viewport {
-            transition: transform 0.1s linear, filter 0.1s linear;
-            will-change: transform, filter;
-            width: 100%;
-            overflow-x: hidden;
-        }
-        .chromatic-aberration {
-            text-shadow: 2px 0 var(--accent-red), -2px 0 var(--accent-cyan);
-        }
-
-        /* --- 5. Components --- */
+        /* Bento Card */
         .bento-card {
-            background: rgba(10, 10, 12, 0.7);
+            background: rgba(10, 10, 15, 0.6);
             border: 1px solid rgba(255, 255, 255, 0.1);
             position: relative; overflow: hidden;
-            backdrop-filter: blur(20px);
+            backdrop-filter: blur(8px);
             transform-style: preserve-3d;
-            box-shadow: 0 0 0 1px rgba(0,0,0,1);
+            will-change: transform;
+            transition: border-color 0.3s ease, background-color 0.3s ease;
         }
-        .bento-card::after {
-            content: ''; position: absolute; inset: 0;
-            background: linear-gradient(180deg, rgba(255,255,255,0.05), transparent);
-            pointer-events: none;
-        }
-        .bento-card:hover { border-color: var(--accent-red); box-shadow: 0 0 30px rgba(255, 51, 51, 0.15); }
+        .bento-card:hover { border-color: var(--accent-red); background: rgba(20, 15, 15, 0.8); }
 
-        /* Responsive Text Sizing */
         .text-hero { 
-            font-size: clamp(2.5rem, 10vw, 8rem); 
-            line-height: 1.0; 
-            font-weight: 900; 
-            letter-spacing: -0.05em; 
-            text-transform: uppercase; 
-            word-break: break-word; /* Prevent overflow on small screens */
+            font-size: clamp(2.5rem, 9vw, 7rem); line-height: 1.0; font-weight: 900; 
+            letter-spacing: -0.04em; text-transform: uppercase;
         }
         
-        .member-avatar { filter: grayscale(100%) contrast(1.2) brightness(0.8); transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
-        .member-card:hover .member-avatar { filter: grayscale(0%) contrast(1.1) brightness(1.1); transform: scale(1.1); box-shadow: 0 0 30px rgba(255, 51, 51, 0.3); }
+        .member-avatar { filter: grayscale(100%); transition: filter 0.3s ease; }
+        .member-card:hover .member-avatar { filter: grayscale(0%); }
 
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
         @keyframes scan-vertical { 0% { top: -100%; } 100% { top: 200%; } }
-        
         .animate-scan-line {
-            position: absolute; left: 0; width: 100%; height: 50%;
-            background: linear-gradient(to bottom, transparent, rgba(255, 51, 51, 0.2), transparent);
-            animation: scan-vertical 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-            pointer-events: none;
+            position: absolute; left: 0; width: 100%; height: 20%;
+            background: linear-gradient(to bottom, transparent, rgba(255, 51, 51, 0.3), transparent);
+            animation: scan-vertical 2.5s linear infinite; pointer-events: none;
         }
 
-        /* Mobile Navigation Fix */
-        .nav-item { display: none; }
-        @media (min-width: 768px) {
-            .nav-item { display: block; }
+        /* Marquee Lag Text - FIXED VISIBILITY & GLOW */
+        .lag-marquee-container {
+            position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 1; /* Fully visible container */
+            z-index: 0;
+            mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
         }
+        .lag-marquee-track {
+            display: flex;
+            white-space: nowrap;
+            will-change: transform; /* Hint for GPU */
+        }
+        .lag-text-item {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 18px;
+            /* Bright Red with Text Shadow for Neon Effect */
+            color: rgba(255, 50, 50, 0.8); 
+            text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+            margin-right: 4rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+
+        /* Start Screen */
+        #start-screen {
+            position: fixed; inset: 0; background: #000; z-index: 100000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; transition: opacity 1s ease-out;
+        }
+        .start-btn {
+            border: 1px solid var(--accent-red); padding: 1rem 3rem;
+            font-family: 'JetBrains Mono'; color: white;
+            transition: all 0.3s; text-transform: uppercase; letter-spacing: 2px;
+        }
+        .start-btn:hover { background: var(--accent-red); color: black; box-shadow: 0 0 30px var(--accent-red); }
+
+        .nav-item { display: none; }
+        @media (min-width: 768px) { .nav-item { display: block; } }
+        #viewport { width: 100%; overflow-x: hidden; }
+        
+        /* Spacer for "25 Pages" feel */
+        .warp-transit {
+            height: 150vh; /* Long scroll area */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 10;
+            pointer-events: none; /* Allow seeing stars */
+        }
+        .warp-message {
+            font-family: 'Orbitron';
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 1.5rem;
+            letter-spacing: 0.5em;
+            text-transform: uppercase;
+            animation: pulse-slow 3s infinite;
+        }
+        @keyframes pulse-slow { 0%,100%{opacity:0.1;} 50%{opacity:0.5;} }
     </style>
 </head>
 <body class="antialiased">
 
-    <div id="cursor"></div>
+    <!-- BGM Audio -->
+    <audio id="bg-music" loop>
+        <source src="https://audio.jukehost.co.uk/2V0QGPNEl4nfKNdY0iSskMB6EfyuJFIQ" type="audio/mpeg">
+    </audio>
+
+    <!-- Start Screen Overlay -->
+    <div id="start-screen">
+        <div class="text-red-500 font-mono mb-4 text-sm animate-pulse tracking-widest">SYSTEM SECURE // CLICK TO ENTER HYPERSPACE</div>
+        <div class="start-btn">INITIALIZE</div>
+        <div class="mt-4 text-xs text-gray-600 font-mono">Lyra Hub v4.0 | 50,000 Particles</div>
+    </div>
+
     <div class="noise-overlay"></div>
     <div class="vignette"></div>
     <div class="scanline"></div>
     
-    <!-- HUD -->
+    <div id="mouse-blob"></div>
+    <div id="webgl-canvas"></div>
+    
     <div class="hud-layer">
-        <div class="hud-corner hud-tl"></div>
-        <div class="hud-corner hud-tr"></div>
-        <div class="hud-corner hud-bl"></div>
-        <div class="hud-corner hud-br"></div>
         <div class="hud-coords">
-            POS: <span id="hud-y">0000</span><br>
-            VEL: <span id="hud-vel">000</span><br>
-            FPS: MAX
-        </div>
-        <div class="hud-status">
-            <div class="hud-item"><div class="hud-dot"></div> SYSTEM ONLINE</div>
-            <div class="hud-item"><div class="hud-dot" style="animation-delay: 0.5s; background: var(--accent-red)"></div> WEAPONS ARMED</div>
+            WARP DRIVE: <span id="warp-status">STANDBY</span><br>
+            STARS: 50,000<br>
+            SPEED: <span id="speed-indicator">1X</span>
         </div>
     </div>
 
-    <canvas id="starfield" class="fixed top-0 left-0 w-full h-full z-[-1]"></canvas>
-
-    <!-- WRAPPER FOR RGB SHIFT -->
     <div id="viewport">
 
     <!-- Header -->
-    <header class="fixed top-0 left-0 right-0 z-50 mix-blend-difference px-6 py-6 md:px-12 opacity-0 transition-opacity duration-1000" id="navbar">
+    <header class="fixed top-0 left-0 right-0 z-50 mix-blend-difference px-6 py-6 md:px-12 opacity-0" id="navbar">
         <div class="flex justify-between items-center max-w-[1800px] mx-auto">
-            <a href="#" class="text-xl md:text-2xl font-bold tracking-tighter hover:text-red-500 transition-colors glitch-wrapper magnetic-btn" data-text="Lyra Hub">Lyra Hub</a>
+            <a href="#" class="text-xl md:text-2xl font-bold tracking-tighter hover:text-red-500 transition-colors">Lyra Hub</a>
             <nav class="hidden md:flex gap-8 text-sm font-medium">
-                <a href="#philosophy" class="hover:text-red-500 transition-colors nav-item magnetic-btn">毀滅宣言</a>
-                <a href="#114514" class="hover:text-red-500 transition-colors nav-item magnetic-btn">通訊癱瘓</a>
-                <a href="#nuke" class="hover:text-red-500 transition-colors nav-item magnetic-btn">歸零引擎</a>
-                <a href="#team" class="hover:text-red-500 transition-colors nav-item magnetic-btn">核心團隊</a>
-                <a href="#services" class="hover:text-red-500 transition-colors nav-item magnetic-btn">服務報價</a>
+                <a href="#philosophy" class="hover:text-red-500 transition-colors nav-item">毀滅宣言</a>
+                <a href="#hyper-warp" class="hover:text-red-500 transition-colors nav-item">Hyper Warp</a>
+                <a href="#nuke" class="hover:text-red-500 transition-colors nav-item">歸零引擎</a>
+                <a href="#team" class="hover:text-red-500 transition-colors nav-item">核心團隊</a>
+                <a href="#services" class="hover:text-red-500 transition-colors nav-item">服務報價</a>
             </nav>
-            <a href="https://discord.gg/lyrahub" target="_blank" class="font-medium text-xs md:text-sm border border-white px-4 py-2 hover:bg-white hover:text-black transition-all nav-btn relative overflow-hidden group magnetic-btn">
-                <span class="relative z-10">獲取權限</span>
-                <div class="absolute inset-0 bg-white transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"></div>
+            <a href="https://discord.gg/lyrahub" target="_blank" class="font-medium text-xs md:text-sm border border-white px-4 py-2 hover:bg-white hover:text-black transition-colors">
+                獲取權限
             </a>
         </div>
     </header>
 
-    <main class="skew-container">
+    <main>
         <!-- PAGE 1: HERO -->
         <section class="relative min-h-screen flex flex-col justify-center border-b border-white/10 overflow-hidden" id="hero">
-            <div class="parallax-wrapper absolute inset-0 z-0">
-                <img src="https://i.pinimg.com/1200x/13/41/45/13414519583c03a8576b45d6171c11c9.jpg" alt="Hero Background" class="parallax-img w-full h-[120%] object-cover brightness-50" data-speed="0.3">
+            <!-- Background Image Lower Opacity for Stars to Pop -->
+            <div class="absolute inset-0 z-0 opacity-10">
+                <img src="https://i.pinimg.com/1200x/13/41/45/13414519583c03a8576b45d6171c11c9.jpg" alt="Background" class="w-full h-full object-cover brightness-[0.4] parallax-bg">
             </div>
 
             <div class="relative z-10 px-6 md:px-12 max-w-[1800px] mx-auto w-full pt-20 pointer-events-none">
@@ -218,36 +236,38 @@
                     當秩序崩塌，Lyra Hub 便是唯一的法則。
                 </p>
                 <div class="flex gap-6 opacity-0 hero-cta pointer-events-auto">
-                    <a href="#philosophy" class="text-base md:text-lg font-medium border-b border-white pb-1 hover:text-red-500 transition-colors group flex items-center gap-2 magnetic-btn">
-                        閱讀毀滅宣言 
-                        <span class="transform group-hover:translate-x-1 transition-transform">&rarr;</span>
+                    <a href="#philosophy" class="text-base md:text-lg font-medium border-b border-white pb-1 hover:text-red-500 transition-colors group flex items-center gap-2">
+                        閱讀毀滅宣言 <span class="transform group-hover:translate-x-1 transition-transform">&rarr;</span>
                     </a>
                 </div>
             </div>
         </section>
 
+        <!-- WARP TRANSIT ZONE 1 -->
+        <div class="warp-transit"><div class="warp-message">ENTERING DEEP SPACE</div></div>
+
         <!-- PAGE 2: PHILOSOPHY -->
-        <section id="philosophy" class="min-h-screen flex items-center px-6 md:px-12 border-b border-white/10 bg-black relative z-10 py-20">
+        <section id="philosophy" class="min-h-screen flex items-center px-6 md:px-12 border-y border-white/10 bg-black/60 relative z-10 py-20 backdrop-blur-sm">
             <div class="max-w-[1800px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
                 <div class="flex items-center">
                     <h2 class="text-4xl md:text-7xl font-bold tracking-tighter mb-8 split-text leading-tight">
                         為何我們<br>
                         要摧毀<br>
-                        <span class="text-red-600 glitch-wrapper" data-text="一切？">一切？</span>
+                        <span class="text-red-600">一切？</span>
                     </h2>
                 </div>
                 <div class="space-y-8 md:space-y-12">
-                    <div class="anim-block opacity-0 translate-y-10">
+                    <div class="anim-fade opacity-0 translate-y-4">
                         <p class="text-lg md:text-2xl leading-relaxed text-gray-300 font-light border-l-2 border-red-500 pl-6">
                             「AI 可以取代創作，但無法取代毀滅的快感。」
                         </p>
                     </div>
-                    <div class="anim-block opacity-0 translate-y-10">
+                    <div class="anim-fade opacity-0 translate-y-4">
                         <p class="text-lg md:text-2xl leading-relaxed text-gray-400 font-light">
                             如果你問我們意義何在，我會告訴你：建立一個伺服器需要數月，但 Lyra Hub 讓它歸零只需要數秒。
                         </p>
                     </div>
-                    <div class="anim-block opacity-0 translate-y-10">
+                    <div class="anim-fade opacity-0 translate-y-4">
                         <p class="text-lg md:text-2xl leading-relaxed text-white font-medium">
                             當你熬過無數夜晚建立的社群，在瞬間被洪水般的訊息淹沒——那一刻的戰慄與絕望，是任何 AI 都無法模擬的真實。
                         </p>
@@ -257,40 +277,37 @@
             </div>
         </section>
 
+        <!-- WARP TRANSIT ZONE 2 -->
+        <div class="warp-transit"><div class="warp-message">APPROACHING TARGET</div></div>
+
         <!-- PAGE 3: MODEL I - SPAM BOT -->
-        <section id="114514" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-b border-white/10 relative overflow-hidden bg-[#020202] py-20">
+        <section id="hyper-warp" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-y border-white/10 relative bg-[#020202]/80 py-20 backdrop-blur-md">
             <div class="max-w-[1800px] mx-auto w-full relative z-10">
                 <div class="mb-12 md:mb-20">
-                    <div class="text-xs md:text-sm font-mono text-purple-400 mb-4 anim-fade scramble-text">MODULE I: MASS DISRUPTION</div>
-                    <h2 class="text-4xl md:text-8xl font-bold tracking-tighter split-text">114514<br>通訊癱瘓協議</h2>
+                    <div class="text-xs md:text-sm font-mono text-purple-400 mb-4 anim-fade">MODULE I: MASS DISRUPTION</div>
+                    <h2 class="text-4xl md:text-8xl font-bold tracking-tighter split-text">Hyper Warp<br>通訊癱瘓協議</h2>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Adjusted height for mobile responsiveness -->
-                    <div class="bento-card p-6 md:p-8 min-h-[300px] md:h-[400px] flex flex-col justify-between anim-3d-in" data-tilt>
+                    <div class="bento-card p-6 md:p-8 min-h-[300px] flex flex-col justify-between anim-card" data-tilt>
                         <div class="font-mono text-sm text-gray-500">壓制力 (SUPPRESSION)</div>
                         <div>
                             <div class="text-5xl md:text-7xl font-bold mb-2 text-purple-400 count-up" data-target="50">0</div>
                             <div class="text-xl md:text-2xl font-bold text-white mb-2">同步攻擊單元</div>
-                            <p class="text-gray-400 text-sm md:text-base">利用 <span class="text-white font-mono">asyncio.gather</span> 讓 50 隻機器人同時發動攻擊，瞬間淹沒任何人類的對話。</p>
+                            <p class="text-gray-400 text-sm md:text-base">利用 <span class="text-white font-mono">asyncio.gather</span> 讓 50 隻機器人同時發動攻擊。</p>
                         </div>
                     </div>
-                    <div class="bento-card p-6 md:p-8 min-h-[300px] md:h-[400px] flex flex-col justify-between col-span-1 md:col-span-2 anim-3d-in" data-tilt style="transition-delay: 0.1s">
+                    <div class="bento-card p-6 md:p-8 min-h-[300px] flex flex-col justify-between col-span-1 md:col-span-2 anim-card" data-tilt style="transition-delay: 0.1s">
                         <div class="flex justify-between items-center">
                             <div class="font-mono text-sm text-gray-500">CORE KERNEL</div>
-                            <div class="flex gap-2">
-                                <div class="w-2 h-2 rounded-full bg-red-500 animate-ping"></div>
-                                <div class="text-xs text-red-500 font-mono">LIVE EXECUTION</div>
-                            </div>
+                            <div class="text-xs text-red-500 font-mono animate-pulse">LIVE EXECUTION</div>
                         </div>
-                        <pre class="text-xs md:text-sm text-gray-400 font-mono overflow-x-auto relative whitespace-pre-wrap break-all md:whitespace-pre">
+                        <pre class="text-xs md:text-sm text-gray-400 font-mono overflow-x-auto whitespace-pre-wrap break-all md:whitespace-pre">
 <span class="text-purple-400">async def</span> <span class="text-cyan-400">z0</span>(tid, atkr):
-    <span class="text-gray-500"># Deploying 50 units for synchronized strike</span>
     ts = [asyncio.create_task(w0(tk[i], i+1, tid, a1a)) 
           <span class="text-purple-400">for</span> i <span class="text-purple-400">in</span> <span class="text-cyan-400">range</span>(<span class="text-cyan-400">len</span>(tk))]
     <span class="text-purple-400">await</span> asyncio.gather(*ts)
-    <span class="text-purple-400">return</span> <span class="text-cyan-400">True</span>, f<span class="text-green-400">"Target annihilated: {tot} messages."</span>
-<div class="absolute bottom-0 left-0 w-full h-1 bg-purple-500 animate-scan"></div>
+    <span class="text-purple-400">return</span> <span class="text-cyan-400">True</span>, f<span class="text-green-400">"Target annihilated."</span>
                         </pre>
                     </div>
                 </div>
@@ -298,7 +315,7 @@
         </section>
 
         <!-- PAGE 4: VIP & PROTECTION -->
-        <section class="min-h-screen flex items-center px-6 md:px-12 border-b border-white/10 bg-black py-20">
+        <section class="min-h-screen flex items-center px-6 md:px-12 border-y border-white/10 bg-black/70 py-20 backdrop-blur-sm">
             <div class="max-w-[1800px] mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                 <div class="order-2 lg:order-1">
                     <h2 class="text-4xl md:text-5xl font-bold mb-6 split-text">絕對霸權<br>防禦機制</h2>
@@ -306,15 +323,12 @@
                         <li class="flex items-center gap-2"><span class="text-red-500">></span> if target in Protected_List: EXECUTE_BAN()</li>
                         <li class="flex items-center gap-2"><span class="text-red-500">></span> VIP 身分組絕對豁免權</li>
                         <li class="flex items-center gap-2"><span class="text-red-500">></span> 自動鎖定敵對用戶</li>
-                        <li class="flex items-center gap-2"><span class="text-red-500">></span> 每日攻擊配額限制 (防止濫用)</li>
+                        <li class="flex items-center gap-2"><span class="text-red-500">></span> 每日攻擊配額限制</li>
                     </ul>
                 </div>
                 <div class="order-1 lg:order-2 flex justify-center">
-                    <div class="bento-card w-full max-w-xs md:max-w-md aspect-square flex items-center justify-center relative overflow-hidden rounded-full border-2 border-red-500/30 anim-scale" data-tilt>
-                        <div class="absolute inset-0 bg-red-900/10 animate-pulse-slow"></div>
-                        <div class="absolute w-[120%] h-[2px] bg-red-500/50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin-slow"></div>
-                        <div class="absolute w-[2px] h-[120%] bg-red-500/50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin-slow-reverse"></div>
-                        <div class="text-center z-10 mix-blend-screen">
+                    <div class="bento-card w-full max-w-xs md:max-w-md aspect-square flex items-center justify-center relative rounded-full border-2 border-red-500/30 anim-scale" data-tilt>
+                        <div class="text-center z-10">
                             <div class="text-6xl md:text-9xl font-bold mb-2 tracking-tighter text-red-500 count-up" data-target="100">0</div>
                             <div class="text-lg md:text-xl text-gray-400 font-mono tracking-widest">% CLEANSED</div>
                         </div>
@@ -323,53 +337,59 @@
             </div>
         </section>
 
+        <!-- WARP TRANSIT ZONE 3 -->
+        <div class="warp-transit"><div class="warp-message">SYSTEM CRITICAL</div></div>
+
         <!-- PAGE 5: NUKE ENGINE -->
-        <section id="nuke" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-b border-white/10 bg-red-950/5 relative py-20">
+        <section id="nuke" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-y border-white/10 bg-red-950/10 relative py-20 backdrop-blur-md">
             <div class="max-w-[1800px] mx-auto w-full relative z-10">
                 <div class="flex flex-col md:flex-row justify-between items-end mb-12 md:mb-20">
                     <div>
-                        <div class="text-xs md:text-sm font-mono text-red-500 mb-4 anim-fade scramble-text">MODEL II: SCORCHED EARTH</div>
+                        <div class="text-xs md:text-sm font-mono text-red-500 mb-4 anim-fade">MODEL II: SCORCHED EARTH</div>
                         <h2 class="text-4xl md:text-8xl font-bold tracking-tighter text-white split-text">NeverForget<br>歸零引擎</h2>
                     </div>
                     <div class="text-right hidden md:block anim-fade">
-                        <div class="text-red-500 font-bold text-xl glitch-wrapper" data-text="v2.0">v2.0</div>
+                        <div class="text-red-500 font-bold text-xl">v2.0</div>
                         <div class="text-gray-500 font-mono">ULTRAFAST PROTOCOL</div>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="bento-card p-6 md:col-span-1 border-red-500/30 hover:bg-red-900/20 anim-3d-in group min-h-[150px]" data-tilt>
-                        <div class="text-red-500 text-lg font-bold mb-2 group-hover:translate-x-2 transition-transform">抹除 (ERASE)</div>
-                        <p class="text-sm text-gray-400">非同步並行刪除所有頻道與身分組，不留痕跡。</p>
+                    <div class="bento-card p-6 border-red-500/30 anim-card group min-h-[150px]" data-tilt>
+                        <div class="text-red-500 text-lg font-bold mb-2">抹除 (ERASE)</div>
+                        <p class="text-sm text-gray-400">非同步並行刪除所有頻道與身分組。</p>
                         <div class="absolute bottom-0 left-0 w-full h-1 bg-red-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
                     </div>
-                    <div class="bento-card p-6 md:col-span-1 border-red-500/30 hover:bg-red-900/20 anim-3d-in group min-h-[150px]" style="transition-delay: 0.1s" data-tilt>
-                        <div class="text-red-500 text-lg font-bold mb-2 group-hover:translate-x-2 transition-transform">污染 (POLLUTE)</div>
-                        <p class="text-sm text-gray-400">瞬間生成 200+ 個垃圾頻道，徹底破壞伺服器結構。</p>
+                    <div class="bento-card p-6 border-red-500/30 anim-card group min-h-[150px]" style="transition-delay: 0.1s" data-tilt>
+                        <div class="text-red-500 text-lg font-bold mb-2">污染 (POLLUTE)</div>
+                        <p class="text-sm text-gray-400">瞬間生成 200+ 個垃圾頻道。</p>
                         <div class="absolute bottom-0 left-0 w-full h-1 bg-red-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
                     </div>
-                    <div class="bento-card p-6 md:col-span-1 border-red-500/30 hover:bg-red-900/20 anim-3d-in group min-h-[150px]" style="transition-delay: 0.2s" data-tilt>
-                        <div class="text-red-500 text-lg font-bold mb-2 group-hover:translate-x-2 transition-transform">清洗 (PURGE)</div>
-                        <p class="text-sm text-gray-400">以 100 人為單位的批量封鎖，清空所有成員。</p>
+                    <div class="bento-card p-6 border-red-500/30 anim-card group min-h-[150px]" style="transition-delay: 0.2s" data-tilt>
+                        <div class="text-red-500 text-lg font-bold mb-2">清洗 (PURGE)</div>
+                        <p class="text-sm text-gray-400">以 100 人為單位的批量封鎖。</p>
                         <div class="absolute bottom-0 left-0 w-full h-1 bg-red-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
                     </div>
-                    <div class="bento-card p-6 md:col-span-1 border-red-500/30 hover:bg-red-900/20 anim-3d-in group min-h-[150px]" style="transition-delay: 0.3s" data-tilt>
-                        <div class="text-red-500 text-lg font-bold mb-2 group-hover:translate-x-2 transition-transform">佔領 (CONQUER)</div>
-                        <p class="text-sm text-gray-400">強制更名為 "nuke by NeverForget"，宣示主權。</p>
+                    <div class="bento-card p-6 border-red-500/30 anim-card group min-h-[150px]" style="transition-delay: 0.3s" data-tilt>
+                        <div class="text-red-500 text-lg font-bold mb-2">佔領 (CONQUER)</div>
+                        <p class="text-sm text-gray-400">強制更名為 "nuke by NeverForget"。</p>
                         <div class="absolute bottom-0 left-0 w-full h-1 bg-red-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- PAGE 6: LAG VISUALIZATION -->
-        <section class="min-h-screen flex items-center justify-center px-6 md:px-12 border-b border-white/10 overflow-hidden relative bg-black">
-            <div class="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none select-none overflow-hidden">
-                <div class="text-[10px] md:text-sm text-gray-500 break-all w-[120%] leading-none font-mono" id="lag-bg"></div>
+        <!-- PAGE 6: LAG VISUALIZATION (Fixed Visibility) -->
+        <section class="min-h-screen flex items-center justify-center px-6 md:px-12 border-y border-white/10 overflow-hidden relative bg-black/95">
+            <!-- Animated Marquee Background -->
+            <div class="lag-marquee-container">
+                <div class="lag-marquee-track" id="lag-track-1">
+                    <!-- JS populated -->
+                </div>
             </div>
             
             <div class="relative z-10 text-center">
-                <h2 class="text-4xl md:text-9xl font-black mb-4 tracking-tighter text-white mix-blend-difference split-text glitch-wrapper" data-text="SYSTEM HALT">
+                <h2 class="text-4xl md:text-9xl font-black mb-4 tracking-tighter text-white mix-blend-difference split-text">
                     UNICODE<br>渲染崩潰
                 </h2>
                 <p class="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto anim-fade">
@@ -380,14 +400,14 @@
         </section>
 
         <!-- PAGE 7: INTERACTIVE TERMINAL -->
-        <section class="min-h-screen flex items-center px-6 md:px-12 border-b border-white/10 bg-[#050505] relative py-20">
+        <section class="min-h-screen flex items-center px-6 md:px-12 border-y border-white/10 bg-[#050505]/90 relative py-20 backdrop-blur-md">
             <div class="max-w-[1200px] mx-auto w-full relative z-10">
                 <div class="mb-12 text-center">
                     <h2 class="text-4xl font-bold mb-4 split-text">戰術控制台</h2>
                     <p class="text-gray-400 anim-fade">直接體驗控制混亂的快感。輸入指令，發動災難。</p>
                 </div>
 
-                <div class="w-full bg-black border border-white/20 rounded-lg overflow-hidden shadow-2xl anim-scale-up" data-tilt>
+                <div class="w-full bg-black border border-white/20 rounded-lg overflow-hidden shadow-2xl anim-scale" data-tilt>
                     <div class="flex items-center px-4 py-2 border-b border-white/10 bg-[#111]">
                         <div class="flex gap-2">
                             <div class="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
@@ -397,87 +417,77 @@
                         <div class="ml-4 text-xs font-mono text-gray-500">admin@lyrahub:~/weapons</div>
                     </div>
                     <div class="p-6 h-[300px] md:h-[400px] font-mono text-sm overflow-y-auto relative" id="terminal-output">
-                        <div class="absolute top-4 right-4 text-xs text-red-900 font-bold border border-red-900 px-2 animate-pulse hidden md:block">SECURE CONNECTION</div>
                         <div class="text-gray-500 mb-2"># Initializing Weapon Systems...</div>
-                        <div class="text-gray-500 mb-2"># Loading Payloads: [114514.py] [main.py] [1145.py]</div>
+                        <div class="text-gray-500 mb-2"># Loading Payloads: [HyperWarp.py] [main.py] [1145.py]</div>
                         <div class="text-red-500 mb-4">⚠ 系統已解除保險 (SYSTEM ARMED).</div>
                         <div class="flex">
                             <span class="text-red-500 mr-2">➜</span>
                             <span class="text-white mr-2">~</span>
-                            <span class="text-white typing-cursor" id="terminal-input-display"></span>
+                            <span class="text-white" id="terminal-input-display"></span>
                             <span class="w-2 h-5 bg-white animate-pulse ml-1"></span>
                         </div>
                     </div>
                 </div>
                 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 anim-stagger-list">
-                    <button onclick="runCmd('!spam_dm target')" class="border border-white/20 py-4 text-sm font-mono hover:bg-red-600 hover:border-red-600 hover:text-white transition-all transform hover:scale-105 magnetic-btn">!spam_dm</button>
-                    <button onclick="runCmd('!nuke_cmd')" class="border border-white/20 py-4 text-sm font-mono hover:bg-red-600 hover:border-red-600 hover:text-white transition-all transform hover:scale-105 magnetic-btn">!nuke_cmd</button>
-                    <button onclick="runCmd('/spam lag')" class="border border-white/20 py-4 text-sm font-mono hover:bg-red-600 hover:border-red-600 hover:text-white transition-all transform hover:scale-105 magnetic-btn">/spam lag</button>
-                    <button onclick="runCmd('sys_status')" class="border border-white/20 py-4 text-sm font-mono hover:bg-red-600 hover:border-red-600 hover:text-white transition-all transform hover:scale-105 magnetic-btn">sys_status</button>
+                    <button onclick="runCmd('!spam_dm target')" class="border border-white/20 py-4 text-sm font-mono hover:bg-red-900/30 transition-colors">!spam_dm</button>
+                    <button onclick="runCmd('!nuke_cmd')" class="border border-white/20 py-4 text-sm font-mono hover:bg-red-900/30 transition-colors">!nuke_cmd</button>
+                    <button onclick="runCmd('/spam lag')" class="border border-white/20 py-4 text-sm font-mono hover:bg-red-900/30 transition-colors">/spam lag</button>
+                    <button onclick="runCmd('sys_status')" class="border border-white/20 py-4 text-sm font-mono hover:bg-red-900/30 transition-colors">sys_status</button>
                 </div>
             </div>
         </section>
 
-        <!-- PAGE 8: CORE TEAM (Updated) -->
-        <section id="team" class="min-h-screen flex items-center justify-center px-6 md:px-12 border-b border-white/10 relative py-20">
+        <!-- PAGE 8: CORE TEAM -->
+        <section id="team" class="min-h-screen flex items-center justify-center px-6 md:px-12 border-y border-white/10 relative py-20 bg-black/80 backdrop-blur-sm">
             <div class="max-w-[1800px] mx-auto w-full">
                 <div class="mb-20 text-center">
-                    <div class="text-sm font-mono text-gray-500 mb-4 anim-fade scramble-text">THE ARCHITECTS</div>
+                    <div class="text-sm font-mono text-gray-500 mb-4 anim-fade">THE ARCHITECTS</div>
                     <h2 class="text-5xl md:text-7xl font-bold tracking-tighter mb-8 split-text">核心團隊</h2>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    
-                    <!-- Member 0 -->
-                    <div class="bento-card member-card p-8 flex flex-col items-center text-center group h-full anim-3d-in" data-tilt>
-                        <div class="w-32 h-32 rounded-full overflow-hidden mb-6 border-2 border-white/10 group-hover:border-red-500 transition-colors relative">
+                    <!-- Members -->
+                    <div class="bento-card member-card p-8 flex flex-col items-center text-center anim-card" data-tilt>
+                        <div class="w-32 h-32 rounded-full overflow-hidden mb-6 border-2 border-white/10 relative">
                             <img src="https://cdn.discordapp.com/avatars/1402475195360481320/fdb4c522cc0006af784afb0dbf7cd291.webp?size=1024" alt="Light" class="member-avatar w-full h-full object-cover">
-                            <div class="animate-scan-line"></div>
                         </div>
-                        <h3 class="text-2xl font-bold mb-2 group-hover:text-red-500 transition-colors">light</h3>
+                        <h3 class="text-2xl font-bold mb-2">light</h3>
                         <p class="text-sm text-gray-400 font-mono italic">「這裡曾經有個人，後來他連『曾經』都不配有了。」</p>
                     </div>
-
-                    <!-- Member 1 -->
-                    <div class="bento-card member-card p-8 flex flex-col items-center text-center group h-full anim-3d-in" data-tilt style="transition-delay: 0.1s">
-                        <div class="w-32 h-32 rounded-full overflow-hidden mb-6 border-2 border-white/10 group-hover:border-red-500 transition-colors relative">
+                    <div class="bento-card member-card p-8 flex flex-col items-center text-center anim-card" style="transition-delay: 0.1s" data-tilt>
+                        <div class="w-32 h-32 rounded-full overflow-hidden mb-6 border-2 border-white/10 relative">
                             <img src="https://cdn.discordapp.com/attachments/1443927726208712776/1443933484589777047/hidden-face-pfp-39.jpg?ex=692cd999&is=692b8819&hm=69b740f88e3fd2610c040a642477136be18d0a5bf63cfe38a9485aa8c4f38b69&" onerror="this.src='https://ui-avatars.com/api/?name=FALED&background=random&color=fff'" alt="FALED" class="member-avatar w-full h-full object-cover">
-                            <div class="animate-scan-line"></div>
                         </div>
-                        <h3 class="text-2xl font-bold mb-2 group-hover:text-red-500 transition-colors">FALED</h3>
+                        <h3 class="text-2xl font-bold mb-2">FALED</h3>
                         <p class="text-sm text-gray-500 font-mono italic opacity-50">(這個人非常懶惰完全不想寫個性簽名)</p>
                     </div>
-
-                    <!-- Member 2 -->
-                    <div class="bento-card member-card p-8 flex flex-col items-center text-center group h-full anim-3d-in" data-tilt style="transition-delay: 0.2s">
-                        <div class="w-32 h-32 rounded-full overflow-hidden mb-6 border-2 border-white/10 group-hover:border-red-500 transition-colors relative">
+                    <div class="bento-card member-card p-8 flex flex-col items-center text-center anim-card" style="transition-delay: 0.2s" data-tilt>
+                        <div class="w-32 h-32 rounded-full overflow-hidden mb-6 border-2 border-white/10 relative">
                             <img src="https://cdn.discordapp.com/avatars/1111921558114553876/b0e629b96159b03fcc3391f7354972d4.webp?size=1024" alt="勞氏萊斯" class="member-avatar w-full h-full object-cover">
-                            <div class="animate-scan-line"></div>
                         </div>
-                        <h3 class="text-2xl font-bold mb-2 group-hover:text-red-500 transition-colors">勞氏萊斯</h3>
+                        <h3 class="text-2xl font-bold mb-2">勞氏萊斯</h3>
                         <p class="text-sm text-gray-400 font-mono italic">Jim</p>
                     </div>
-
-                    <!-- Member 3 -->
-                    <div class="bento-card member-card p-8 flex flex-col items-center text-center group h-full anim-3d-in" data-tilt style="transition-delay: 0.3s">
-                        <div class="w-32 h-32 rounded-full overflow-hidden mb-6 border-2 border-white/10 group-hover:border-red-500 transition-colors relative">
+                    <div class="bento-card member-card p-8 flex flex-col items-center text-center anim-card" style="transition-delay: 0.3s" data-tilt>
+                        <div class="w-32 h-32 rounded-full overflow-hidden mb-6 border-2 border-white/10 relative">
                             <img src="https://cdn.discordapp.com/avatars/1108004585349599273/ab87ad49effe6e4931d24f74fb023b2a.webp?size=1024" alt="IE" class="member-avatar w-full h-full object-cover">
-                            <div class="animate-scan-line"></div>
                         </div>
-                        <h3 class="text-2xl font-bold mb-2 group-hover:text-red-500 transition-colors">IE</h3>
+                        <h3 class="text-2xl font-bold mb-2">IE</h3>
                         <p class="text-sm text-gray-400 font-mono italic">Light是gay</p>
                     </div>
-
                 </div>
             </div>
         </section>
 
+        <!-- WARP TRANSIT ZONE 4 -->
+        <div class="warp-transit"><div class="warp-message">ENGAGING HYPERDRIVE</div></div>
+
         <!-- PAGE 9: SERVICES & PRICING -->
-        <section id="services" class="min-h-screen flex items-center justify-center px-6 md:px-12 border-b border-white/10 relative bg-[#050505] py-20">
+        <section id="services" class="min-h-screen flex items-center justify-center px-6 md:px-12 border-y border-white/10 relative bg-[#050505]/80 py-20 backdrop-blur-md">
             <div class="max-w-[1800px] mx-auto w-full">
                 <div class="mb-20 text-center">
-                    <div class="text-sm font-mono text-gray-500 mb-4 anim-fade scramble-text">MERCENARY CONTRACTS</div>
+                    <div class="text-sm font-mono text-gray-500 mb-4 anim-fade">MERCENARY CONTRACTS</div>
                     <h2 class="text-5xl md:text-7xl font-bold tracking-tighter mb-8 split-text">服務與報價</h2>
                     <p class="text-gray-400 max-w-2xl mx-auto anim-fade">
                         提供專業客製化開發與自架託管服務。所有交易均透過 Ticket 私訊進行，成交後付款，保障雙方權益。
@@ -485,61 +495,51 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    
                     <!-- Service 1 -->
-                    <div class="bento-card p-8 border-l-4 border-l-purple-500 group hover:bg-purple-900/10 anim-3d-in min-h-[300px] flex flex-col" data-tilt>
+                    <div class="bento-card p-8 border-l-4 border-l-purple-500 anim-card min-h-[300px] flex flex-col" data-tilt>
                         <div class="flex justify-between items-start mb-6">
-                            <h3 class="text-2xl font-bold text-white group-hover:text-purple-400 transition-colors">一般官網製作</h3>
+                            <h3 class="text-2xl font-bold text-white">一般官網製作</h3>
                             <span class="bg-purple-900/50 text-purple-300 text-xs font-mono px-2 py-1 rounded">WEB DEV</span>
                         </div>
-                        <p class="text-gray-400 text-sm mb-6 flex-1">
-                            完全客製化設計、RWD 響應式版面、品牌形象統一。可追加後台管理、會員系統、API 串接。
-                        </p>
+                        <p class="text-gray-400 text-sm mb-6 flex-1">完全客製化設計、RWD 響應式版面、品牌形象統一。</p>
                         <div class="mt-auto">
                             <div class="text-3xl font-bold text-white mb-1">TWD 500 <span class="text-sm font-normal text-gray-500">起</span></div>
                             <div class="text-xs text-gray-600 font-mono">依內容複雜度報價</div>
                         </div>
                     </div>
-
                     <!-- Service 2 -->
-                    <div class="bento-card p-8 border-l-4 border-l-purple-500 group hover:bg-purple-900/10 anim-3d-in min-h-[300px] flex flex-col" data-tilt style="transition-delay: 0.1s">
+                    <div class="bento-card p-8 border-l-4 border-l-purple-500 anim-card min-h-[300px] flex flex-col" style="transition-delay: 0.1s" data-tilt>
                         <div class="flex justify-between items-start mb-6">
-                            <h3 class="text-2xl font-bold text-white group-hover:text-purple-400 transition-colors">客製機器人</h3>
+                            <h3 class="text-2xl font-bold text-white">客製機器人</h3>
                             <span class="bg-purple-900/50 text-purple-300 text-xs font-mono px-2 py-1 rounded">BOT DEV</span>
                         </div>
-                        <p class="text-gray-400 text-sm mb-6 flex-1">
-                            24/7 不下線自架託管。指令、等級、票務、管理工具皆可客製。部分自製機器人可免費領取。
-                        </p>
+                        <p class="text-gray-400 text-sm mb-6 flex-1">24/7 不下線自架託管。指令、等級、票務皆可客製。</p>
                         <div class="mt-auto">
                             <div class="text-3xl font-bold text-white mb-1">NT$300 <span class="text-sm font-normal text-gray-500">Steam Card 起</span></div>
                             <div class="text-xs text-gray-600 font-mono">依功能複雜度報價</div>
                         </div>
                     </div>
-
                     <!-- Service 3 -->
-                    <div class="bento-card p-8 border-l-4 border-l-red-500 group hover:bg-red-900/10 anim-3d-in min-h-[300px] flex flex-col" data-tilt style="transition-delay: 0.2s">
+                    <div class="bento-card p-8 border-l-4 border-l-red-500 anim-card min-h-[300px] flex flex-col" style="transition-delay: 0.2s" data-tilt>
                         <div class="flex justify-between items-start mb-6">
-                            <h3 class="text-2xl font-bold text-white group-hover:text-red-500 transition-colors">炸群機器人</h3>
-                            <span class="bg-red-900/50 text-red-300 text-xs font-mono px-2 py-1 rounded animate-pulse">WEAPON</span>
+                            <h3 class="text-2xl font-bold text-white">炸群機器人</h3>
+                            <span class="bg-red-900/50 text-red-300 text-xs font-mono px-2 py-1 rounded">WEAPON</span>
                         </div>
-                        <p class="text-gray-400 text-sm mb-6 flex-1">
-                            NukeBot 現成代碼，立即部署。功能完整穩定，包含上述所有攻擊模組。
-                        </p>
+                        <p class="text-gray-400 text-sm mb-6 flex-1">NukeBot 現成代碼，立即部署。功能完整穩定。</p>
                         <div class="mt-auto">
-                            <div class="text-3xl font-bold text-red-500 mb-1 glitch-wrapper" data-text="私訊報價">私訊報價</div>
+                            <div class="text-3xl font-bold text-red-500 mb-1">私訊報價</div>
                             <div class="text-xs text-gray-600 font-mono">Open Ticket for Quote</div>
                         </div>
                     </div>
-
                     <!-- Service 4 -->
-                    <div class="bento-card p-8 border-l-4 border-l-red-500 group hover:bg-red-900/10 lg:col-span-2 anim-3d-in min-h-[300px]" data-tilt style="transition-delay: 0.3s">
+                    <div class="bento-card p-8 border-l-4 border-l-red-500 lg:col-span-2 anim-card min-h-[250px]" style="transition-delay: 0.3s" data-tilt>
                         <div class="flex justify-between items-start mb-6">
-                            <h3 class="text-2xl font-bold text-white group-hover:text-red-500 transition-colors">自定義炸群服務</h3>
-                            <span class="bg-red-900/50 text-red-300 text-xs font-mono px-2 py-1 rounded animate-pulse">TARGETED STRIKE</span>
+                            <h3 class="text-2xl font-bold text-white">自定義炸群服務</h3>
+                            <span class="bg-red-900/50 text-red-300 text-xs font-mono px-2 py-1 rounded">TARGETED STRIKE</span>
                         </div>
                         <div class="flex flex-col md:flex-row gap-6 h-full">
                             <p class="text-gray-400 text-sm flex-1">
-                                價格越高，可毀滅的目標規模越大。只要預算到位，萬人大群亦可灰飛煙滅。<br><br>
+                                價格越高，可毀滅的目標規模越大。萬人大群亦可灰飛煙滅。<br><br>
                                 <span class="text-red-400 italic">「有感筆電只能看著他的群被炸，就像那無能的丈夫一樣。」</span>
                             </p>
                             <div class="md:w-1/3 flex flex-col justify-end">
@@ -548,109 +548,70 @@
                             </div>
                         </div>
                     </div>
-
                     <!-- Service 5 -->
-                    <div class="bento-card p-8 border-l-4 border-l-red-500 group hover:bg-red-900/10 anim-3d-in min-h-[300px] flex flex-col" data-tilt style="transition-delay: 0.4s">
+                    <div class="bento-card p-8 border-l-4 border-l-red-500 anim-card min-h-[250px] flex flex-col" style="transition-delay: 0.4s" data-tilt>
                         <div class="flex justify-between items-start mb-6">
-                            <h3 class="text-2xl font-bold text-white group-hover:text-red-500 transition-colors">帳號取得與教學</h3>
+                            <h3 class="text-2xl font-bold text-white">帳號取得與教學</h3>
                             <span class="bg-red-900/50 text-red-300 text-xs font-mono px-2 py-1 rounded">BLACK OPS</span>
                         </div>
-                        <p class="text-gray-400 text-sm mb-6 flex-1">
-                            提供專業帳號取得服務，或購買完整的技術教學課程（可單獨購買）。
-                        </p>
+                        <p class="text-gray-400 text-sm mb-6 flex-1">提供專業帳號取得服務，或購買完整的技術教學課程。</p>
                         <div class="mt-auto">
                             <div class="text-3xl font-bold text-red-500 mb-1">私訊報價</div>
                             <div class="text-xs text-gray-600 font-mono">DM for Details</div>
                         </div>
                     </div>
-
                 </div>
             </div>
         </section>
 
-        <!-- PAGE 10: ARCHITECTURE (Code) -->
-        <section id="code" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-b border-white/10 py-20">
+        <!-- PAGE 10: ARCHITECTURE -->
+        <section id="code" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-y border-white/10 py-20 bg-black/80 backdrop-blur-sm">
             <div class="max-w-[1800px] mx-auto w-full">
                  <div class="mb-12 reveal fade-in-up">
                     <h2 class="text-5xl font-bold mb-4 split-text">純粹暴力美學。<br>極致代碼效率。</h2>
                 </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 reveal fade-in-up delay-200">
-                    <div>
-                        <p class="text-xl text-gray-400 mb-8 leading-relaxed">
-                            我們不使用臃腫的框架。建構於 <span class="text-white">discord.py</span> 與 <span class="text-white">aiohttp</span> 之上，
-                            每一行代碼都為了「最快速度」而優化。當你需要在一分鐘內摧毀一個萬人伺服器時，效率就是一切。
-                        </p>
-                        <div class="space-y-6">
-                            <div class="border-l border-white/20 pl-6 hover:border-red-500 transition-colors">
-                                <h4 class="text-white font-bold text-lg">Asyncio 核心</h4>
-                                <p class="text-gray-500 text-sm mt-1">非阻塞 I/O 操作，吞吐量最大化，延遲最小化。</p>
-                            </div>
-                            <div class="border-l border-white/20 pl-6 hover:border-red-500 transition-colors">
-                                <h4 class="text-white font-bold text-lg">原始 HTTP 暴力請求</h4>
-                                <p class="text-gray-500 text-sm mt-1">繞過高層封裝，直接對 API 發起 DDoS 級別的請求。</p>
-                            </div>
-                            <div class="border-l border-white/20 pl-6 hover:border-red-500 transition-colors">
-                                <h4 class="text-white font-bold text-lg">JSON 極速解析</h4>
-                                <p class="text-gray-500 text-sm mt-1">自定義數據解析，減少 CPU 開銷，專注於攻擊。</p>
-                            </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                    <div class="space-y-6">
+                        <div class="border-l border-white/20 pl-6 anim-fade">
+                            <h4 class="text-white font-bold text-lg">Asyncio 核心</h4>
+                            <p class="text-gray-500 text-sm mt-1">非阻塞 I/O 操作，吞吐量最大化。</p>
+                        </div>
+                        <div class="border-l border-white/20 pl-6 anim-fade">
+                            <h4 class="text-white font-bold text-lg">原始 HTTP 暴力請求</h4>
+                            <p class="text-gray-500 text-sm mt-1">繞過高層封裝，直接對 API 發起 DDoS 級別的請求。</p>
                         </div>
                     </div>
-                    <div class="bg-[#111] p-6 rounded-lg border border-white/10 overflow-x-auto anim-3d-in" data-tilt>
+                    <div class="bg-[#111] p-6 rounded-lg border border-white/10 overflow-x-auto anim-card">
 <pre class="text-sm font-mono text-gray-300">
 <span class="text-purple-400">class</span> <span class="text-yellow-200">Q</span>(<span class="text-blue-300">commands.Bot</span>):
-    <span class="text-purple-400">def</span> <span class="text-blue-300">__init__</span>(self):
-        i = discord.Intents.default()
-        i.message_content = <span class="text-purple-400">False</span>
-        <span class="text-purple-400">super</span>().__init__(<span class="text-green-300">"!"</span>, intents=i)
-        self.s = <span class="text-purple-400">None</span>
-
     <span class="text-purple-400">async def</span> <span class="text-blue-300">setup_hook</span>(self):
         self.s = aiohttp.ClientSession()
-        <span class="text-gray-500"># Direct session management for attack optimization</span>
-        <span class="text-purple-400">if</span> os.path.exists(B):
-            bl.update(json.load(open(B)).get(<span class="text-green-300">"blacklist"</span>, []))
-
-    <span class="text-purple-400">async def</span> <span class="text-blue-300">ban</span>(self, g, u):
-        <span class="text-gray-500"># High-speed ban execution without confirmation</span>
-        <span class="text-purple-400">try</span>:
-            <span class="text-purple-400">await</span> g.ban(discord.Object(id=u), reason=<span class="text-green-300">"Lyra Hub Nuke"</span>)
-        <span class="text-purple-400">except</span>: <span class="text-purple-400">pass</span>
+        <span class="text-gray-500"># Direct session management</span>
 </pre>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- PAGE 11: ROADMAP / FUTURE -->
-        <section class="min-h-screen flex items-center px-6 md:px-12 border-b border-white/10">
+        <!-- PAGE 11: FUTURE -->
+        <section class="min-h-screen flex items-center px-6 md:px-12 border-y border-white/10 bg-[#050505]/90 backdrop-blur-md">
             <div class="max-w-[1800px] mx-auto w-full">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-20">
                     <div class="reveal fade-in-up">
-                        <div class="text-sm font-mono text-gray-500 mb-4 scramble-text">ROADMAP</div>
                         <h2 class="text-5xl font-bold mb-8 split-text">未來戰爭<br>藍圖</h2>
                     </div>
-                    <div class="grid grid-cols-1 gap-8 reveal fade-in-up delay-200">
-                        <div class="border-t border-white/20 pt-6 group">
+                    <div class="grid grid-cols-1 gap-8">
+                        <div class="border-t border-white/20 pt-6 anim-fade">
                             <div class="flex justify-between mb-2">
-                                <h4 class="text-xl font-medium group-hover:text-red-500 transition-colors">中央指揮面板 (C2 Dashboard)</h4>
+                                <h4 class="text-xl font-medium">中央指揮面板 (C2 Dashboard)</h4>
                                 <span class="text-gray-500 font-mono">Q4 2025</span>
                             </div>
-                            <p class="text-gray-400">一個介面，控制數千個 Bot 同步發起攻擊。</p>
                         </div>
-                        <div class="border-t border-white/20 pt-6 group">
+                        <div class="border-t border-white/20 pt-6 anim-fade">
                             <div class="flex justify-between mb-2">
-                                <h4 class="text-xl font-medium group-hover:text-red-500 transition-colors">AI 智能繞過 (AI Bypass)</h4>
-                                <span class="text-gray-500 font-mono">Q1 2026</span>
-                            </div>
-                            <p class="text-gray-400">利用 LLM 生成擬人化對話，繞過 Discord 的垃圾訊息偵測。</p>
-                        </div>
-                        <div class="border-t border-white/20 pt-6 group">
-                            <div class="flex justify-between mb-2">
-                                <h4 class="text-xl font-medium group-hover:text-red-500 transition-colors">全球黑名單同步 (Global Sync)</h4>
+                                <h4 class="text-xl font-medium">全球黑名單同步 (Global Sync)</h4>
                                 <span class="text-gray-500 font-mono">進行中</span>
                             </div>
-                            <p class="text-gray-400">所有 Lyra Hub 節點共享敵對資料，實現跨伺服器追殺。</p>
                         </div>
                     </div>
                 </div>
@@ -659,24 +620,19 @@
 
         <!-- PAGE 12: CTA -->
         <section class="min-h-screen flex items-center justify-center px-6 md:px-12 bg-black relative overflow-hidden">
-            <div class="absolute inset-0 bg-red-900/5 z-0"></div>
             <div class="text-center relative z-10">
                 <h2 class="text-hero mb-8 split-text">
                     加入軍團。<br>
                     Join the Legion.
                 </h2>
                 <div class="flex flex-col md:flex-row gap-6 justify-center items-center mt-12 anim-fade">
-                    <a href="https://discord.gg/lyrahub" target="_blank" class="group relative px-12 py-5 bg-white text-black text-xl font-bold tracking-tight overflow-hidden w-full md:w-auto magnetic-btn">
-                        <div class="absolute inset-0 w-full h-full bg-red-600 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out"></div>
-                        <span class="relative group-hover:text-white transition-colors duration-300">加入 Discord</span>
-                    </a>
-                    <a href="#" class="px-12 py-5 border border-white/20 text-white text-xl font-medium hover:bg-white/10 transition-colors w-full md:w-auto magnetic-btn">
-                        獲取原始碼
+                    <a href="https://discord.gg/lyrahub" target="_blank" class="px-12 py-5 bg-white text-black text-xl font-bold tracking-tight hover:bg-red-600 hover:text-white transition-colors w-full md:w-auto">
+                        加入 Discord
                     </a>
                 </div>
                 <p class="mt-12 text-gray-500 text-sm font-mono anim-fade">
                     &copy; 2025 Lyra Hub. All systems armed.<br>
-                    Powered by 114514 Protocol & NeverForget Engine.
+                    Powered by Hyper Warp Protocol & NeverForget Engine.
                 </p>
             </div>
         </section>
@@ -685,17 +641,42 @@
     </main>
 
     <script>
+        // Start Screen Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const startScreen = document.getElementById('start-screen');
+            const bgm = document.getElementById('bg-music');
+            
+            // Set volume to 45%
+            bgm.volume = 0.45;
+
+            const initSite = () => {
+                // Play Audio
+                bgm.play().catch(e => console.log("Audio play failed:", e));
+                
+                // Fade out start screen
+                startScreen.style.opacity = '0';
+                setTimeout(() => {
+                    startScreen.style.display = 'none';
+                    
+                    // Trigger Header Reveal after start
+                    gsap.to('#navbar', { opacity: 1, duration: 1 });
+                }, 1000);
+            };
+
+            startScreen.addEventListener('click', initSite);
+        });
+
         gsap.registerPlugin(ScrollTrigger);
 
-        // Lenis - Hyper Smooth Scroll
+        // Optimized Lenis Setup
         const lenis = new Lenis({
-            duration: 1.5,
+            duration: 1.5, // Smoother glide
             easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
             direction: 'vertical',
             gestureDirection: 'vertical',
             smooth: true,
             mouseMultiplier: 1,
-            smoothTouch: false,
+            smoothTouch: false, 
             touchMultiplier: 2,
         });
 
@@ -707,135 +688,222 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             
-            // --- 0. Hyperdrive Starfield (Speed based on Scroll) ---
-            const canvas = document.getElementById('starfield');
-            const ctx = canvas.getContext('2d');
-            let width, height;
-            let stars = [];
-            const numStars = 1000; // More stars for hyperdrive feel
-            let warpSpeed = 0;
-
-            function resize() {
-                width = canvas.width = window.innerWidth;
-                height = canvas.height = window.innerHeight;
-                initStars();
-            }
-            window.addEventListener('resize', resize);
-
-            function initStars() {
-                stars = [];
-                for(let i=0; i<numStars; i++) {
-                    stars.push({
-                        x: (Math.random() - 0.5) * width,
-                        y: (Math.random() - 0.5) * height,
-                        z: Math.random() * width,
-                        o: Math.random() // offset
-                    });
-                }
-            }
-            initStars();
-
-            function animateStars() {
-                ctx.fillStyle = `rgba(3, 3, 3, ${warpSpeed > 5 ? 0.1 : 0.5})`; // Long trails on high speed
-                ctx.fillRect(0, 0, width, height);
-                
-                const cx = width / 2;
-                const cy = height / 2;
-                
-                let currentSpeed = 2 + warpSpeed; // Base speed + scroll boost
-
-                stars.forEach(star => {
-                    star.z -= currentSpeed;
-                    
-                    if (star.z <= 0) {
-                        star.z = width;
-                        star.x = (Math.random() - 0.5) * width;
-                        star.y = (Math.random() - 0.5) * height;
-                    }
-                    
-                    const sx = (star.x / star.z) * width + cx;
-                    const sy = (star.y / star.z) * height + cy;
-                    
-                    const size = (1 - star.z / width) * 2;
-                    const alpha = (1 - star.z / width);
-
-                    if(warpSpeed > 10) {
-                        // Hyperdrive streaks
-                        ctx.strokeStyle = `rgba(200, 200, 255, ${alpha})`;
-                        ctx.lineWidth = size;
-                        ctx.beginPath();
-                        ctx.moveTo(sx, sy);
-                        const prevZ = star.z + currentSpeed * 4;
-                        const px = (star.x / prevZ) * width + cx;
-                        const py = (star.y / prevZ) * height + cy;
-                        ctx.lineTo(px, py);
-                        ctx.stroke();
-                    } else {
-                        // Normal dots
-                        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-                        ctx.beginPath();
-                        ctx.arc(sx, sy, size, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-                });
-                
-                warpSpeed *= 0.90; // Decay speed
-                requestAnimationFrame(animateStars);
-            }
-            animateStars();
+            // --- THREE.JS HARDWARE ACCELERATED STARFIELD (ENHANCED) ---
+            const container = document.getElementById('webgl-canvas');
+            const scene = new THREE.Scene();
+            // Fog for depth fading
+            scene.fog = new THREE.FogExp2(0x050505, 0.0003); 
             
-            // Link Lenis to Effects
-            const viewport = document.getElementById('viewport');
-            const hudY = document.getElementById('hud-y');
-            const hudVel = document.getElementById('hud-vel');
+            // Camera
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
+            camera.position.z = 1000;
 
-            lenis.on('scroll', (e) => {
-                const velocity = Math.abs(e.velocity);
-                warpSpeed += velocity * 0.2;
+            // Renderer - Force High Performance
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Cap pixel ratio
+            container.appendChild(renderer.domElement);
+
+            // 50,000 Particles
+            const particleCount = 50000;
+            const posArray = new Float32Array(particleCount * 3);
+            const colorArray = new Float32Array(particleCount * 3);
+            
+            // Star Colors: Blue, White, Yellow, Red
+            const colors = [
+                new THREE.Color(0x9d00ff), // Purple
+                new THREE.Color(0xff3333), // Red
+                new THREE.Color(0xffffff), // White
+                new THREE.Color(0x00f3ff), // Cyan
+                new THREE.Color(0xffcc00)  // Yellow
+            ];
+
+            for(let i = 0; i < particleCount; i++) {
+                // Spread stars wide and deep (Galaxy Shape)
+                const x = (Math.random() - 0.5) * 10000;
+                const y = (Math.random() - 0.5) * 10000;
+                const z = (Math.random() - 0.5) * 10000;
                 
-                // HUD Updates
-                if(hudY) hudY.innerText = Math.floor(e.scroll).toString().padStart(4, '0');
-                if(hudVel) hudVel.innerText = Math.floor(velocity).toString().padStart(3, '0');
+                posArray[i * 3] = x;
+                posArray[i * 3 + 1] = y;
+                posArray[i * 3 + 2] = z;
+                
+                // Assign random colors
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                colorArray[i * 3] = color.r;
+                colorArray[i * 3 + 1] = color.g;
+                colorArray[i * 3 + 2] = color.b;
+            }
 
-                // Chromatic Aberration & Skew
-                if(velocity > 5) {
-                    viewport.classList.add('chromatic-aberration');
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+
+            // Material
+            const material = new THREE.PointsMaterial({
+                size: 2,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.9,
+                sizeAttenuation: true,
+                blending: THREE.AdditiveBlending
+            });
+
+            // Mesh
+            const starsMesh = new THREE.Points(geometry, material);
+            scene.add(starsMesh);
+
+            // Interaction Variables
+            let mouseX = 0;
+            let mouseY = 0;
+            let targetX = 0;
+            let targetY = 0;
+            let scrollSpeed = 0;
+            let mouseDown = false;
+            let baseFov = 75;
+
+            // Handlers
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            document.addEventListener('mousemove', (event) => {
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+                
+                // Map to -1 to 1 range
+                targetX = (mouseX / window.innerWidth) * 2 - 1;
+                targetY = -(mouseY / window.innerHeight) * 2 + 1;
+            });
+            
+            document.addEventListener('mousedown', () => mouseDown = true);
+            document.addEventListener('mouseup', () => mouseDown = false);
+
+            // Lenis Hook
+            lenis.on('scroll', (e) => {
+                // Boost speed based on scroll velocity
+                scrollSpeed += Math.abs(e.velocity) * 0.5;
+            });
+
+            // Animation Loop
+            
+            const animate = () => {
+                // Base Speed
+                let speed = 2; 
+                let fovTarget = baseFov;
+                
+                // Add scroll momentum
+                speed += scrollSpeed;
+                
+                // Add click boost (Warp Drive)
+                if (mouseDown) {
+                    speed += 150; // Warp speed
+                    fovTarget = 120; // Hyper stretch FOV
+                    material.size = 1; // Stretch stars appear thinner
+                } else if (scrollSpeed > 5) {
+                    fovTarget = 90;
+                    material.size = 2;
                 } else {
-                    viewport.classList.remove('chromatic-aberration');
+                    material.size = 2;
                 }
                 
-                gsap.to(viewport, {
-                    skewY: e.velocity * 0.05,
-                    scale: 1 - Math.min(velocity * 0.001, 0.05),
-                    duration: 0.1,
-                    ease: 'power1.out'
+                // Smoothly interpolate FOV
+                camera.fov += (fovTarget - camera.fov) * 0.05;
+                camera.updateProjectionMatrix();
+                
+                // Decay scroll speed
+                scrollSpeed *= 0.95;
+
+                // Move Stars towards camera (Z axis)
+                const positions = starsMesh.geometry.attributes.position.array;
+                
+                for(let i = 2; i < particleCount * 3; i += 3) {
+                    positions[i] += speed; // Move forward
+                    
+                    // Reset if passed camera
+                    if (positions[i] > 1000) {
+                        positions[i] = -8000; 
+                        
+                        // Respawn X/Y randomly
+                        positions[i-1] = (Math.random() - 0.5) * 10000; // Y
+                        positions[i-2] = (Math.random() - 0.5) * 10000; // X
+                    }
+                }
+                
+                starsMesh.geometry.attributes.position.needsUpdate = true;
+
+                // Galaxy Rotation & Parallax (Simulate Turning)
+                starsMesh.rotation.z += 0.0002; 
+                
+                // Camera tilt based on mouse (Hyperspace steering)
+                camera.rotation.x += (targetY * 0.15 - camera.rotation.x) * 0.05;
+                camera.rotation.y += (-targetX * 0.15 - camera.rotation.y) * 0.05;
+                
+                // Update HUD
+                const indicator = document.getElementById('speed-indicator');
+                const warpStatus = document.getElementById('warp-status');
+                if(indicator) indicator.innerText = Math.floor(speed) + "X";
+                if(warpStatus) {
+                    warpStatus.innerText = speed > 50 ? "ENGAGED" : "STANDBY";
+                    warpStatus.style.color = speed > 50 ? "#00f3ff" : "#ff3333";
+                }
+
+                renderer.render(scene, camera);
+                requestAnimationFrame(animate);
+            }
+
+            animate();
+
+
+            // --- MOUSE BLOB (GPU) ---
+            const blob = document.getElementById('mouse-blob');
+            let blobX = 0, blobY = 0;
+            
+            function animateBlob() {
+                // Smooth lerp
+                blobX += (mouseX - blobX) * 0.1;
+                blobY += (mouseY - blobY) * 0.1;
+                
+                if(blob) {
+                    blob.style.transform = `translate3d(${blobX}px, ${blobY}px, 0) translate(-50%, -50%)`;
+                }
+                requestAnimationFrame(animateBlob);
+            }
+            animateBlob();
+
+
+            // --- LAG MARQUEE EFFECT (Enhanced Visibility) ---
+            const lagTextContent = " @everyone 틓탑컏쳍쫋죉웇쓅싃상뺿벽못뢹뚷뒵늳낱꺯겭ꪫꢩꚧ꒥ꊣꂡ麟鲝骛颙隗钕銓邑躏貍誋袉蚇蒅芃肁繿籽穻硹癷瑵牳灱湯汭橫桩晧摥扣恡幟屝婛塙噗呕剓偑乏䱍䩋䡉䙇䑅䉃䁁㸿㰽㨻㠹㘷㐵㈳〱ⸯⰭ⨫⠩☧␥∣‡ḟᰝᨛ᠙ᘗᐕሓထฏ఍਋ࠉ؇Ѕȃ";
+            const lagContainer = document.getElementById('lag-track-1');
+            if (lagContainer) {
+                // Create duplicate text elements for seamless looping
+                const item1 = document.createElement('div');
+                item1.className = 'lag-text-item';
+                item1.innerText = lagTextContent.repeat(10);
+                
+                const item2 = document.createElement('div');
+                item2.className = 'lag-text-item';
+                item2.innerText = lagTextContent.repeat(10);
+                
+                lagContainer.appendChild(item1);
+                lagContainer.appendChild(item2);
+                
+                // Animate using GSAP for hardware acceleration
+                gsap.to(lagContainer, {
+                    xPercent: -50,
+                    ease: "none",
+                    duration: 30, // Slower for better readability
+                    repeat: -1
                 });
-            });
+            }
 
 
-            // --- 1. Text Reveals & Splitting ---
-            const splitTypes = document.querySelectorAll('.split-text');
-            splitTypes.forEach((char) => {
-                const text = new SplitType(char, { types: 'chars, words' });
-                gsap.from(text.chars, {
-                    scrollTrigger: {
-                        trigger: char,
-                        start: 'top 90%',
-                        end: 'top 20%',
-                        toggleActions: 'play none none reverse'
-                    },
-                    y: 100,
-                    opacity: 0,
-                    rotateX: -90,
-                    stagger: 0.02,
-                    duration: 1.2,
-                    ease: 'expo.out'
-                });
-            });
-
-            // --- 2. Parallax Background ---
-            gsap.to('.parallax-img', {
-                yPercent: 30,
+            // --- GSAP ANIMATIONS ---
+            // Parallax BG
+            gsap.to('.parallax-bg', {
+                y: '20%',
                 ease: 'none',
                 scrollTrigger: {
                     trigger: '#hero',
@@ -845,142 +913,63 @@
                 }
             });
 
-            // --- 3. 3D Card Entrance ---
-            gsap.utils.toArray('.anim-3d-in').forEach(el => {
+            // Batch Animations
+            const fadeElements = document.querySelectorAll('.anim-fade');
+            fadeElements.forEach(el => {
                 gsap.from(el, {
-                    scrollTrigger: { trigger: el, start: 'top 95%' },
-                    y: 100,
-                    z: -500,
-                    rotationX: 45,
-                    opacity: 0,
-                    duration: 1.2,
-                    ease: 'power4.out'
+                    scrollTrigger: { trigger: el, start: 'top 85%' },
+                    y: 20, opacity: 0, duration: 0.8, ease: 'power2.out'
                 });
             });
 
-            // --- 4. Stagger Lists ---
-            gsap.utils.toArray('.anim-stagger-list').forEach(list => {
-                gsap.from(list.children, {
-                    scrollTrigger: { trigger: list, start: 'top 90%' },
-                    x: -50,
-                    opacity: 0,
-                    duration: 0.8,
-                    stagger: 0.1,
-                    ease: 'power3.out'
+            // Card Pop-ins
+            const cards = document.querySelectorAll('.anim-card');
+            cards.forEach((el, i) => {
+                gsap.from(el, {
+                    scrollTrigger: { trigger: el, start: 'top 90%' },
+                    y: 30, opacity: 0, duration: 0.6, delay: i * 0.05, ease: 'back.out(1.5)'
                 });
             });
 
-            // --- 5. Counter Animation ---
+            // Text Split
+            if (window.innerWidth > 768) {
+                const splitTypes = document.querySelectorAll('.split-text');
+                splitTypes.forEach((char) => {
+                    const text = new SplitType(char, { types: 'chars' });
+                    gsap.from(text.chars, {
+                        scrollTrigger: { trigger: char, start: 'top 85%' },
+                        y: 50, opacity: 0, stagger: 0.02, duration: 0.8, ease: 'power2.out'
+                    });
+                });
+            }
+
+            // Navbar Reveal
+            gsap.to('#navbar', { opacity: 1, duration: 1, delay: 0.5 });
+
+            // 3D Tilt
+            const tiltCards = document.querySelectorAll('[data-tilt]');
+            tiltCards.forEach(card => {
+                let rect = card.getBoundingClientRect();
+                card.addEventListener('mouseenter', () => { rect = card.getBoundingClientRect(); });
+                card.addEventListener('mousemove', (e) => {
+                    if (window.innerWidth < 768) return; 
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const rotateX = ((y - rect.height/2) / rect.height) * -5;
+                    const rotateY = ((x - rect.width/2) / rect.width) * 5;
+                    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0)';
+                });
+            });
+
+            // Count Up
             gsap.utils.toArray('.count-up').forEach(el => {
                 let target = parseInt(el.getAttribute('data-target'));
                 gsap.to(el, {
-                    scrollTrigger: { trigger: el, start: 'top 85%' },
-                    innerHTML: target,
-                    duration: 2.5,
-                    snap: { innerHTML: 1 },
-                    ease: 'circ.out'
-                });
-            });
-            
-            // Navbar Reveal
-            gsap.to('#navbar', { opacity: 1, duration: 1, delay: 0.5 });
-            
-            // Hero Elements
-            const heroTl = gsap.timeline();
-            heroTl.to('.hero-sub', { opacity: 1, y: 0, duration: 1, ease: 'power3.out' }, "-=0.5")
-                  .to('.hero-cta', { opacity: 1, y: 0, duration: 1, ease: 'power3.out' }, "-=0.8");
-
-            // Text Scramble
-            const scrambleElements = document.querySelectorAll('.scramble-text');
-            scrambleElements.forEach(el => {
-                const originalText = el.innerText;
-                const chars = 'ABCDEF0123456789!@#$%^&*()_+';
-                
-                el.addEventListener('mouseenter', () => runScramble(el, originalText, chars));
-                
-                ScrollTrigger.create({
-                    trigger: el,
-                    start: "top 85%",
-                    onEnter: () => runScramble(el, originalText, chars)
-                });
-            });
-
-            function runScramble(el, originalText, chars) {
-                let iteration = 0;
-                clearInterval(el.interval);
-                el.interval = setInterval(() => {
-                    el.innerText = originalText.split('').map((letter, index) => {
-                        if(index < iteration) return originalText[index];
-                        return chars[Math.floor(Math.random() * chars.length)]
-                    }).join('');
-                    if(iteration >= originalText.length) clearInterval(el.interval);
-                    iteration += 1/2;
-                }, 30);
-            }
-
-            // Lag Text
-            const lagContainer = document.getElementById('lag-bg');
-            const lagText = " @everyone 틓탑컏쳍쫋죉웇쓅싃상뺿벽못뢹뚷뒵늳낱꺯겭ꪫꢩꚧ꒥ꊣꂡ麟鲝骛颙隗钕銓邑躏貍誋袉蚇蒅芃肁繿籽穻硹癷瑵牳灱湯汭橫桩晧摥扣恡幟屝婛塙噗呕剓偑乏䱍䩋䡉䙇䑅䉃䁁㸿㰽㨻㠹㘷㐵㈳〱ⸯⰭ⨫⠩☧␥∣‡ḟᰝᨛ᠙ᘗᐕሓထฏ఍਋ࠉ؇Ѕȃ ℀ӹਅ＀Ⰰõ„ࠀÿ呓堚ᕩఎ嚫ࡹʠÀ·娢㘣娌ڶ됤ꂬⶀ衛ධ킡ˠஅ儦뭢ඐ䮙栲⦛ꙓ⎶朳愞ආ荛뜝䖒傚 ꌣ轈䴪瓊ꌩ䖥຋ௐᆱ됕";
-            lagContainer.innerText = lagText.repeat(50);
-            gsap.to('#lag-bg', { xPercent: -10, scrollTrigger: { trigger: '#lag-bg', scrub: 1 } });
-
-            // Magnetic Buttons & Cursor
-            const cursor = document.getElementById('cursor');
-            let mouseX = 0, mouseY = 0, cursorX = 0, cursorY = 0;
-
-            document.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; });
-
-            function animateCursor() {
-                const dt = 0.15;
-                cursorX += (mouseX - cursorX) * dt;
-                cursorY += (mouseY - cursorY) * dt;
-                cursor.style.transform = `translate(${cursorX}px, ${cursorY}px) translate(-50%, -50%)`;
-                requestAnimationFrame(animateCursor);
-            }
-            animateCursor();
-            
-            document.querySelectorAll('a, button, .magnetic-btn').forEach(el => {
-                el.addEventListener('mouseenter', () => cursor.classList.add('hovered'));
-                el.addEventListener('mouseleave', () => cursor.classList.remove('hovered'));
-                
-                // Magnetic Pull
-                el.addEventListener('mousemove', (e) => {
-                    const rect = el.getBoundingClientRect();
-                    const x = e.clientX - rect.left - rect.width / 2;
-                    const y = e.clientY - rect.top - rect.height / 2;
-                    gsap.to(el, { x: x * 0.4, y: y * 0.4, duration: 0.3, ease: 'power2.out' });
-                });
-                el.addEventListener('mouseleave', () => {
-                    gsap.to(el, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1, 0.3)' });
-                });
-            });
-
-            // Card 3D Tilt
-            document.querySelectorAll('[data-tilt]').forEach(card => {
-                card.addEventListener('mousemove', (e) => {
-                    const rect = card.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    card.style.setProperty('--mouse-x', `${x}px`);
-                    card.style.setProperty('--mouse-y', `${y}px`);
-                    
-                    const centerX = rect.width / 2;
-                    const centerY = rect.height / 2;
-                    const rotateX = ((y - centerY) / centerY) * -8;
-                    const rotateY = ((x - centerX) / centerX) * 8;
-                    
-                    gsap.to(card, {
-                        transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`,
-                        duration: 0.1,
-                        ease: 'none'
-                    });
-                });
-                card.addEventListener('mouseleave', () => {
-                    gsap.to(card, {
-                        transform: `perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1)`,
-                        duration: 0.5,
-                        ease: 'power2.out'
-                    });
+                    scrollTrigger: { trigger: el, start: 'top 80%' },
+                    innerHTML: target, duration: 2, snap: { innerHTML: 1 }, ease: 'power1.out'
                 });
             });
 
@@ -991,15 +980,8 @@
                 newCmd.className = "mb-2";
                 newCmd.innerHTML = `<span class="text-red-500 mr-2">➜</span><span class="text-white">~ ${cmd}</span>`;
                 output.insertBefore(newCmd, output.lastElementChild);
-                
-                let response = "";
-                if (cmd.includes('spam_dm')) response = `<div class="text-gray-400 pl-6 mb-2">正在部署 50 個攻擊單元...<br>目標已鎖定。<br><span class="text-purple-400">>> 2000 條訊息已強行注入。</span></div>`;
-                else if (cmd.includes('nuke')) response = `<div class="text-gray-400 pl-6 mb-2"><span class="text-red-500">警告：核彈協議已啟動 (NUKE PROTOCOL INITIATED)</span><br>正在粉碎所有頻道... <span class="text-red-500">已刪除</span><br>正在清洗成員名單... <span class="text-red-500">已封鎖</span></div>`;
-                else if (cmd.includes('lag')) response = `<div class="text-gray-400 pl-6 mb-2">正在廣播 Unicode 崩潰載荷...<br>目標伺服器延遲：9999ms (無回應)</div>`;
-                else response = `<div class="text-gray-400 pl-6 mb-2">武器系統狀態：<span class="text-green-500">就緒</span><br>彈藥 (Tokens)：11/11 活躍</div>`;
-                
                 const respEl = document.createElement('div');
-                respEl.innerHTML = response;
+                respEl.innerHTML = `<div class="text-gray-400 pl-6 mb-2">Executing ${cmd}... [SUCCESS]</div>`;
                 output.insertBefore(respEl, output.lastElementChild);
                 output.scrollTop = output.scrollHeight;
             }
