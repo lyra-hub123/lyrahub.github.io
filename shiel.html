@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="終極防禦機器人：24 小時全自動 Discord 防炸群守護系統，支援跨伺服器黑名單、零誤判、秒封禁惡意機器人。">
+    <title>終極防禦機器人 | Ultimate Defense System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;900&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+TC:wght@400;700;900&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- GSAP & Lenis -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script src="https://unpkg.com/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+    <script src="https://unpkg.com/split-type"></script>
+    
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        :root {
+            /* Changed to Green/Defense Theme */
+            --bg-black: #020502;
+            --text-white: #ffffff;
+            --accent-main: #00ff00; /* Green for Defense */
+            --accent-secondary: #008f11; /* Darker Green */
+            --accent-cyan: #00f3ff;
+            --accent-alert: #ff3333; /* For alerts */
+            --blob-color: rgba(0, 255, 0, 0.2);
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: var(--bg-black);
+            color: var(--text-white);
+            overflow-x: hidden;
+            margin: 0;
+            width: 100vw;
+            cursor: default;
+        }
+
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* UI Layers */
+        .noise-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyBAMAAADsEZWCAAAAGFBMVEUAAAA5OTkAAABERERmZmYzMzMyMjJEREQN0eLFAAAACHRSTlMAwADw/cgF/45P4jwAAABcSURBVDjLY2AYBaNg2AJGJiBpC2QYgJQVSA4A0hYgOQJIGYFkP5A8ACRvA8m7QHIYkDwCJE8AyRNA8hKQPAskbwHJs0DyHJA8DySvAMkrQPIqkLwKJK8CyatA8igAANC3O1/q/K6AAAAAAElFTkSuQmCC");
+            opacity: 0.04; pointer-events: none; z-index: 9990;
+        }
+        
+        .vignette {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.95) 100%);
+            pointer-events: none; z-index: 9989;
+        }
+
+        .scanline {
+            position: fixed; left: 0; top: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 0, 0.05) 3px);
+            z-index: 9991; pointer-events: none; opacity: 0.3;
+        }
+
+        /* WebGL Canvas */
+        #webgl-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; pointer-events: none;
+            transform: translate3d(0, 0, 0); 
+        }
+
+        /* Mouse Blob */
+        #mouse-blob {
+            position: fixed; top: 0; left: 0; width: 800px; height: 800px;
+            background: radial-gradient(circle, var(--blob-color) 0%, rgba(0,0,0,0) 65%);
+            border-radius: 50%; pointer-events: none; z-index: -1; opacity: 0.6;
+            transform: translate3d(-50%, -50%, 0); will-change: transform; mix-blend-mode: screen;
+        }
+
+        /* HUD */
+        .hud-layer { position: fixed; inset: 0; z-index: 9900; pointer-events: none; padding: 20px; box-sizing: border-box; }
+        .hud-coords { position: absolute; bottom: 35px; right: 40px; font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent-main); opacity: 0.8; text-align: right; line-height: 1.6; }
+        .chapter-indicator { position: absolute; top: 30px; left: 30px; font-family: 'JetBrains Mono'; font-size: 12px; color: var(--text-white); opacity: 0.5; letter-spacing: 2px; }
+        @media (max-width: 768px) { .hud-coords { display: none; } }
+
+        /* Bento Card */
+        .bento-card {
+            background: rgba(5, 20, 10, 0.6);
+            border: 1px solid rgba(0, 255, 0, 0.15);
+            position: relative; overflow: hidden;
+            backdrop-filter: blur(8px);
+            transform-style: preserve-3d;
+            will-change: transform;
+            transition: border-color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .bento-card:hover { 
+            border-color: var(--accent-main); 
+            background: rgba(10, 30, 15, 0.8); 
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.1);
+        }
+
+        .text-hero { 
+            font-size: clamp(2.5rem, 8vw, 6rem); line-height: 1.1; font-weight: 900; 
+            letter-spacing: -0.04em; text-transform: uppercase;
+        }
+        
+        .member-avatar { filter: grayscale(100%); transition: filter 0.3s ease; }
+        .member-card:hover .member-avatar { filter: grayscale(0%); }
+
+        @keyframes scan-vertical { 0% { top: -100%; } 100% { top: 200%; } }
+        .animate-scan-line {
+            position: absolute; left: 0; width: 100%; height: 20%;
+            background: linear-gradient(to bottom, transparent, rgba(0, 255, 0, 0.3), transparent);
+            animation: scan-vertical 2.5s linear infinite; pointer-events: none;
+        }
+
+        /* Start Screen */
+        #start-screen {
+            position: fixed; inset: 0; background: #000; z-index: 100000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; transition: opacity 1s ease-out;
+        }
+        .start-btn {
+            border: 1px solid var(--accent-main); padding: 1rem 3rem;
+            font-family: 'JetBrains Mono'; color: white;
+            transition: all 0.3s; text-transform: uppercase; letter-spacing: 2px;
+        }
+        .start-btn:hover { background: var(--accent-main); color: black; box-shadow: 0 0 30px var(--accent-main); }
+
+        .nav-item { display: none; }
+        @media (min-width: 768px) { .nav-item { display: block; } }
+        #viewport { width: 100%; overflow-x: hidden; }
+        
+        /* Spacer */
+        .warp-transit {
+            height: 30vh; 
+            display: flex; align-items: center; justify-content: center;
+            position: relative; z-index: 10; pointer-events: none; 
+        }
+        .warp-message {
+            font-family: 'Orbitron'; color: rgba(0, 255, 0, 0.3);
+            font-size: 1.5rem; letter-spacing: 0.5em;
+            text-transform: uppercase; animation: pulse-slow 3s infinite;
+        }
+        
+        @keyframes pulse-slow { 0%,100%{opacity:0.1;} 50%{opacity:0.5;} }
+        
+        /* Table Styles for Commands */
+        .cmd-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+        }
+        .cmd-table th {
+            text-align: left;
+            padding: 1rem;
+            color: var(--accent-main);
+            border-bottom: 1px solid rgba(0, 255, 0, 0.3);
+            background: rgba(0, 50, 0, 0.3);
+        }
+        .cmd-table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #ccc;
+        }
+        .cmd-table tr:last-child td { border-bottom: none; }
+        .cmd-highlight {
+            background: rgba(0, 255, 0, 0.1);
+            color: var(--accent-main);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .check-list li {
+            position: relative;
+            padding-left: 1.5rem;
+            margin-bottom: 0.8rem;
+        }
+        .check-list li::before {
+            content: "✓";
+            color: var(--accent-main);
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+        .cross-list li {
+            position: relative;
+            padding-left: 1.5rem;
+            margin-bottom: 0.8rem;
+        }
+        .cross-list li::before {
+            content: "✗";
+            color: var(--accent-alert);
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Start Screen Overlay -->
+    <div id="start-screen">
+        <div class="text-4xl font-black tracking-tighter mb-4 text-white">SYSTEM GUARD</div>
+        <div class="text-green-500 font-mono mb-8 text-sm animate-pulse tracking-widest">SECURE CONNECTION // CLICK TO INITIALIZE</div>
+        <div class="start-btn">ACTIVATE DEFENSE</div>
+        <div class="mt-4 text-xs text-gray-600 font-mono">Loading Security Modules...</div>
+    </div>
+
+    <div class="noise-overlay"></div>
+    <div class="vignette"></div>
+    <div class="scanline"></div>
+    
+    <div id="mouse-blob"></div>
+    <div id="webgl-canvas"></div>
+    
+    <div class="hud-layer">
+        <div class="chapter-indicator" id="chapter-display">SYS.01 INITIALIZATION</div>
+        <div class="hud-coords">
+            SYSTEM STATUS: <span id="warp-status" class="text-green-500">ONLINE</span><br>
+            THREAT LEVEL: LOW<br>
+            PROTECTION: <span id="speed-indicator">ACTIVE</span>
+        </div>
+    </div>
+
+    <div id="viewport">
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 mix-blend-difference px-6 py-6 md:px-12 opacity-0" id="navbar">
+        <div class="flex justify-between items-center max-w-[1800px] mx-auto">
+            <a href="#" class="text-xl md:text-2xl font-bold tracking-tighter hover:text-green-500 transition-colors flex items-center gap-2">
+                <span>🛡️</span> 終極防禦機器人
+            </a>
+            <nav class="hidden md:flex gap-8 text-sm font-medium">
+                <a href="#core" class="hover:text-green-500 transition-colors nav-item">核心機制</a>
+                <a href="#features" class="hover:text-cyan-400 transition-colors nav-item">系統特色</a>
+                <a href="#commands" class="hover:text-green-500 transition-colors nav-item">管理指令</a>
+                <a href="#privacy" class="hover:text-green-500 transition-colors nav-item">隱私安全</a>
+                <a href="#support" class="hover:text-green-500 transition-colors nav-item">加入支援</a>
+            </nav>
+            <a href="https://discord.gg/c62xGxfxfg" target="_blank" class="font-medium text-xs md:text-sm border border-green-500 text-green-500 px-4 py-2 hover:bg-green-500 hover:text-black transition-all shadow-[0_0_10px_rgba(0,255,0,0.3)]">
+                立即邀請
+            </a>
+        </div>
+    </header>
+
+    <main>
+        
+        <!-- ========================================= -->
+        <!-- CHAPTER 1: HERO (Adapted from message.html) -->
+        <!-- ========================================= -->
+
+        <section class="relative min-h-screen flex flex-col justify-center border-b border-white/10 overflow-hidden" id="hero" data-chapter="SYS.01 DEFENSE">
+            <!-- Background Image (Cyberpunk/Security) -->
+            <div class="absolute inset-0 z-0 opacity-20">
+                <img src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070&auto=format&fit=crop" alt="Cyber Security" class="w-full h-full object-cover parallax-bg">
+            </div>
+
+            <div class="relative z-10 px-6 md:px-12 max-w-[1800px] mx-auto w-full pt-20 pointer-events-none">
+                <h1 class="text-hero mb-8 text-white split-text mix-blend-difference">
+                    終極防禦<br>
+                    <span class="text-green-500">機器人</span>
+                </h1>
+                <p class="text-base md:text-xl max-w-3xl text-gray-300 mb-12 opacity-0 hero-sub mix-blend-difference leading-relaxed font-mono">
+                    24 小時全自動 Discord 防炸群守護系統<br>
+                    <span class="text-green-400 font-bold">零誤判・秒封禁・跨伺服器黑名單</span>
+                </p>
+                <div class="flex gap-4 opacity-0 hero-sub pointer-events-auto">
+                    <a href="https://discord.gg/c62xGxfxfg" target="_blank" class="px-8 py-3 bg-green-600 text-black font-bold uppercase tracking-widest hover:bg-white transition-colors">
+                        進入公開支援群組
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- TRANSIT -->
+        <div class="warp-transit"><div class="warp-message">INITIALIZING FIREWALL</div></div>
+
+        <!-- ========================================= -->
+        <!-- CHAPTER 2: CORE MECHANICS (From message.html "核心防禦機制") -->
+        <!-- ========================================= -->
+
+        <section id="core" class="min-h-screen flex items-center px-6 md:px-12 border-y border-white/10 bg-[#020502]/80 relative z-10 py-20 backdrop-blur-sm" data-chapter="SYS.02 PROTOCOLS">
+            <div class="max-w-[1800px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
+                <div class="flex flex-col justify-center">
+                    <div class="text-sm font-mono text-green-500 mb-4 anim-fade">CORE PROTOCOLS</div>
+                    <h2 class="text-4xl md:text-6xl font-bold tracking-tighter mb-8 split-text leading-tight">
+                        核心<br>
+                        防禦<br>
+                        <span class="text-green-600">機制</span>
+                    </h2>
+                    <p class="text-gray-400 mb-8 anim-fade">
+                        本機器人專為對抗 Discord 炸群攻擊而設計，精準識別惡意行為，完全不干擾正常使用者。
+                    </p>
+                </div>
+                <div class="space-y-6">
+                    <!-- Logic Card 1 -->
+                    <div class="bento-card p-6 border-l-4 border-l-green-500 anim-card" data-tilt>
+                        <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                            <span class="text-green-500">✅</span> 智能識別系統
+                        </h3>
+                        <p class="text-gray-400 text-sm">
+                            人類成員手動輸入 <code class="bg-gray-800 px-1 rounded text-green-300">@everyone</code> 或 <code class="bg-gray-800 px-1 rounded text-green-300">@here</code> → <span class="text-green-400">完全忽略，不處理</span>。保障正常聊天權益。
+                        </p>
+                    </div>
+
+                    <!-- Logic Card 2 -->
+                    <div class="bento-card p-6 border-l-4 border-l-red-500 anim-card" style="transition-delay: 0.1s" data-tilt>
+                        <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                            <span class="text-red-500">❌</span> 惡意機器人攔截
+                        </h3>
+                        <p class="text-gray-400 text-sm">
+                            檢測到機器人發送 <code class="bg-gray-800 px-1 rounded text-red-300">@everyone</code> / <code class="bg-gray-800 px-1 rounded text-red-300">@here</code> → <span class="text-red-400 font-bold">立即刪除訊息並封禁該機器人</span>。
+                        </p>
+                    </div>
+
+                    <!-- Logic Card 3 -->
+                    <div class="bento-card p-6 border-l-4 border-l-red-500 anim-card" style="transition-delay: 0.2s" data-tilt>
+                        <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                            <span class="text-red-500">💣</span> 極限防禦模式
+                        </h3>
+                        <p class="text-gray-400 text-sm">
+                            任何機器人刪除第 1 個頻道 → <span class="text-red-400 font-bold">瞬間封禁</span>。在災害擴大前切斷威脅。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================= -->
+        <!-- CHAPTER 3: FEATURES (From message.html "系統特色") -->
+        <!-- ========================================= -->
+
+        <section id="features" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-y border-white/10 bg-black/80 py-20 backdrop-blur-md" data-chapter="SYS.03 FEATURES">
+            <div class="max-w-[1400px] mx-auto w-full">
+                <div class="mb-12 md:mb-20">
+                     <div class="text-xs md:text-sm font-mono text-cyan-400 mb-4 anim-fade">SYSTEM FEATURES</div>
+                    <h2 class="text-4xl md:text-6xl font-bold tracking-tighter text-white split-text">系統特色</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bento-card p-6 md:p-8 flex flex-col justify-between anim-card group" data-tilt>
+                        <div class="text-3xl mb-4">🔐</div>
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-2">最小權限運作</h3>
+                            <p class="text-gray-400 text-sm">僅需「封禁成員」「讀取 Audit Log」等必要權限，無需管理員全權。安全至上。</p>
+                        </div>
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-green-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                    </div>
+
+                    <div class="bento-card p-6 md:p-8 flex flex-col justify-between anim-card group" style="transition-delay: 0.1s" data-tilt>
+                        <div class="text-3xl mb-4">🌐</div>
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-2">跨伺服器黑名單</h3>
+                            <p class="text-gray-400 text-sm">一經記錄，所有使用本機器人的伺服器均可自動防禦。社群聯防。</p>
+                        </div>
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-cyan-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                    </div>
+
+                    <div class="bento-card p-6 md:p-8 flex flex-col justify-between anim-card group" style="transition-delay: 0.2s" data-tilt>
+                        <div class="text-3xl mb-4">👁️</div>
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-2">可疑機器人掃描</h3>
+                            <p class="text-gray-400 text-sm">自動檢測新註冊、危險名稱、無角色機器人並建議處置。防患未然。</p>
+                        </div>
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-purple-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                    </div>
+
+                    <div class="bento-card p-6 md:p-8 flex flex-col justify-between anim-card group" style="transition-delay: 0.3s" data-tilt>
+                         <div class="text-3xl mb-4">🔕</div>
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-2">非侵入式通知</h3>
+                            <p class="text-gray-400 text-sm">每個伺服器僅發送一次防禦啟動通知，避免訊息刷屏干擾運作。</p>
+                        </div>
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-white transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TRANSIT -->
+        <div class="warp-transit"><div class="warp-message">ACCESSING ROOT TERMINAL</div></div>
+
+        <!-- ========================================= -->
+        <!-- CHAPTER 4: COMMANDS (From message.html "管理員指令") -->
+        <!-- ========================================= -->
+
+        <section id="commands" class="min-h-screen flex items-center px-6 md:px-12 border-y border-white/10 bg-[#020502]/90 relative py-20 backdrop-blur-md" data-chapter="SYS.04 COMMANDS">
+            <div class="max-w-[1200px] mx-auto w-full relative z-10">
+                <div class="mb-12 text-center">
+                    <h2 class="text-4xl md:text-5xl font-bold mb-4 split-text text-white">管理員指令</h2>
+                    <p class="text-gray-400 anim-fade font-mono">所有指令僅限伺服器管理員使用，確保操作安全。</p>
+                </div>
+
+                <!-- Terminal-style Table Container -->
+                <div class="w-full bg-black border border-green-500/30 rounded-lg overflow-hidden shadow-[0_0_30px_rgba(0,255,0,0.1)] anim-scale" data-tilt>
+                    <!-- Window Header -->
+                    <div class="flex items-center px-4 py-2 border-b border-green-500/20 bg-[#0a1f0a]">
+                        <div class="flex gap-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500/50"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500/50"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <div class="ml-4 text-xs font-mono text-green-500/70">root@defense-bot:~/modules/commands</div>
+                    </div>
+                    
+                    <!-- Command Content -->
+                    <div class="p-0 overflow-x-auto">
+                        <table class="cmd-table">
+                            <thead>
+                                <tr>
+                                    <th>指令 Syntax</th>
+                                    <th>功能說明 Function</th>
+                                    <th>權限 Permission</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="cmd-highlight">!addblacklist [ID] [原因]</span></td>
+                                    <td>手動將使用者 ID 加入全域黑名單</td>
+                                    <td><span class="text-xs border border-green-500/30 px-2 py-1 rounded text-green-400">管理員</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="cmd-highlight">!removeblacklist [ID]</span></td>
+                                    <td>從黑名單中移除指定使用者</td>
+                                    <td><span class="text-xs border border-green-500/30 px-2 py-1 rounded text-green-400">管理員</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="cmd-highlight">!checkbots</span></td>
+                                    <td>掃描伺服器內所有機器人，標記可疑對象</td>
+                                    <td><span class="text-xs border border-green-500/30 px-2 py-1 rounded text-green-400">管理員</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="cmd-highlight">!unbanall</span></td>
+                                    <td>解除伺服器內所有封鎖（需二次確認）</td>
+                                    <td><span class="text-xs border border-green-500/30 px-2 py-1 rounded text-green-400">管理員</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="cmd-highlight">!serverstatus</span></td>
+                                    <td>查看所有已加入伺服器的狀態摘要</td>
+                                    <td><span class="text-xs border border-purple-500/30 px-2 py-1 rounded text-purple-400">機器人擁有者</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="p-2 bg-[#051005] border-t border-green-500/20 text-xs font-mono text-green-500/50 text-right">
+                        SYS.READY
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================= -->
+        <!-- CHAPTER 5: PRIVACY (From message.html "隱私與安全性") -->
+        <!-- ========================================= -->
+
+        <section id="privacy" class="min-h-screen flex items-center px-6 md:px-12 border-y border-white/10 bg-black/70 py-20 backdrop-blur-sm" data-chapter="SYS.05 SECURITY">
+            <div class="max-w-[1800px] mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                <div class="order-2 lg:order-1">
+                    <h2 class="text-4xl md:text-5xl font-bold mb-6 split-text text-white">隱私與<br>安全性</h2>
+                    <p class="text-gray-400 mb-8">我們深知資料的重要性，因此採取嚴格的隱私政策。</p>
+                    <ul class="space-y-6 font-mono text-sm text-gray-300 border-l border-green-500/30 pl-6 anim-stagger-list">
+                        <li class="flex items-center gap-4 border-b border-white/5 pb-4">
+                            <span class="text-2xl">🔒</span>
+                            <span>不儲存任何聊天內容或私人訊息</span>
+                        </li>
+                        <li class="flex items-center gap-4 border-b border-white/5 pb-4">
+                            <span class="text-2xl">📝</span>
+                            <span>黑名單僅記錄使用者 ID 與威脅原因，不含個資</span>
+                        </li>
+                        <li class="flex items-center gap-4 border-b border-white/5 pb-4">
+                            <span class="text-2xl">🛡️</span>
+                            <span>所有自動封禁行為均基於 Discord Audit Log 驗證</span>
+                        </li>
+                        <li class="flex items-center gap-4 pb-2">
+                            <span class="text-2xl">📦</span>
+                            <span>專案開源透明，可自行部署以完全掌控資料</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="order-1 lg:order-2 flex justify-center">
+                    <div class="bento-card w-full max-w-xs md:max-w-md aspect-square flex items-center justify-center relative rounded-full border-2 border-green-500/30 anim-scale shadow-[0_0_50px_rgba(0,255,0,0.1)]" data-tilt>
+                        <div class="text-center z-10">
+                            <div class="text-6xl md:text-9xl font-bold mb-2 tracking-tighter text-green-500 count-up" data-target="100">0</div>
+                            <div class="text-lg md:text-xl text-gray-400 font-mono tracking-widest">% SECURE</div>
+                            <div class="text-xs text-green-500/50 font-mono mt-2">ENCRYPTED CONNECTION</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- CTA Footer (From message.html "加入官方支援社群") -->
+        <section id="support" class="min-h-screen flex items-center justify-center px-6 md:px-12 bg-black relative overflow-hidden">
+            <div class="text-center relative z-10">
+                <div class="text-green-500 font-mono mb-4 text-sm animate-pulse">COMMUNITY SUPPORT</div>
+                <h2 class="text-hero mb-8 split-text text-white">
+                    加入防禦聯盟。<br>
+                    Join the Alliance.
+                </h2>
+                <p class="text-xl text-gray-400 max-w-2xl mx-auto mb-12 anim-fade">
+                    所有伺服器管理員、開發者與使用者皆歡迎加入！<br>
+                    在這裡你可以取得技術支援、提交建議、或參與未來功能討論。
+                </p>
+                <div class="flex flex-col md:flex-row gap-6 justify-center items-center mt-8 anim-fade">
+                    <a href="https://discord.gg/c62xGxfxfg" target="_blank" class="px-12 py-5 bg-green-600 text-black text-xl font-bold tracking-tight hover:bg-white hover:text-black hover:scale-105 transition-all w-full md:w-auto shadow-[0_0_30px_rgba(0,255,0,0.4)] rounded">
+                        💬 進入公開 Discord 群組
+                    </a>
+                </div>
+                <p class="mt-20 text-gray-500 text-sm font-mono anim-fade">
+                    &copy; 2025 終極防禦機器人 | 開源防禦工具<br>
+                    設計理念：精準防禦、尊重隱私、開放透明
+                </p>
+            </div>
+        </section>
+
+    </main>
+
+    </div> <!-- End Viewport -->
+
+    <script>
+        // Start Screen Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const startScreen = document.getElementById('start-screen');
+            
+            const initSite = () => {
+                // Fade out start screen
+                startScreen.style.opacity = '0';
+                setTimeout(() => {
+                    startScreen.style.display = 'none';
+                    gsap.to('#navbar', { opacity: 1, duration: 1 });
+                }, 1000);
+            };
+
+            startScreen.addEventListener('click', initSite);
+        });
+
+        gsap.registerPlugin(ScrollTrigger);
+
+        // Optimized Lenis Setup
+        const lenis = new Lenis({
+            duration: 1.5,
+            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+            direction: 'vertical',
+            gestureDirection: 'vertical',
+            smooth: true,
+            mouseMultiplier: 1,
+            smoothTouch: false, 
+            touchMultiplier: 2,
+        });
+
+        function raf(time) {
+            lenis.raf(time);
+            requestAnimationFrame(raf);
+        }
+        requestAnimationFrame(raf);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- THREE.JS HYBRID ENGINE (Starfield + Warp Effect + Mouse Blob) ---
+            const container = document.getElementById('webgl-canvas');
+            const scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x020502, 0.0003); // Match bg color
+            
+            // Camera
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
+            camera.position.z = 1000;
+
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+            container.appendChild(renderer.domElement);
+
+            // Particles
+            const particleCount = 40000;
+            const posArray = new Float32Array(particleCount * 3);
+            const colorArray = new Float32Array(particleCount * 3);
+            
+            // SECURITY THEME COLORS (Green, Cyan, White)
+            const colors = [
+                new THREE.Color(0x00ff00), // Main Green
+                new THREE.Color(0x003300), // Dark Green
+                new THREE.Color(0xffffff), // White
+                new THREE.Color(0x00f3ff), // Cyan
+                new THREE.Color(0xccffcc)  // Pale Green
+            ];
+
+            for(let i = 0; i < particleCount; i++) {
+                const x = (Math.random() - 0.5) * 10000;
+                const y = (Math.random() - 0.5) * 10000;
+                const z = (Math.random() - 0.5) * 10000;
+                
+                posArray[i * 3] = x;
+                posArray[i * 3 + 1] = y;
+                posArray[i * 3 + 2] = z;
+                
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                colorArray[i * 3] = color.r;
+                colorArray[i * 3 + 1] = color.g;
+                colorArray[i * 3 + 2] = color.b;
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 2,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                sizeAttenuation: true,
+                blending: THREE.AdditiveBlending
+            });
+
+            const starsMesh = new THREE.Points(geometry, material);
+            scene.add(starsMesh);
+
+            let mouseX = 0;
+            let mouseY = 0;
+            let targetX = 0;
+            let targetY = 0;
+            let scrollSpeed = 0;
+            let mouseDown = false;
+            let baseFov = 75;
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            document.addEventListener('mousemove', (event) => {
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+                targetX = (mouseX / window.innerWidth) * 2 - 1;
+                targetY = -(mouseY / window.innerHeight) * 2 + 1;
+            });
+            
+            document.addEventListener('mousedown', () => mouseDown = true);
+            document.addEventListener('mouseup', () => mouseDown = false);
+
+            lenis.on('scroll', (e) => {
+                scrollSpeed += Math.abs(e.velocity) * 0.5; // Acceleration logic
+                
+                // Update HUD Chapter
+                const sections = document.querySelectorAll('section');
+                sections.forEach(sec => {
+                    const rect = sec.getBoundingClientRect();
+                    if(rect.top < window.innerHeight/2 && rect.bottom > window.innerHeight/2) {
+                        const chapter = sec.getAttribute('data-chapter');
+                        if(chapter) document.getElementById('chapter-display').innerText = chapter;
+                    }
+                });
+            });
+
+            const animate = () => {
+                let speed = 2; // Base speed
+                let fovTarget = baseFov;
+                
+                // Add scroll momentum to speed
+                speed += scrollSpeed;
+                
+                if (mouseDown) {
+                    speed += 100; 
+                    fovTarget = 110;
+                    material.size = 1; 
+                } else if (scrollSpeed > 5) {
+                    fovTarget = 90 + Math.min(scrollSpeed, 30); // Dynamic FOV
+                    material.size = 2;
+                } else {
+                    fovTarget = 75;
+                    material.size = 2;
+                }
+                
+                // Smooth Camera FOV
+                camera.fov += (fovTarget - camera.fov) * 0.05;
+                camera.updateProjectionMatrix();
+                
+                scrollSpeed *= 0.95; // Decay
+
+                // Move Stars
+                const positions = starsMesh.geometry.attributes.position.array;
+                for(let i = 2; i < particleCount * 3; i += 3) {
+                    positions[i] += speed;
+                    if (positions[i] > 1000) {
+                        positions[i] = -8000; 
+                        positions[i-1] = (Math.random() - 0.5) * 10000;
+                        positions[i-2] = (Math.random() - 0.5) * 10000;
+                    }
+                }
+                starsMesh.geometry.attributes.position.needsUpdate = true;
+                starsMesh.rotation.z += 0.0002 + (scrollSpeed * 0.0001); // Twist on warp
+
+                // Camera Tilt
+                camera.rotation.x += (targetY * 0.15 - camera.rotation.x) * 0.05;
+                camera.rotation.y += (-targetX * 0.15 - camera.rotation.y) * 0.05;
+                
+                // Update HUD
+                const warpStatus = document.getElementById('warp-status');
+                if(warpStatus) {
+                    if (speed > 50) {
+                       warpStatus.innerText = "SCANNING...";
+                       warpStatus.style.color = "#00f3ff";
+                    } else {
+                       warpStatus.innerText = "ONLINE";
+                       warpStatus.style.color = "#00ff00";
+                    }
+                }
+
+                renderer.render(scene, camera);
+                requestAnimationFrame(animate);
+            }
+            animate();
+
+            // --- MOUSE BLOB ---
+            const blob = document.getElementById('mouse-blob');
+            let blobX = 0, blobY = 0;
+            function animateBlob() {
+                blobX += (mouseX - blobX) * 0.1;
+                blobY += (mouseY - blobY) * 0.1;
+                if(blob) blob.style.transform = `translate3d(${blobX}px, ${blobY}px, 0) translate(-50%, -50%)`;
+                requestAnimationFrame(animateBlob);
+            }
+            animateBlob();
+
+            // --- DOM ANIMATIONS ---
+            // Parallax
+            gsap.to('.parallax-bg', {
+                y: '20%', ease: 'none',
+                scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true }
+            });
+
+            // Fade In
+            gsap.utils.toArray('.anim-fade').forEach(el => {
+                gsap.from(el, {
+                    scrollTrigger: { trigger: el, start: 'top 85%' },
+                    y: 20, opacity: 0, duration: 0.8, ease: 'power2.out'
+                });
+            });
+
+            // Card Stagger
+            const cards = document.querySelectorAll('.anim-card');
+            cards.forEach((el, i) => {
+                gsap.from(el, {
+                    scrollTrigger: { trigger: el, start: 'top 90%' },
+                    y: 30, opacity: 0, duration: 0.6, delay: 0.1, ease: 'back.out(1.5)'
+                });
+            });
+            
+             // List Stagger
+            const listItems = document.querySelectorAll('.anim-stagger-list li');
+            listItems.forEach((el, i) => {
+                 gsap.from(el, {
+                    scrollTrigger: { trigger: el.parentElement, start: 'top 85%' },
+                    x: -20, opacity: 0, duration: 0.5, delay: i * 0.1, ease: 'power2.out'
+                });
+            });
+
+            // Text Split
+            if (window.innerWidth > 768) {
+                const splitTypes = document.querySelectorAll('.split-text');
+                splitTypes.forEach((char) => {
+                    const text = new SplitType(char, { types: 'chars' });
+                    gsap.from(text.chars, {
+                        scrollTrigger: { trigger: char, start: 'top 85%' },
+                        y: 50, opacity: 0, stagger: 0.02, duration: 0.8, ease: 'power2.out'
+                    });
+                });
+            }
+
+            // 3D Tilt Effect
+            const tiltCards = document.querySelectorAll('[data-tilt]');
+            tiltCards.forEach(card => {
+                let rect = card.getBoundingClientRect();
+                card.addEventListener('mouseenter', () => { rect = card.getBoundingClientRect(); });
+                card.addEventListener('mousemove', (e) => {
+                    if (window.innerWidth < 768) return; 
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const rotateX = ((y - rect.height/2) / rect.height) * -5;
+                    const rotateY = ((x - rect.width/2) / rect.width) * 5;
+                    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0)';
+                });
+            });
+
+            // Count Up
+            gsap.utils.toArray('.count-up').forEach(el => {
+                let target = parseInt(el.getAttribute('data-target'));
+                gsap.to(el, {
+                    scrollTrigger: { trigger: el, start: 'top 80%' },
+                    innerHTML: target, duration: 2, snap: { innerHTML: 1 }, ease: 'power1.out'
+                });
+            });
+        });
+    </script>
+</body>
+</html>
