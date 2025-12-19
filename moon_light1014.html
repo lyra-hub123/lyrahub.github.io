@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lighting Moon | Loading...</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- 1. 全局設定與自定義游標 --- */
+        :root {
+            --primary-color: #ffffff;
+            --glass-bg: rgba(15, 15, 15, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050505;
+            color: white;
+            font-family: 'Poppins', sans-serif;
+            overflow: hidden;
+            /* 禁止滾動 */
+            height: 100vh;
+            cursor: crosshair;
+            /* 十字準心游標 */
+        }
+
+        /* --- 2. 背景影片/圖片 --- */
+        #bg-media {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -2;
+            filter: brightness(0.3) blur(0px);
+            /* 進入後無模糊 */
+            transition: filter 0.8s ease;
+        }
+
+        /* --- 3. 粒子特效畫布 (雪花) --- */
+        #canvas-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* --- 4. Click to Enter 遮罩 --- */
+        #enter-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: opacity 1s ease, visibility 1s;
+        }
+
+        .enter-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+            animation: glow 2s infinite ease-in-out;
+        }
+
+        @keyframes glow {
+
+            0%,
+            100% {
+                opacity: 0.5;
+                text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            }
+
+            50% {
+                opacity: 1;
+                text-shadow: 0 0 20px rgba(255, 255, 255, 1);
+            }
+        }
+
+        /* --- 5. 主內容卡片 (Guns.lol 風格) --- */
+        #main-card {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            width: 90%;
+            max-width: 400px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 15px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+            transition: transform 0.5s;
+        }
+
+        .avatar:hover {
+            transform: rotate(360deg);
+        }
+
+        .username {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+            /* 模擬高級會員的鑽石/發光名字效果 */
+            background: linear-gradient(90deg, #fff, #b3b3b3, #fff);
+            background-size: 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradient-anim 3s infinite linear;
+        }
+
+        @keyframes gradient-anim {
+            0% {
+                background-position: 0%;
+            }
+
+            100% {
+                background-position: 200%;
+            }
+        }
+
+        /* --- Glitch Effect --- */
+        .glitch {
+            position: relative;
+        }
+
+        .glitch::before,
+        .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #050505;
+            /* Matches body background */
+        }
+
+        .glitch::before {
+            left: 2px;
+            text-shadow: -1px 0 #ff00c1;
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim 5s infinite linear alternate-reverse;
+        }
+
+        .glitch::after {
+            left: -2px;
+            text-shadow: -1px 0 #00fff9;
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim2 5s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-anim {
+            0% {
+                clip: rect(31px, 9999px, 94px, 0);
+                transform: skew(0.85deg);
+            }
+
+            5% {
+                clip: rect(70px, 9999px, 11px, 0);
+                transform: skew(0.85deg);
+            }
+
+            10% {
+                clip: rect(6px, 9999px, 83px, 0);
+                transform: skew(0.12deg);
+            }
+
+            15% {
+                clip: rect(32px, 9999px, 55px, 0);
+                transform: skew(0.02deg);
+            }
+
+            20% {
+                clip: rect(72px, 9999px, 86px, 0);
+                transform: skew(0.78deg);
+            }
+
+            25% {
+                clip: rect(6px, 9999px, 3px, 0);
+                transform: skew(0.66deg);
+            }
+
+            30% {
+                clip: rect(67px, 9999px, 91px, 0);
+                transform: skew(0.53deg);
+            }
+
+            35% {
+                clip: rect(51px, 9999px, 9px, 0);
+                transform: skew(0.86deg);
+            }
+
+            40% {
+                clip: rect(96px, 9999px, 7px, 0);
+                transform: skew(0.05deg);
+            }
+
+            45% {
+                clip: rect(30px, 9999px, 9px, 0);
+                transform: skew(0.24deg);
+            }
+
+            50% {
+                clip: rect(48px, 9999px, 63px, 0);
+                transform: skew(0.21deg);
+            }
+
+            55% {
+                clip: rect(2px, 9999px, 34px, 0);
+                transform: skew(0.95deg);
+            }
+
+            60% {
+                clip: rect(59px, 9999px, 4px, 0);
+                transform: skew(0.39deg);
+            }
+
+            65% {
+                clip: rect(25px, 9999px, 41px, 0);
+                transform: skew(0.18deg);
+            }
+
+            70% {
+                clip: rect(71px, 9999px, 1px, 0);
+                transform: skew(0.04deg);
+            }
+
+            75% {
+                clip: rect(46px, 9999px, 7px, 0);
+                transform: skew(0.79deg);
+            }
+
+            80% {
+                clip: rect(59px, 9999px, 2px, 0);
+                transform: skew(0.74deg);
+            }
+
+            85% {
+                clip: rect(54px, 9999px, 5px, 0);
+                transform: skew(0.01deg);
+            }
+
+            90% {
+                clip: rect(59px, 9999px, 20px, 0);
+                transform: skew(0.76deg);
+            }
+
+            95% {
+                clip: rect(26px, 9999px, 97px, 0);
+                transform: skew(0.63deg);
+            }
+
+            100% {
+                clip: rect(53px, 9999px, 79px, 0);
+                transform: skew(0.1deg);
+            }
+        }
+
+        @keyframes glitch-anim2 {
+            0% {
+                clip: rect(65px, 9999px, 100px, 0);
+                transform: skew(0.4deg);
+            }
+
+            5% {
+                clip: rect(52px, 9999px, 74px, 0);
+                transform: skew(0.58deg);
+            }
+
+            10% {
+                clip: rect(79px, 9999px, 85px, 0);
+                transform: skew(0.35deg);
+            }
+
+            15% {
+                clip: rect(75px, 9999px, 5px, 0);
+                transform: skew(0.05deg);
+            }
+
+            20% {
+                clip: rect(67px, 9999px, 61px, 0);
+                transform: skew(0.68deg);
+            }
+
+            25% {
+                clip: rect(10px, 9999px, 23px, 0);
+                transform: skew(0.16deg);
+            }
+
+            30% {
+                clip: rect(1px, 9999px, 69px, 0);
+                transform: skew(0.85deg);
+            }
+
+            35% {
+                clip: rect(51px, 9999px, 16px, 0);
+                transform: skew(0.97deg);
+            }
+
+            40% {
+                clip: rect(78px, 9999px, 4px, 0);
+                transform: skew(0.86deg);
+            }
+
+            45% {
+                clip: rect(50px, 9999px, 32px, 0);
+                transform: skew(0.66deg);
+            }
+
+            50% {
+                clip: rect(36px, 9999px, 21px, 0);
+                transform: skew(0.2deg);
+            }
+
+            55% {
+                clip: rect(74px, 9999px, 69px, 0);
+                transform: skew(0.38deg);
+            }
+
+            60% {
+                clip: rect(4px, 9999px, 91px, 0);
+                transform: skew(0.65deg);
+            }
+
+            65% {
+                clip: rect(93px, 9999px, 25px, 0);
+                transform: skew(0.05deg);
+            }
+
+            70% {
+                clip: rect(54px, 9999px, 31px, 0);
+                transform: skew(0.48deg);
+            }
+
+            75% {
+                clip: rect(68px, 9999px, 14px, 0);
+                transform: skew(0.97deg);
+            }
+
+            80% {
+                clip: rect(21px, 9999px, 96px, 0);
+                transform: skew(0.59deg);
+            }
+
+            85% {
+                clip: rect(1px, 9999px, 11px, 0);
+                transform: skew(0.79deg);
+            }
+
+            90% {
+                clip: rect(73px, 9999px, 94px, 0);
+                transform: skew(0.07deg);
+            }
+
+            95% {
+                clip: rect(31px, 9999px, 4px, 0);
+                transform: skew(0.08deg);
+            }
+
+            100% {
+                clip: rect(7px, 9999px, 36px, 0);
+                transform: skew(0.47deg);
+            }
+        }
+
+        .badges {
+            margin-bottom: 5px;
+            font-size: 1rem;
+            color: #ddd;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+        }
+
+        .uid {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 15px;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+            font-family: monospace;
+        }
+
+        .badges i {
+            margin: 0 3px;
+            cursor: help;
+        }
+
+        .bio-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 15px 0;
+            min-height: 24px;
+            font-size: 0.9rem;
+            color: #ccc;
+            font-family: 'Courier New', monospace;
+            /* 打字機字體 */
+        }
+
+        /* --- 社交按鈕 --- */
+        .links {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .link-item {
+            display: block;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            text-decoration: none;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s;
+            font-weight: 600;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .link-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.02);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+        }
+
+        /* --- 底部資訊 --- */
+        .footer {
+            margin-top: 25px;
+            font-size: 0.7rem;
+            color: #666;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        /* 隱藏原生播放器 */
+        audio {
+            display: none;
+        }
+
+        .cursor-trail {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: cyan;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            box-shadow: 0 0 10px cyan, 0 0 20px cyan;
+        }
+    </style>
+</head>
+
+<body>
+
+    <video id="bg-media" loop muted playsinline>
+        <source src="https://r2.guns.lol/11173a4c-5c66-4bbe-ac8f-e2641bdabcd3.mp4" type="video/mp4">
+    </video>
+
+    <canvas id="canvas-overlay"></canvas>
+
+    <audio id="bg-music" loop>
+        <source src="https://r2.guns.lol/916ca697-c04e-4fda-9600-fefb67ccec44.mp3" type="audio/mp3">
+    </audio>
+
+    <div id="enter-overlay">
+        <div class="enter-text">click to enter...</div>
+    </div>
+
+    <div id="main-card">
+        <img src="https://i.pinimg.com/474x/0f/73/8e/0f738ec9db6c97916df1982962b085a6.jpg" alt="Profile" class="avatar">
+
+        <div class="username glitch" data-text="Lighting Moon">Lighting Moon</div>
+
+        <div class="badges">
+            <i class="fas fa-crown" title="Premium"></i>
+            <i class="fas fa-code" title="Developer"></i>
+            <i class="fas fa-terminal" title="Hacker"></i>
+            <i class="fas fa-check-circle" title="Verified"></i>
+        </div>
+        <div class="uid">UID: 1</div>
+
+        <div class="bio-box">
+            <span id="typewriter"></span><span class="cursor">|</span>
+        </div>
+
+        <div class="links">
+            <a href="https://discord.gg/VvcdzzXX" target="_blank" class="link-item">
+                <i class="fab fa-discord"></i> Discord Server
+            </a>
+            <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ&start_radio=1&pp=ygUXbmV2ZXIgZ29ubmEgZ2l2ZSB5b3UgdXCgBwE%3D"
+                target="_blank" class="link-item">
+                <i class="fab fa-youtube"></i> YouTube Channel
+            </a>
+            <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ&start_radio=1&pp=ygUXbmV2ZXIgZ29ubmEgZ2l2ZSB5b3UgdXCgBwE%3D"
+                target="_blank" class="link-item">
+                <i class="fab fa-github"></i> GitHub Profile
+            </a>
+        </div>
+
+        <div class="footer">
+            <span><i class="fas fa-eye"></i> 14,203</span>
+            <span><i class="fas fa-copyright"></i> 2024</span>
+        </div>
+    </div>
+
+    <script>
+        // --- 設定區 ---
+        const pageTitle = "Lighting Moon | Welcome | "; // 滾動標題文字
+        const bioText = ["Developer.", "Gamer.", "Sleepy.", "Welcome to my profile."]; // 打字機內容陣列
+        const typingSpeed = 100;
+        const deleteSpeed = 50;
+        const pauseTime = 1500; // 打完一句後的暫停時間
+
+        // --- 變數 ---
+        let titleIndex = 0;
+        const enterOverlay = document.getElementById('enter-overlay');
+        const mainCard = document.getElementById('main-card');
+        const bgMedia = document.getElementById('bg-media');
+        const bgMusic = document.getElementById('bg-music');
+        const typewriterSpan = document.getElementById('typewriter');
+
+        // --- 1. 點擊進入邏輯 ---
+        enterOverlay.addEventListener('click', () => {
+            // 淡出遮罩
+            enterOverlay.style.opacity = '0';
+            enterOverlay.style.visibility = 'hidden';
+
+            // 顯示卡片
+            mainCard.style.opacity = '1';
+            mainCard.style.visibility = 'visible';
+            mainCard.style.transform = 'translate(-50%, -50%) scale(1)';
+
+            // 播放媒體
+            bgMedia.play();
+            bgMusic.volume = 0.4;
+            bgMusic.play().catch(e => console.log("Audio play failed:", e));
+
+            // 啟動打字機與標題滾動
+            initTypewriter();
+            setInterval(scrollTitle, 200);
+        });
+
+        // --- 2. 標題滾動特效 ---
+        function scrollTitle() {
+            document.title = pageTitle.substring(titleIndex) + pageTitle.substring(0, titleIndex);
+            titleIndex = (titleIndex + 1) % pageTitle.length;
+        }
+
+        // --- 3. 打字機特效 ---
+        let textIndex = 0;
+        let charIndex = 0;
+        let isDeleting = false;
+
+        function initTypewriter() {
+            const currentText = bioText[textIndex];
+
+            if (isDeleting) {
+                typewriterSpan.textContent = currentText.substring(0, charIndex - 1);
+                charIndex--;
+            } else {
+                typewriterSpan.textContent = currentText.substring(0, charIndex + 1);
+                charIndex++;
+            }
+
+            let typeSpeedCurrent = isDeleting ? deleteSpeed : typingSpeed;
+
+            if (!isDeleting && charIndex === currentText.length) {
+                typeSpeedCurrent = pauseTime;
+                isDeleting = true;
+            } else if (isDeleting && charIndex === 0) {
+                isDeleting = false;
+                textIndex = (textIndex + 1) % bioText.length;
+                typeSpeedCurrent = 500;
+            }
+
+            setTimeout(initTypewriter, typeSpeedCurrent);
+        }
+
+        // --- 4. 粒子特效 (簡易版雪花 Canvas) ---
+        const canvas = document.getElementById('canvas-overlay');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2;
+                this.speedY = Math.random() * 1 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.5;
+            }
+            update() {
+                this.y += this.speedY;
+                this.x += this.speedX;
+                if (this.y > canvas.height) this.y = 0;
+                if (this.x > canvas.width) this.x = 0;
+                if (this.x < 0) this.x = canvas.width;
+            }
+            draw() {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            for (let i = 0; i < 100; i++) { // 粒子數量
+                particles.push(new Particle());
+            }
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+            }
+            requestAnimationFrame(animateParticles);
+        }
+
+        initParticles();
+        animateParticles();
+
+        // --- 5. 游標拖尾特效 ---
+        const cursorTrails = [];
+        const maxTrails = 20;
+
+        document.addEventListener('mousemove', (e) => {
+            const trail = document.createElement('div');
+            trail.className = 'cursor-trail';
+            trail.style.left = e.pageX + 'px';
+            trail.style.top = e.pageY + 'px';
+            document.body.appendChild(trail);
+
+            cursorTrails.push({
+                element: trail,
+                alpha: 1.0
+            });
+
+            if (cursorTrails.length > maxTrails) {
+                const old = cursorTrails.shift();
+                document.body.removeChild(old.element);
+            }
+        });
+
+        // Loop to animate fade out
+        function animateTrails() {
+            for (let i = 0; i < cursorTrails.length; i++) {
+                const item = cursorTrails[i];
+                item.alpha -= 0.05;
+                item.element.style.opacity = item.alpha;
+                item.element.style.transform = `scale(${item.alpha})`;
+            }
+            // Remove invisible
+            while (cursorTrails.length > 0 && cursorTrails[0].alpha <= 0) {
+                const old = cursorTrails.shift();
+                if (old.element.parentNode) old.element.parentNode.removeChild(old.element);
+            }
+            requestAnimationFrame(animateTrails);
+        }
+        animateTrails();
+
+    </script>
+</body>
+
+</html>
