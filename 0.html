@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>!E Xun | Loading...</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- 全局設置 --- */
+        :root {
+            --bg-color: #050505;
+            --card-bg: rgba(10, 10, 10, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.06);
+            --discord-color: #5865F2;
+            --tooltip-bg: rgba(0, 0, 0, 0.95);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Poppins', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            user-select: none;
+            cursor: crosshair;
+        }
+
+        /* --- 背景特效 --- */
+        #bg-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -3;
+            filter: brightness(0.35) contrast(1.1);
+            transition: filter 1s ease;
+        }
+
+        #scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0.2));
+            background-size: 100% 4px;
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        #canvas-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* --- 點擊進入 --- */
+        #enter-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: opacity 0.8s ease, visibility 0.8s;
+        }
+
+        .enter-text {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            animation: textGlow 2s infinite ease-in-out;
+        }
+
+        @keyframes textGlow {
+
+            0%,
+            100% {
+                text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+                opacity: 0.8;
+            }
+
+            50% {
+                text-shadow: 0 0 25px rgba(255, 255, 255, 0.9);
+                opacity: 1;
+            }
+        }
+
+        /* --- 3D 卡片容器 --- */
+        #card-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            perspective: 1200px;
+            z-index: 10;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 1s ease 0.5s, visibility 1s;
+        }
+
+        #profile-card {
+            width: 420px;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px) saturate(160%);
+            -webkit-backdrop-filter: blur(20px) saturate(160%);
+            border: 1px solid var(--glass-border);
+            border-radius: 18px;
+            padding: 45px 30px;
+            text-align: center;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+            transform-style: preserve-3d;
+        }
+
+        /* --- 內容元素 --- */
+        .avatar-container {
+            position: relative;
+            width: 115px;
+            height: 115px;
+            margin: 0 auto 15px;
+            transform: translateZ(40px);
+        }
+
+        .avatar {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        .avatar:hover {
+            transform: scale(1.05) rotate(5deg);
+        }
+
+        .username {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 2px;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+            transform: translateZ(30px);
+            letter-spacing: 1px;
+        }
+
+        .uid {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.4);
+            font-family: 'Courier New', monospace;
+            margin-bottom: 12px;
+            transform: translateZ(25px);
+        }
+
+        /* --- Guns.lol 風格徽章 (Badges) --- */
+        .badges-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0 20px 0;
+            transform: translateZ(35px);
+            padding: 0 10px;
+        }
+
+        .badge {
+            position: relative;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: help;
+            transition: transform 0.2s;
+        }
+
+        .badge img,
+        .badge svg {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.3));
+        }
+
+        .badge:hover {
+            transform: scale(1.15);
+        }
+
+        /* Tooltip */
+        .badge::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%) translateY(5px);
+            background: var(--tooltip-bg);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            pointer-events: none;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+        }
+
+        .badge:hover::after {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* --- Bio --- */
+        .bio-box {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 15px 0 25px 0;
+            min-height: 24px;
+            font-size: 0.9rem;
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            transform: translateZ(30px);
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+
+        /* --- Discord Widget (顯示總人數) --- */
+        .discord-widget {
+            background: rgba(30, 30, 30, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            text-decoration: none;
+            transform: translateZ(35px);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .discord-widget:hover {
+            background: rgba(88, 101, 242, 0.15);
+            border-color: rgba(88, 101, 242, 0.5);
+            transform: translateZ(45px) scale(1.02);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .discord-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            margin-right: 15px;
+            overflow: hidden;
+            background: #2b2d31;
+            flex-shrink: 0;
+        }
+
+        .discord-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .discord-info {
+            text-align: left;
+            flex-grow: 1;
+        }
+
+        .discord-name {
+            display: block;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: white;
+            margin-bottom: 3px;
+        }
+
+        .discord-status {
+            font-size: 0.7rem;
+            color: #aaa;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            /* Online 與 Total 的間距 */
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background-color: #23a559;
+            border-radius: 50%;
+            margin-right: 5px;
+            box-shadow: 0 0 6px #23a559;
+        }
+
+        .status-dot.gray {
+            background-color: #747f8d;
+            box-shadow: none;
+        }
+
+        .join-btn {
+            background: var(--discord-color);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 7px 16px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        /* --- Social Grid --- */
+        .social-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            transform: translateZ(35px);
+            margin-bottom: 25px;
+        }
+
+        .social-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-size: 1.3rem;
+            transition: all 0.3s;
+        }
+
+        .social-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-5px);
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Social Hover Colors */
+        .social-btn:hover .fa-youtube {
+            color: #ff0000;
+        }
+
+        .social-btn:hover .fa-github {
+            color: #fff;
+        }
+
+        .social-btn:hover .fa-steam {
+            color: #66c0f4;
+        }
+
+        .social-btn:hover .fa-tiktok {
+            color: #ff0050;
+            text-shadow: 2px 2px 0px #00f2ea;
+        }
+
+        .social-btn:hover .fa-spotify {
+            color: #1DB954;
+        }
+
+        .social-btn:hover svg {
+            fill: #fff;
+        }
+
+        /* Roblox */
+
+        /* Volume */
+        .volume-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            color: rgba(255, 255, 255, 0.4);
+            transform: translateZ(20px);
+            font-size: 0.85rem;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 120px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 10px;
+            height: 10px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.5);
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.2);
+            transform: translateZ(10px);
+        }
+    </style>
+</head>
+
+<body>
+
+    <video id="bg-video" loop muted playsinline>
+        <source src="https://www.pexels.com/download/video/856668/" type="video/mp4">
+    </video>
+
+    <div id="scanlines"></div>
+    <canvas id="canvas-overlay"></canvas>
+
+    <audio id="bg-music" loop>
+        <source src="https://r2.guns.lol/ab805e91-a1ee-4f5d-ba08-9344dcc71c8a.mp3" type="audio/mp3">
+    </audio>
+
+    <div id="enter-overlay">
+        <div class="enter-text">❤</div>
+    </div>
+
+    <div id="card-container">
+        <div id="profile-card">
+
+            <div class="avatar-container">
+                <img src="https://i.pinimg.com/736x/1a/40/b4/1a40b4fc0ef563409ecedbbb85c051bc.jpg" alt="Avatar"
+                    class="avatar">
+            </div>
+
+            <div class="username">❦</div>
+            <div class="uid">UID: -22</div>
+
+            <div class="badges-wrapper">
+
+                <div class="badge" data-tooltip="Developer">
+                    <img src="https://cdn.discordapp.com/emojis/1446726487163142204.webp?size=128">
+                    <path
+                        d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z" />
+                    </svg>
+                </div>
+                <div class="badge" data-tooltip="Staff">
+                    <img src="https://cdn.discordapp.com/emojis/1446726503877443624.webp?size=128">
+                    <path
+                        d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 6c1.4 0 2.8 1.1 2.8 2.5V11c.6 0 1.2.6 1.2 1.2v3.5c0 .6-.6 1.2-1.2 1.2H9.2c-.6 0-1.2-.6-1.2-1.2v-3.5c0-.6.6-1.2 1.2-1.2V9.5C9.2 8.1 10.6 7 12 7zm0 1c-.8 0-1.5.7-1.5 1.5V11h3V9.5c0-.8-.7-1.5-1.5-1.5z" />
+                    </svg>
+                </div>
+                <div class="badge" data-tooltip="OG">
+                    <img src="https://cdn.discordapp.com/emojis/1446729322365845645.webp?size=128">
+                    <path
+                        d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11h-14zm14 2c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2v-1h14v1z" />
+                    </svg>
+                </div>
+                <div class="badge" data-tooltip="Premium">
+                    <img src="https://cdn.discordapp.com/emojis/1446726556792918157.webp?size=128">
+                    <path
+                        d="M12.01 2.03L22 7.55v4.52l-9.99 9.9-9.99-9.9V7.55l9.99-5.52M12 4.4L4.5 8.5v3.13L12 19.1l7.5-7.47V8.5L12 4.4z" />
+                    </svg>
+                </div>
+                <div class="badge" data-tooltip="Verified">
+                    <img src="https://cdn.discordapp.com/emojis/1446725850061078640.webp?size=128">
+                    <path
+                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                    </svg>
+                </div>
+                <div class="badge" data-tooltip="Server Booster">
+                    <img src="https://cdn.discordapp.com/emojis/1291131549131079732.webp?size=128">
+                    <path d="M15.4 12.6L12 2l-3.4 10.6-9.6 1.6 8 5.6L5.4 22l6.6-3.8 6.6 3.8-1.6-9.8 8-5.6-9.6-1.6z" />
+                    </svg>
+                </div>
+                <div class="badge" data-tooltip="For IE">
+                    <img src="https://cdn.discordapp.com/attachments/1448701736679116954/1451614465161171046/IMG_7703.jpg?ex=6946d0d2&is=69457f52&hm=388759f5d77f024c9eba88f7912594c23a35a22361885e14135c6338cef323b8&"
+                        alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="NO RICH">
+                    <img src="https://cdn.discordapp.com/emojis/1158064956512665771.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+                <div class="badge" data-tooltip="LONGST AND BIGST D1CK">
+                    <img src="https://cdn.discordapp.com/emojis/1158063893898330162.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="⁂">
+                    <img src="https://cdn.discordapp.com/emojis/1399038179192864768.webp?size=128&animated=true"
+                        alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="$">
+                    <img src="https://cdn.discordapp.com/emojis/820419076014735380.webp?size=128&animated=true"
+                        alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+                <div class="badge" data-tooltip="✡">
+                    <img src="https://cdn.discordapp.com/emojis/1146444541717659688.webp?size=128" alt="icon">
+                    </svg>
+                </div>
+
+            </div>
+
+            <div class="bio-box">
+                <span id="typewriter"></span><span class="cursor">|</span>
+            </div>
+
+            <a href="https://discord.gg/FDq7Tu7UCf" target="_blank" class="discord-widget">
+                <div class="discord-icon">
+                    <img src="https://i.pinimg.com/736x/af/f1/34/aff1344d223066e7a908b3cb60e16d36.jpg" alt="Icon">
+                </div>
+                <div class="discord-info">
+                    <span class="discord-name">Join ZyNuk3Bot</span>
+                    <div class="discord-status">
+                        <div class="status-item">
+                            <span class="status-dot"></span>
+                            <span id="online-count">Fetching...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-dot gray" style="margin-left: 8px;"></span>
+                            <span id="total-count">...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="join-btn">Join</div>
+            </a>
+
+            <div class="social-grid">
+                <a href="https://youtube.com/@Y4n9x1" target="_blank" class="social-btn" title="YouTube"><i
+                        class="fab fa-youtube"></i></a>
+                <a href="https://github.com/Yyyyy222222" target="_blank" class="social-btn" title="GitHub"><i
+                        class="fab fa-github"></i></a>
+                <a href="#" target="_blank" class="social-btn" title="Steam"><i class="fab fa-steam"></i></a>
+
+                <a href="#" target="_blank" class="social-btn" title="Roblox">
+                    <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
+                        fill="rgba(255,255,255,0.7)">
+                        <path
+                            d="M18.926 23.998L0 18.892L5.315 0.002L24.241 5.108L18.926 23.998ZM10.461 12.162L15.908 13.63L14.376 18.974L8.929 17.506L10.461 12.162Z" />
+                    </svg>
+                </a>
+
+                <a href="#" target="_blank" class="social-btn" title="TikTok"><i class="fab fa-tiktok"></i></a>
+                <a href="#" target="_blank" class="social-btn" title="Spotify"><i class="fab fa-spotify"></i></a>
+            </div>
+
+            <div class="volume-control">
+                <i class="fas fa-volume-down"></i>
+                <input type="range" id="vol-slider" min="0" max="100" value="40">
+                <i class="fas fa-volume-up"></i>
+            </div>
+
+            <div class="footer">
+                <span><i class="fas fa-eye"></i> 69,114,514</span>
+                <span><i class="fas fa-copyright"></i> 2025-2125</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 設定 (保持原本內容) ---
+        const pageTitle = " !E Xun | Welcome | ";
+        const bioText = ["Developer", "FromTaiwan", "❤", "love you", "✡"];
+        const discordInviteCode = "FDq7Tu7UCf";
+
+        // --- 變數 ---
+        let titleIndex = 0;
+        const enterOverlay = document.getElementById('enter-overlay');
+        const cardContainer = document.getElementById('card-container');
+        const profileCard = document.getElementById('profile-card');
+        const bgVideo = document.getElementById('bg-video');
+        const bgMusic = document.getElementById('bg-music');
+        const volSlider = document.getElementById('vol-slider');
+        const typewriterSpan = document.getElementById('typewriter');
+
+        // Discord 計數器元件
+        const onlineCountSpan = document.getElementById('online-count');
+        const totalCountSpan = document.getElementById('total-count');
+
+        // --- 1. 點擊進入 ---
+        enterOverlay.addEventListener('click', () => {
+            enterOverlay.style.opacity = '0';
+            enterOverlay.style.visibility = 'hidden';
+
+            cardContainer.style.visibility = 'visible';
+            cardContainer.style.opacity = '1';
+
+            bgVideo.play();
+            bgMusic.volume = volSlider.value / 100;
+            bgMusic.play().catch(e => console.log("Audio error:", e));
+
+            initTypewriter();
+            setInterval(scrollTitle, 200);
+
+            // 抓取 Discord 資料
+            fetchDiscordStats();
+        });
+
+        // --- 2. 獲取 Discord 詳細人數 (Online & Total) ---
+        async function fetchDiscordStats() {
+            try {
+                const response = await fetch(`https://discord.com/api/v9/invites/${discordInviteCode}?with_counts=true`);
+                const data = await response.json();
+
+                if (data.approximate_presence_count) {
+                    // 格式化數字
+                    const online = new Intl.NumberFormat('en-US').format(data.approximate_presence_count);
+                    const total = new Intl.NumberFormat('en-US').format(data.approximate_member_count);
+
+                    onlineCountSpan.innerText = `${online} Online`;
+                    totalCountSpan.innerText = `${total} Members`;
+                } else {
+                    onlineCountSpan.innerText = "N/A Online";
+                    totalCountSpan.innerText = "";
+                }
+            } catch (error) {
+                console.error("Discord Fetch Error:", error);
+                onlineCountSpan.innerText = "1,337 Online";
+                totalCountSpan.innerText = "9,999 Members";
+            }
+        }
+
+        // --- 3. 3D 視差懸浮效果 ---
+        document.addEventListener('mousemove', (e) => {
+            if (window.innerWidth < 768) return;
+
+            const x = (window.innerWidth / 2 - e.pageX) / 20;
+            const y = (window.innerHeight / 2 - e.pageY) / 20;
+
+            const rotateX = Math.max(-15, Math.min(15, y));
+            const rotateY = Math.max(-15, Math.min(15, -x));
+
+            profileCard.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+        });
+
+        document.addEventListener('mouseleave', () => {
+            profileCard.style.transform = `rotateX(0deg) rotateY(0deg)`;
+        });
+
+        // --- 4. 標題滾動 ---
+        function scrollTitle() {
+            document.title = pageTitle.substring(titleIndex) + pageTitle.substring(0, titleIndex);
+            titleIndex = (titleIndex + 1) % pageTitle.length;
+        }
+
+        // --- 5. 音量控制 ---
+        volSlider.addEventListener('input', (e) => {
+            bgMusic.volume = e.target.value / 100;
+        });
+
+        // --- 6. 打字機 ---
+        let textIndex = 0;
+        let charIndex = 0;
+        let isDeleting = false;
+        const typingSpeed = 100;
+        const deleteSpeed = 50;
+        const pauseTime = 1500;
+
+        function initTypewriter() {
+            const currentText = bioText[textIndex];
+
+            if (isDeleting) {
+                typewriterSpan.textContent = currentText.substring(0, charIndex - 1);
+                charIndex--;
+            } else {
+                typewriterSpan.textContent = currentText.substring(0, charIndex + 1);
+                charIndex++;
+            }
+
+            let typeSpeedCurrent = isDeleting ? deleteSpeed : typingSpeed;
+
+            if (!isDeleting && charIndex === currentText.length) {
+                typeSpeedCurrent = pauseTime;
+                isDeleting = true;
+            } else if (isDeleting && charIndex === 0) {
+                isDeleting = false;
+                textIndex = (textIndex + 1) % bioText.length;
+                typeSpeedCurrent = 500;
+            }
+
+            setTimeout(initTypewriter, typeSpeedCurrent);
+        }
+
+        // --- 7. 背景粒子 ---
+        const canvas = document.getElementById('canvas-overlay');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 1.5;
+                this.speedY = Math.random() * 0.5 + 0.2;
+                this.speedX = (Math.random() - 0.5) * 0.3;
+                this.opacity = Math.random() * 0.5 + 0.2;
+            }
+            update() {
+                this.y += this.speedY;
+                this.x += this.speedX;
+                if (this.y > canvas.height) this.y = 0;
+                if (this.x > canvas.width) this.x = 0;
+                if (this.x < 0) this.x = canvas.width;
+            }
+            draw() {
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            for (let i = 0; i < 80; i++) particles.push(new Particle());
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+            }
+            requestAnimationFrame(animateParticles);
+        }
+
+        initParticles();
+        animateParticles();
+    </script>
+</body>
+
+</html>
