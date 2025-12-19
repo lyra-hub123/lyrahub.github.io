@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Zynuke - 數位毀滅軍火庫 | The Singularity (Merged)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;900&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+TC:wght@400;700;900&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- GSAP & Lenis -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script src="https://unpkg.com/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+    <script src="https://unpkg.com/split-type"></script>
+    
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        :root {
+            --bg-black: #050505;
+            --text-white: #ffffff;
+            --accent-red: #ff3333;
+            --accent-cyan: #00f3ff;
+            --accent-purple: #bd00ff;
+            --blob-color: rgba(255, 51, 51, 0.25);
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: var(--bg-black);
+            color: var(--text-white);
+            overflow-x: hidden;
+            margin: 0;
+            width: 100vw;
+            cursor: default;
+        }
+
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* UI Layers */
+        .noise-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyBAMAAADsEZWCAAAAGFBMVEUAAAA5OTkAAABERERmZmYzMzMyMjJEREQN0eLFAAAACHRSTlMAwADw/cgF/45P4jwAAABcSURBVDjLY2AYBaNg2AJGJiBpC2QYgJQVSA4A0hYgOQJIGYFkP5A8ACRvA8m7QHIYkDwCJE8AyRNA8hKQPAskbwHJs0DyHJA8DySvAMkrQPIqkLwKJK8CyatA8igAANC3O1/q/K6AAAAAAElFTkSuQmCC");
+            opacity: 0.04; pointer-events: none; z-index: 9990;
+        }
+        
+        .vignette {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.95) 100%);
+            pointer-events: none; z-index: 9989;
+        }
+
+        .scanline {
+            position: fixed; left: 0; top: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.3) 3px);
+            z-index: 9991; pointer-events: none; opacity: 0.3;
+        }
+
+        /* WebGL Canvas */
+        #webgl-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; pointer-events: none;
+            transform: translate3d(0, 0, 0); 
+        }
+
+        /* Mouse Blob */
+        #mouse-blob {
+            position: fixed; top: 0; left: 0; width: 800px; height: 800px;
+            background: radial-gradient(circle, var(--blob-color) 0%, rgba(0,0,0,0) 65%);
+            border-radius: 50%; pointer-events: none; z-index: -1; opacity: 0.6;
+            transform: translate3d(-50%, -50%, 0); will-change: transform; mix-blend-mode: screen;
+        }
+
+        /* HUD */
+        .hud-layer { position: fixed; inset: 0; z-index: 9900; pointer-events: none; padding: 20px; box-sizing: border-box; }
+        .hud-coords { position: absolute; bottom: 35px; right: 40px; font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent-red); opacity: 0.8; text-align: right; line-height: 1.6; }
+        .chapter-indicator { position: absolute; top: 30px; left: 30px; font-family: 'JetBrains Mono'; font-size: 12px; color: var(--text-white); opacity: 0.5; letter-spacing: 2px; }
+        @media (max-width: 768px) { .hud-coords { display: none; } }
+
+        /* Bento Card */
+        .bento-card {
+            background: rgba(10, 10, 15, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative; overflow: hidden;
+            backdrop-filter: blur(8px);
+            transform-style: preserve-3d;
+            will-change: transform;
+            transition: border-color 0.3s ease, background-color 0.3s ease;
+        }
+        .bento-card:hover { border-color: var(--accent-red); background: rgba(20, 15, 15, 0.8); }
+
+        .text-hero { 
+            font-size: clamp(2.5rem, 9vw, 7rem); line-height: 1.0; font-weight: 900; 
+            letter-spacing: -0.04em; text-transform: uppercase;
+        }
+        
+        .member-avatar { filter: grayscale(100%); transition: filter 0.3s ease; }
+        .member-card:hover .member-avatar { filter: grayscale(0%); }
+
+        @keyframes scan-vertical { 0% { top: -100%; } 100% { top: 200%; } }
+        .animate-scan-line {
+            position: absolute; left: 0; width: 100%; height: 20%;
+            background: linear-gradient(to bottom, transparent, rgba(255, 51, 51, 0.3), transparent);
+            animation: scan-vertical 2.5s linear infinite; pointer-events: none;
+        }
+
+        /* Marquee Lag Text */
+        .lag-marquee-container {
+            position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 1; z-index: 0;
+            mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+        }
+        .lag-marquee-track {
+            display: flex; white-space: nowrap; will-change: transform;
+        }
+        .lag-text-item {
+            font-family: 'JetBrains Mono', monospace; font-size: 18px;
+            color: rgba(255, 50, 50, 0.8); 
+            text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+            margin-right: 4rem; font-weight: 700; letter-spacing: 2px;
+        }
+
+        /* Start Screen */
+        #start-screen {
+            position: fixed; inset: 0; background: #000; z-index: 100000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; transition: opacity 1s ease-out;
+        }
+        .start-btn {
+            border: 1px solid var(--accent-red); padding: 1rem 3rem;
+            font-family: 'JetBrains Mono'; color: white;
+            transition: all 0.3s; text-transform: uppercase; letter-spacing: 2px;
+        }
+        .start-btn:hover { background: var(--accent-red); color: black; box-shadow: 0 0 30px var(--accent-red); }
+
+        .nav-item { display: none; }
+        @media (min-width: 768px) { .nav-item { display: block; } }
+        #viewport { width: 100%; overflow-x: hidden; }
+        
+        /* Spacer */
+        .warp-transit {
+            height: 40vh; 
+            display: flex; align-items: center; justify-content: center;
+            position: relative; z-index: 10; pointer-events: none; 
+        }
+        .warp-message {
+            font-family: 'Orbitron'; color: rgba(255, 255, 255, 0.3);
+            font-size: 1.5rem; letter-spacing: 0.5em;
+            text-transform: uppercase; animation: pulse-slow 3s infinite;
+        }
+        
+        @keyframes pulse-slow { 0%,100%{opacity:0.1;} 50%{opacity:0.5;} }
+        
+        .text-h2-legacy { font-size: clamp(2rem, 5vw, 4rem); font-weight: 800; letter-spacing: -0.02em; margin-bottom: 1rem; }
+        .glitch-wrapper { position: relative; display: inline-block; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- BGM Audio -->
+    <audio id="bg-music" loop>
+        <source src="https://audio.jukehost.co.uk/TRoppfRscqjnGzjovKLTf3FCvxDDgAFL" type="audio/mpeg">
+    </audio>
+
+    <!-- Start Screen Overlay -->
+    <div id="start-screen">
+        <div class="text-4xl font-black tracking-tighter mb-4 text-white">Zynuke</div>
+        <div class="text-red-500 font-mono mb-8 text-sm animate-pulse tracking-widest">SYSTEM SECURE // CLICK TO ENTER HYPERSPACE</div>
+        <div class="start-btn">INITIALIZE FUSION</div>
+        <div class="mt-4 text-xs text-gray-600 font-mono">Loading Core Modules...</div>
+    </div>
+
+    <div class="noise-overlay"></div>
+    <div class="vignette"></div>
+    <div class="scanline"></div>
+    
+    <div id="mouse-blob"></div>
+    <div id="webgl-canvas"></div>
+    
+    <div class="hud-layer">
+        <div class="chapter-indicator" id="chapter-display">PART I: THE ARSENAL</div>
+        <div class="hud-coords">
+            WARP DRIVE: <span id="warp-status">STANDBY</span><br>
+            STARS: 50,000<br>
+            SPEED: <span id="speed-indicator">1X</span>
+        </div>
+    </div>
+
+    <div id="viewport">
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 mix-blend-difference px-6 py-6 md:px-12 opacity-0" id="navbar">
+        <div class="flex justify-between items-center max-w-[1800px] mx-auto">
+            <a href="#" class="text-xl md:text-2xl font-bold tracking-tighter hover:text-red-500 transition-colors">Zynuke</a>
+            <nav class="hidden md:flex gap-8 text-sm font-medium">
+                <a href="#philosophy" class="hover:text-red-500 transition-colors nav-item">毀滅宣言</a>
+                <a href="#problem" class="hover:text-cyan-400 transition-colors nav-item">現狀與解法</a>
+                <a href="#hyper-warp" class="hover:text-red-500 transition-colors nav-item">Hyper Warp</a>
+                <a href="#nuke" class="hover:text-red-500 transition-colors nav-item">歸零引擎</a>
+                <a href="#services" class="hover:text-red-500 transition-colors nav-item">服務報價</a>
+            </nav>
+            <a href="" target="_blank" class="font-medium text-xs md:text-sm border border-white px-4 py-2 hover:bg-white hover:text-black transition-colors">
+                獲取權限
+            </a>
+        </div>
+    </header>
+
+    <main>
+        
+        <!-- ========================================= -->
+        <!-- CHAPTER 1: GENESIS (Combined Hero) -->
+        <!-- ========================================= -->
+
+        <section class="relative min-h-screen flex flex-col justify-center border-b border-white/10 overflow-hidden" id="hero" data-chapter="CH.01 GENESIS">
+            <div class="absolute inset-0 z-0 opacity-10">
+                <img src="https://i.pinimg.com/1200x/13/41/45/13414519583c03a8576b45d6171c11c9.jpg" alt="Background" class="w-full h-full object-cover brightness-[0.4] parallax-bg">
+            </div>
+
+            <div class="relative z-10 px-6 md:px-12 max-w-[1800px] mx-auto w-full pt-20 pointer-events-none">
+                <h1 class="text-hero mb-8 text-white split-text mix-blend-difference">
+                    我們是<br>
+                    數位廢墟的<br>
+                    建築師。
+                </h1>
+                <p class="text-base md:text-xl max-w-3xl text-gray-300 mb-12 opacity-0 hero-sub mix-blend-difference leading-relaxed">
+                    Zynuke 不僅是一個工具庫，它是對於網際網路絕對秩序的宣戰。<br>
+                    <span class="text-white font-bold">瞬間刪除。全域封鎖。無情洗版。</span><br>
+                    當秩序崩塌，Zynuke 便是唯一的法則。
+                </p>
+            </div>
+        </section>
+
+        <!-- WARP TRANSIT -->
+        <div class="warp-transit"><div class="warp-message">ENTERING THE VOID</div></div>
+
+        <!-- ========================================= -->
+        <!-- CHAPTER 2: THE VOID (Philosophy) -->
+        <!-- ========================================= -->
+
+        <section id="philosophy" class="min-h-screen flex items-center px-6 md:px-12 border-y border-white/10 bg-black/60 relative z-10 py-20 backdrop-blur-sm" data-chapter="CH.02 THE VOID">
+            <div class="max-w-[1800px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
+                <div class="flex items-center">
+                    <h2 class="text-4xl md:text-7xl font-bold tracking-tighter mb-8 split-text leading-tight">
+                        為何我們<br>
+                        要摧毀<br>
+                        <span class="text-red-600">一切？</span>
+                    </h2>
+                </div>
+                <div class="space-y-8 md:space-y-12">
+                    <div class="anim-fade opacity-0 translate-y-4">
+                        <p class="text-lg md:text-2xl leading-relaxed text-gray-300 font-light border-l-2 border-red-500 pl-6">
+                            「AI 可以取代創作，但無法取代毀滅的快感。」
+                        </p>
+                    </div>
+                    <div class="anim-fade opacity-0 translate-y-4">
+                        <p class="text-lg md:text-2xl leading-relaxed text-gray-400 font-light">
+                            建立一個伺服器需要數月，累積信任、培養文化。<br>
+                            但 Zynuke 讓它歸零只需要 <span class="text-red-500 font-bold">3 秒鐘</span>。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================= -->
+        <!-- CHAPTER 3: PROBLEM & SOLUTION (From 123 copy) -->
+        <!-- ========================================= -->
+
+        <section id="problem" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-y border-white/10 bg-[#020202]/80 py-20 backdrop-blur-md" data-chapter="CH.03 PROBLEM">
+            <div class="max-w-[1200px] mx-auto w-full">
+                <h2 class="text-h2-legacy text-left mb-12 split-text text-white">現有的解決方案<br><span class="text-gray-600">太慢了。</span></h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bento-card anim-card"><h3 class="text-xl font-bold text-white mb-2">API 限制</h3><p class="text-sm text-gray-400">傳統機器人受限於 Discord 每秒請求數 (Rate Limits)。</p></div>
+                    <div class="bento-card anim-card" style="transition-delay:0.1s"><h3 class="text-xl font-bold text-white mb-2">單線程瓶頸</h3><p class="text-sm text-gray-400">無法同時處理大量的封鎖請求，效率低落。</p></div>
+                    <div class="bento-card anim-card" style="transition-delay:0.2s"><h3 class="text-xl font-bold text-white mb-2">容易被偵測</h3><p class="text-sm text-gray-400">簡單的 Python 腳本很快就會被 Discord 安全系統封鎖。</p></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="solution" class="min-h-screen flex items-center justify-center px-6 md:px-12 border-y border-white/10 bg-black" data-chapter="CH.04 PROTOCOL">
+            <div class="max-w-[1200px] mx-auto w-full text-center">
+                <div class="text-cyan-400 font-mono mb-4 animate-pulse">SYSTEM OVERRIDE</div>
+                <h2 class="text-hero text-white split-text">LYRA PROTOCOL</h2>
+                <p class="text-xl text-gray-400 mx-auto mt-8 anim-fade max-w-2xl">我們重寫了底層邏輯，利用 <span class="text-white">Asyncio 非阻塞架構</span>，繞過限制，實現真正的並發攻擊。</p>
+            </div>
+        </section>
+
+        <!-- WARP TRANSIT -->
+        <div class="warp-transit"><div class="warp-message">ENGAGING HYPERWARP</div></div>
+
+        <!-- ========================================= -->
+        <!-- CHAPTER 4: HYPER WARP (The Weapon) -->
+        <!-- ========================================= -->
+
+        <section id="hyper-warp" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-y border-white/10 relative bg-[#020202]/80 py-20 backdrop-blur-md" data-chapter="CH.05 HYPER WARP">
+            <div class="max-w-[1800px] mx-auto w-full relative z-10">
+                <div class="mb-12 md:mb-20 flex flex-col md:flex-row justify-between items-end">
+                    <div>
+                        <div class="text-xs md:text-sm font-mono text-purple-400 mb-4 anim-fade">MODULE ALPHA: SWARM</div>
+                        <h2 class="text-4xl md:text-8xl font-bold tracking-tighter text-white split-text">Hyper Warp<br>通訊癱瘓協議</h2>
+                    </div>
+                    <div class="text-right hidden md:block">
+                         <div class="text-5xl font-bold text-purple-500 count-up" data-target="50">0</div>
+                         <div class="text-sm font-mono text-gray-400">SYNC BOTS ACTIVE</div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bento-card p-6 md:p-8 min-h-[300px] flex flex-col justify-between anim-card" data-tilt>
+                        <div class="font-mono text-sm text-gray-500">蜂群意識 (HIVE MIND)</div>
+                        <div>
+                            <p class="text-gray-300 text-lg mb-4">這不只是發送訊息。50 個 Token 同時運作，瞬間淹沒任何人類的對話嘗試。</p>
+                            <p class="text-gray-500 text-sm font-mono">> 2,400 MESSAGES / SEC</p>
+                        </div>
+                    </div>
+                    <!-- Code Card from 2.html -->
+                    <div class="bento-card p-6 md:p-8 min-h-[300px] flex flex-col justify-between col-span-1 md:col-span-2 anim-card" data-tilt style="transition-delay: 0.1s">
+                        <div class="flex justify-between items-center">
+                            <div class="font-mono text-sm text-gray-500">CORE KERNEL</div>
+                            <div class="text-xs text-red-500 font-mono animate-pulse">LIVE EXECUTION</div>
+                        </div>
+                        <pre class="text-xs md:text-sm text-gray-400 font-mono overflow-x-auto whitespace-pre-wrap break-all md:whitespace-pre">
+<span class="text-purple-400">async def</span> <span class="text-cyan-400">z0</span>(tid, atkr):
+    ts = [asyncio.create_task(w0(tk[i], i+1, tid, a1a)) 
+          <span class="text-purple-400">for</span> i <span class="text-purple-400">in</span> <span class="text-cyan-400">range</span>(<span class="text-cyan-400">len</span>(tk))]
+    <span class="text-purple-400">await</span> asyncio.gather(*ts)
+    <span class="text-purple-400">return</span> <span class="text-cyan-400">True</span>, f<span class="text-green-400">"Target annihilated in 0.02s."</span>
+                        </pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================= -->
+        <!-- CHAPTER 5: SHIELD (VIP & Defense) -->
+        <!-- ========================================= -->
+
+        <section class="min-h-screen flex items-center px-6 md:px-12 border-y border-white/10 bg-black/70 py-20 backdrop-blur-sm" data-chapter="CH.06 SHIELD">
+            <div class="max-w-[1800px] mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                <div class="order-2 lg:order-1">
+                    <h2 class="text-4xl md:text-5xl font-bold mb-6 split-text text-white">絕對霸權<br>防禦機制</h2>
+                    <p class="text-gray-400 mb-8">這不只是矛，也是盾。我們保護付費者。</p>
+                    <ul class="space-y-6 font-mono text-sm text-gray-300 border-l border-white/20 pl-6 anim-stagger-list">
+                        <li class="flex items-center justify-between border-b border-white/10 pb-2">
+                            <span>VIP PROTECTION (絕對豁免權)</span>
+                            <span class="text-green-400">ACTIVE</span>
+                        </li>
+                        <li class="flex items-center justify-between border-b border-white/10 pb-2">
+                            <span>AUTO LOCK (自動鎖定敵對用戶)</span>
+                            <span class="text-green-400">ACTIVE</span>
+                        </li>
+                        <li class="flex items-center justify-between border-b border-white/10 pb-2">
+                            <span>COUNTER ATTACK (自動反擊)</span>
+                            <span class="text-red-500 animate-pulse">STANDBY</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="order-1 lg:order-2 flex justify-center">
+                    <div class="bento-card w-full max-w-xs md:max-w-md aspect-square flex items-center justify-center relative rounded-full border-2 border-red-500/30 anim-scale" data-tilt>
+                        <div class="text-center z-10">
+                            <div class="text-6xl md:text-9xl font-bold mb-2 tracking-tighter text-red-500 count-up" data-target="100">0</div>
+                            <div class="text-lg md:text-xl text-gray-400 font-mono tracking-widest">% CLEANSED</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- WARP TRANSIT -->
+        <div class="warp-transit"><div class="warp-message">SYSTEM CRITICAL</div></div>
+
+        <!-- ========================================= -->
+        <!-- CHAPTER 6: NUKE ENGINE (NeverForget) -->
+        <!-- ========================================= -->
+
+        <section id="nuke" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-y border-white/10 bg-red-950/10 relative py-20 backdrop-blur-md" data-chapter="CH.07 ZERO POINT">
+            <div class="max-w-[1800px] mx-auto w-full relative z-10">
+                <div class="flex flex-col md:flex-row justify-between items-end mb-12 md:mb-20">
+                    <div>
+                        <div class="text-xs md:text-sm font-mono text-red-500 mb-4 anim-fade">MODULE BETA: SCORCHED EARTH</div>
+                        <h2 class="text-4xl md:text-8xl font-bold tracking-tighter text-white split-text">NeverForget<br>歸零引擎</h2>
+                    </div>
+                    <div class="text-right hidden md:block anim-fade">
+                        <div class="text-red-500 font-bold text-xl">v2.0</div>
+                        <div class="text-gray-500 font-mono">ULTRAFAST PROTOCOL</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bento-card p-6 border-red-500/30 anim-card group min-h-[150px]" data-tilt>
+                        <div class="text-red-500 text-lg font-bold mb-2">抹除 (ERASE)</div>
+                        <p class="text-sm text-gray-400">非同步並行刪除所有頻道與身分組。</p>
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-red-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                    </div>
+                    <div class="bento-card p-6 border-red-500/30 anim-card group min-h-[150px]" style="transition-delay: 0.1s" data-tilt>
+                        <div class="text-red-500 text-lg font-bold mb-2">污染 (POLLUTE)</div>
+                        <p class="text-sm text-gray-400">瞬間生成 200+ 個垃圾頻道。</p>
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-red-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                    </div>
+                    <div class="bento-card p-6 border-red-500/30 anim-card group min-h-[150px]" style="transition-delay: 0.2s" data-tilt>
+                        <div class="text-red-500 text-lg font-bold mb-2">清洗 (PURGE)</div>
+                        <p class="text-sm text-gray-400">以 100 人為單位的批量封鎖。</p>
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-red-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                    </div>
+                    <div class="bento-card p-6 border-red-500/30 anim-card group min-h-[150px]" style="transition-delay: 0.3s" data-tilt>
+                        <div class="text-red-500 text-lg font-bold mb-2">佔領 (CONQUER)</div>
+                        <p class="text-sm text-gray-400">強制更名為 "nuke by NeverForget"。</p>
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-red-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================= -->
+        <!-- CHAPTER 7: ENTROPY (Lag + Marquee) -->
+        <!-- ========================================= -->
+
+        <section class="min-h-screen flex items-center justify-center px-6 md:px-12 border-y border-white/10 overflow-hidden relative bg-black/95" data-chapter="CH.08 ENTROPY">
+            <!-- Animated Marquee Background -->
+            <div class="lag-marquee-container">
+                <div class="lag-marquee-track" id="lag-track-1">
+                    <!-- JS populated -->
+                </div>
+            </div>
+            
+            <div class="relative z-10 text-center">
+                <h2 class="text-4xl md:text-9xl font-black mb-4 tracking-tighter text-white mix-blend-difference split-text glitch-wrapper">
+                    UNICODE<br>OVERLOAD
+                </h2>
+                <p class="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto anim-fade">
+                    不僅是炸群，更是對硬體的攻擊。<br>
+                    <span class="text-white font-mono">lag.txt</span> 載荷包含特殊編碼，旨在凍結受害者的 Discord 客戶端。
+                </p>
+            </div>
+        </section>
+
+        <!-- ========================================= -->
+        <!-- CHAPTER 8: TERMINAL (Interactive) -->
+        <!-- ========================================= -->
+
+        <section class="min-h-screen flex items-center px-6 md:px-12 border-y border-white/10 bg-[#050505]/90 relative py-20 backdrop-blur-md" data-chapter="CH.09 TERMINAL">
+            <div class="max-w-[1200px] mx-auto w-full relative z-10">
+                <div class="mb-12 text-center">
+                    <h2 class="text-4xl font-bold mb-4 split-text text-white">戰術控制台</h2>
+                    <p class="text-gray-400 anim-fade">直接體驗控制混亂的快感。輸入指令，發動災難。</p>
+                </div>
+
+                <div class="w-full bg-black border border-white/20 rounded-lg overflow-hidden shadow-2xl anim-scale" data-tilt>
+                    <div class="flex items-center px-4 py-2 border-b border-white/10 bg-[#111]">
+                        <div class="flex gap-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <div class="ml-4 text-xs font-mono text-gray-500">admin@lyrahub:~/weapons</div>
+                    </div>
+                    <div class="p-6 h-[300px] md:h-[400px] font-mono text-sm overflow-y-auto relative" id="terminal-output">
+                        <div class="text-gray-500 mb-2"># Initializing Weapon Systems...</div>
+                        <div class="text-gray-500 mb-2"># Loading Payloads: [HyperWarp.py] [main.py] [1145.py]</div>
+                        <div class="text-red-500 mb-4">⚠ 系統已解除保險 (SYSTEM ARMED).</div>
+                        <div class="flex">
+                            <span class="text-red-500 mr-2">➜</span>
+                            <span class="text-white mr-2">~</span>
+                            <span class="text-white" id="terminal-input-display"></span>
+                            <span class="w-2 h-5 bg-white animate-pulse ml-1"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 anim-stagger-list">
+                    <button onclick="runCmd('!spam_dm target')" class="border border-white/20 py-4 text-sm font-mono text-white hover:bg-red-900/30 transition-colors">!spam_dm</button>
+                    <button onclick="runCmd('!nuke_cmd')" class="border border-white/20 py-4 text-sm font-mono text-white hover:bg-red-900/30 transition-colors">!nuke_cmd</button>
+                    <button onclick="runCmd('/spam lag')" class="border border-white/20 py-4 text-sm font-mono text-white hover:bg-red-900/30 transition-colors">/spam lag</button>
+                    <button onclick="runCmd('sys_status')" class="border border-white/20 py-4 text-sm font-mono text-white hover:bg-red-900/30 transition-colors">sys_status</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================= -->
+        <!-- CHAPTER 9: TEAM (Architects) -->
+        <!-- ========================================= -->
+
+        <section id="team" class="min-h-screen flex items-center justify-center px-6 md:px-12 border-y border-white/10 relative py-20 bg-black/80 backdrop-blur-sm" data-chapter="CH.10 ARCHITECTS">
+            <div class="max-w-[1800px] mx-auto w-full">
+                <div class="mb-20 text-center">
+                    <div class="text-sm font-mono text-gray-500 mb-4 anim-fade">THE ARCHITECTS</div>
+                    <h2 class="text-5xl md:text-7xl font-bold tracking-tighter mb-8 split-text text-white">核心團隊</h2>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <!-- Members -->
+                    <div class="bento-card member-card p-8 flex flex-col items-center text-center anim-card" data-tilt>
+                        <div class="w-32 h-32 rounded-full overflow-hidden mb-6 border-2 border-white/10 relative">
+                            <img src="https://cdn.discordapp.com/avatars/1402475195360481320/fdb4c522cc0006af784afb0dbf7cd291.webp?size=1024" alt="Light" class="member-avatar w-full h-full object-cover">
+                        </div>
+                        <h3 class="text-2xl font-bold mb-2 text-white">light</h3>
+                        <p class="text-sm text-gray-400 font-mono italic">「這裡曾經有個人，後來他連『曾經』都不配有了。」</p>
+                    </div>
+                    <div class="bento-card member-card p-8 flex flex-col items-center text-center anim-card" style="transition-delay: 0.1s" data-tilt>
+                        <div class="w-32 h-32 rounded-full overflow-hidden mb-6 border-2 border-white/10 relative">
+                            <img src="https://cdn.discordapp.com/attachments/1443927726208712776/1443933484589777047/hidden-face-pfp-39.jpg?ex=692cd999&is=692b8819&hm=69b740f88e3fd2610c040a642477136be18d0a5bf63cfe38a9485aa8c4f38b69&" onerror="this.src='https://ui-avatars.com/api/?name=FALED&background=random&color=fff'" alt="FALED" class="member-avatar w-full h-full object-cover">
+                        </div>
+                        <h3 class="text-2xl font-bold mb-2 text-white">FALED</h3>
+                        <p class="text-sm text-gray-500 font-mono italic opacity-50">(這個人非常懶惰完全不想寫個性簽名)</p>
+                    </div>
+                    <div class="bento-card member-card p-8 flex flex-col items-center text-center anim-card" style="transition-delay: 0.2s" data-tilt>
+                        <div class="w-32 h-32 rounded-full overflow-hidden mb-6 border-2 border-white/10 relative">
+                            <img src="https://cdn.discordapp.com/avatars/1111921558114553876/b0e629b96159b03fcc3391f7354972d4.webp?size=1024" alt="勞氏萊斯" class="member-avatar w-full h-full object-cover">
+                        </div>
+                        <h3 class="text-2xl font-bold mb-2 text-white">勞氏萊斯</h3>
+                        <p class="text-sm text-gray-400 font-mono italic">Jim</p>
+                    </div>
+                    <div class="bento-card member-card p-8 flex flex-col items-center text-center anim-card" style="transition-delay: 0.3s" data-tilt>
+                        <div class="w-32 h-32 rounded-full overflow-hidden mb-6 border-2 border-white/10 relative">
+                            <img src="https://cdn.discordapp.com/avatars/1108004585349599273/ab87ad49effe6e4931d24f74fb023b2a.webp?size=1024" alt="IE" class="member-avatar w-full h-full object-cover">
+                        </div>
+                        <h3 class="text-2xl font-bold mb-2 text-white">IE</h3>
+                        <p class="text-sm text-gray-400 font-mono italic">Light是gay</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- WARP TRANSIT -->
+        <div class="warp-transit"><div class="warp-message">ENDGAME</div></div>
+
+        <!-- ========================================= -->
+        <!-- CHAPTER 10: CONTRACTS (Services) -->
+        <!-- ========================================= -->
+
+        <section id="services" class="min-h-screen flex items-center justify-center px-6 md:px-12 border-y border-white/10 relative bg-[#050505]/80 py-20 backdrop-blur-md" data-chapter="CH.11 CONTRACTS">
+            <div class="max-w-[1800px] mx-auto w-full">
+                <div class="mb-20 text-center">
+                    <div class="text-sm font-mono text-gray-500 mb-4 anim-fade">MERCENARY CONTRACTS</div>
+                    <h2 class="text-5xl md:text-7xl font-bold tracking-tighter mb-8 split-text text-white">服務與報價</h2>
+                    <p class="text-gray-400 max-w-2xl mx-auto anim-fade">
+                        提供專業客製化開發與自架託管服務。所有交易均透過 Ticket 私訊進行。
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="bento-card p-8 border-l-4 border-l-purple-500 anim-card min-h-[300px] flex flex-col" data-tilt>
+                        <div class="flex justify-between items-start mb-6">
+                            <h3 class="text-2xl font-bold text-white">一般官網製作</h3>
+                            <span class="bg-purple-900/50 text-purple-300 text-xs font-mono px-2 py-1 rounded">WEB DEV</span>
+                        </div>
+                        <p class="text-gray-400 text-sm mb-6 flex-1">完全客製化設計、RWD 響應式版面、品牌形象統一。</p>
+                        <div class="mt-auto">
+                            <div class="text-3xl font-bold text-white mb-1">TWD 500 <span class="text-sm font-normal text-gray-500">起</span></div>
+                            <div class="text-xs text-gray-600 font-mono">依內容複雜度報價</div>
+                        </div>
+                    </div>
+                    <div class="bento-card p-8 border-l-4 border-l-purple-500 anim-card min-h-[300px] flex flex-col" style="transition-delay: 0.1s" data-tilt>
+                        <div class="flex justify-between items-start mb-6">
+                            <h3 class="text-2xl font-bold text-white">客製機器人</h3>
+                            <span class="bg-purple-900/50 text-purple-300 text-xs font-mono px-2 py-1 rounded">BOT DEV</span>
+                        </div>
+                        <p class="text-gray-400 text-sm mb-6 flex-1">24/7 不下線自架託管。指令、等級、票務皆可客製。</p>
+                        <div class="mt-auto">
+                            <div class="text-3xl font-bold text-white mb-1">NT$300 <span class="text-sm font-normal text-gray-500">Steam Card 起</span></div>
+                            <div class="text-xs text-gray-600 font-mono">依功能複雜度報價</div>
+                        </div>
+                    </div>
+                    <!-- Combined "Targeted Strike" card from 123 copy -->
+                    <div class="bento-card p-8 border-l-4 border-l-red-500 lg:col-span-1 anim-card min-h-[300px] flex flex-col" style="transition-delay: 0.2s" data-tilt>
+                         <div class="flex justify-between items-start mb-6">
+                            <h3 class="text-2xl font-bold text-white">自定義炸群</h3>
+                            <span class="bg-red-900/50 text-red-300 text-xs font-mono px-2 py-1 rounded">TARGETED</span>
+                        </div>
+                        <p class="text-gray-400 text-sm mb-6 flex-1">
+                             價格到位，萬人伺服器亦可毀滅。<br>
+                            <span class="text-red-400 italic">「有感筆電只能看著他的群被炸，就像那無能的丈夫一樣。」</span>
+                        </p>
+                        <div class="mt-auto">
+                            <div class="text-3xl font-bold text-red-500 mb-1">私訊報價</div>
+                            <div class="text-xs text-gray-600 font-mono">100% 匿名保障</div>
+                        </div>
+                    </div>
+                    <div class="bento-card p-8 border-l-4 border-l-red-500 lg:col-span-3 anim-card min-h-[200px] flex flex-col items-center justify-center text-center" style="transition-delay: 0.4s" data-tilt>
+                        <h3 class="text-3xl font-bold text-white mb-4">帳號取得與教學</h3>
+                         <p class="text-gray-400 text-sm mb-6">提供專業帳號取得服務，或購買完整的技術教學課程 (BLACK OPS)。</p>
+                         <a href="https://discord.gg/zVntvpcJ" target="_blank" class="px-8 py-3 bg-red-600 text-white font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-colors">Open Ticket</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Footer -->
+        <section class="min-h-screen flex items-center justify-center px-6 md:px-12 bg-black relative overflow-hidden">
+            <div class="text-center relative z-10">
+                <h2 class="text-hero mb-8 split-text text-white">
+                    加入軍團。<br>
+                    Join the Legion.
+                </h2>
+                <div class="flex flex-col md:flex-row gap-6 justify-center items-center mt-12 anim-fade">
+                    <a href="https://discord.gg/zVntvpcJ" target="_blank" class="px-12 py-5 bg-white text-black text-xl font-bold tracking-tight hover:bg-red-600 hover:text-white transition-colors w-full md:w-auto">
+                        加入 Discord
+                    </a>
+                </div>
+                <p class="mt-12 text-gray-500 text-sm font-mono anim-fade">
+                    &copy; 2025 Zynuke. All systems armed.<br>
+                    Powered by Hyper Warp Protocol & NeverForget Engine.
+                </p>
+            </div>
+        </section>
+
+    </main>
+
+    </div> <!-- End Viewport -->
+
+    <script>
+        // Start Screen Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const startScreen = document.getElementById('start-screen');
+            const bgm = document.getElementById('bg-music');
+            
+            // Set volume to 45%
+            bgm.volume = 0.20;
+
+            const initSite = () => {
+                // Play Audio
+                bgm.play().catch(e => console.log("Audio play failed:", e));
+                
+                // Fade out start screen
+                startScreen.style.opacity = '0';
+                setTimeout(() => {
+                    startScreen.style.display = 'none';
+                    gsap.to('#navbar', { opacity: 1, duration: 1 });
+                }, 1000);
+            };
+
+            startScreen.addEventListener('click', initSite);
+        });
+
+        gsap.registerPlugin(ScrollTrigger);
+
+        // Optimized Lenis Setup
+        const lenis = new Lenis({
+            duration: 1.5,
+            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+            direction: 'vertical',
+            gestureDirection: 'vertical',
+            smooth: true,
+            mouseMultiplier: 1,
+            smoothTouch: false, 
+            touchMultiplier: 2,
+        });
+
+        function raf(time) {
+            lenis.raf(time);
+            requestAnimationFrame(raf);
+        }
+        requestAnimationFrame(raf);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- THREE.JS HYBRID ENGINE (Starfield + Warp Effect + Mouse Blob) ---
+            const container = document.getElementById('webgl-canvas');
+            const scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x050505, 0.0003); 
+            
+            // Camera
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
+            camera.position.z = 1000;
+
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+            container.appendChild(renderer.domElement);
+
+            // 50,000 Particles (From 2.html)
+            const particleCount = 50000;
+            const posArray = new Float32Array(particleCount * 3);
+            const colorArray = new Float32Array(particleCount * 3);
+            
+            const colors = [
+                new THREE.Color(0x9d00ff), // Purple
+                new THREE.Color(0xff3333), // Red
+                new THREE.Color(0xffffff), // White
+                new THREE.Color(0x00f3ff), // Cyan
+                new THREE.Color(0xffcc00)  // Yellow
+            ];
+
+            for(let i = 0; i < particleCount; i++) {
+                const x = (Math.random() - 0.5) * 10000;
+                const y = (Math.random() - 0.5) * 10000;
+                const z = (Math.random() - 0.5) * 10000;
+                
+                posArray[i * 3] = x;
+                posArray[i * 3 + 1] = y;
+                posArray[i * 3 + 2] = z;
+                
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                colorArray[i * 3] = color.r;
+                colorArray[i * 3 + 1] = color.g;
+                colorArray[i * 3 + 2] = color.b;
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 2,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.9,
+                sizeAttenuation: true,
+                blending: THREE.AdditiveBlending
+            });
+
+            const starsMesh = new THREE.Points(geometry, material);
+            scene.add(starsMesh);
+
+            let mouseX = 0;
+            let mouseY = 0;
+            let targetX = 0;
+            let targetY = 0;
+            let scrollSpeed = 0;
+            let mouseDown = false;
+            let baseFov = 75;
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            document.addEventListener('mousemove', (event) => {
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+                targetX = (mouseX / window.innerWidth) * 2 - 1;
+                targetY = -(mouseY / window.innerHeight) * 2 + 1;
+            });
+            
+            document.addEventListener('mousedown', () => mouseDown = true);
+            document.addEventListener('mouseup', () => mouseDown = false);
+
+            lenis.on('scroll', (e) => {
+                scrollSpeed += Math.abs(e.velocity) * 0.5; // Acceleration logic
+                
+                // Update HUD Chapter
+                const sections = document.querySelectorAll('section');
+                sections.forEach(sec => {
+                    const rect = sec.getBoundingClientRect();
+                    if(rect.top < window.innerHeight/2 && rect.bottom > window.innerHeight/2) {
+                        const chapter = sec.getAttribute('data-chapter');
+                        if(chapter) document.getElementById('chapter-display').innerText = chapter;
+                    }
+                });
+            });
+
+            const animate = () => {
+                // WARP LOGIC (Merging effect from 123 copy)
+                let speed = 2; // Base speed
+                let fovTarget = baseFov;
+                
+                // Add scroll momentum to speed
+                speed += scrollSpeed;
+                
+                // Warp Drive Effect (Visual Stretch)
+                if (mouseDown) {
+                    speed += 150; 
+                    fovTarget = 120;
+                    material.size = 1; 
+                } else if (scrollSpeed > 5) {
+                    // This creates the "stars streaming" effect from 123 copy
+                    fovTarget = 90 + Math.min(scrollSpeed, 30); // Dynamic FOV
+                    material.size = 2;
+                } else {
+                    fovTarget = 75;
+                    material.size = 2;
+                }
+                
+                // Smooth Camera FOV
+                camera.fov += (fovTarget - camera.fov) * 0.05;
+                camera.updateProjectionMatrix();
+                
+                scrollSpeed *= 0.95; // Decay
+
+                // Move Stars
+                const positions = starsMesh.geometry.attributes.position.array;
+                for(let i = 2; i < particleCount * 3; i += 3) {
+                    positions[i] += speed;
+                    if (positions[i] > 1000) {
+                        positions[i] = -8000; 
+                        positions[i-1] = (Math.random() - 0.5) * 10000;
+                        positions[i-2] = (Math.random() - 0.5) * 10000;
+                    }
+                }
+                starsMesh.geometry.attributes.position.needsUpdate = true;
+                starsMesh.rotation.z += 0.0002 + (scrollSpeed * 0.0001); // Twist on warp
+
+                // Camera Tilt
+                camera.rotation.x += (targetY * 0.15 - camera.rotation.x) * 0.05;
+                camera.rotation.y += (-targetX * 0.15 - camera.rotation.y) * 0.05;
+                
+                // Update HUD
+                const indicator = document.getElementById('speed-indicator');
+                const warpStatus = document.getElementById('warp-status');
+                if(indicator) indicator.innerText = Math.floor(speed) + "X";
+                if(warpStatus) {
+                    warpStatus.innerText = speed > 50 ? "ENGAGED" : "STANDBY";
+                    warpStatus.style.color = speed > 50 ? "#00f3ff" : "#ff3333";
+                }
+
+                renderer.render(scene, camera);
+                requestAnimationFrame(animate);
+            }
+            animate();
+
+            // --- MOUSE BLOB (From 2.html) ---
+            const blob = document.getElementById('mouse-blob');
+            let blobX = 0, blobY = 0;
+            function animateBlob() {
+                blobX += (mouseX - blobX) * 0.1;
+                blobY += (mouseY - blobY) * 0.1;
+                if(blob) blob.style.transform = `translate3d(${blobX}px, ${blobY}px, 0) translate(-50%, -50%)`;
+                requestAnimationFrame(animateBlob);
+            }
+            animateBlob();
+
+            // --- DOM ANIMATIONS (Shared) ---
+            // Parallax
+            gsap.to('.parallax-bg', {
+                y: '20%', ease: 'none',
+                scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true }
+            });
+
+            // Fade In
+            gsap.utils.toArray('.anim-fade').forEach(el => {
+                gsap.from(el, {
+                    scrollTrigger: { trigger: el, start: 'top 85%' },
+                    y: 20, opacity: 0, duration: 0.8, ease: 'power2.out'
+                });
+            });
+
+            // Card Stagger
+            const cards = document.querySelectorAll('.anim-card');
+            cards.forEach((el, i) => {
+                gsap.from(el, {
+                    scrollTrigger: { trigger: el, start: 'top 90%' },
+                    y: 30, opacity: 0, duration: 0.6, delay: 0.1, ease: 'back.out(1.5)'
+                });
+            });
+
+            // Text Split
+            if (window.innerWidth > 768) {
+                const splitTypes = document.querySelectorAll('.split-text');
+                splitTypes.forEach((char) => {
+                    const text = new SplitType(char, { types: 'chars' });
+                    gsap.from(text.chars, {
+                        scrollTrigger: { trigger: char, start: 'top 85%' },
+                        y: 50, opacity: 0, stagger: 0.02, duration: 0.8, ease: 'power2.out'
+                    });
+                });
+            }
+
+            // 3D Tilt Effect
+            const tiltCards = document.querySelectorAll('[data-tilt]');
+            tiltCards.forEach(card => {
+                let rect = card.getBoundingClientRect();
+                card.addEventListener('mouseenter', () => { rect = card.getBoundingClientRect(); });
+                card.addEventListener('mousemove', (e) => {
+                    if (window.innerWidth < 768) return; 
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const rotateX = ((y - rect.height/2) / rect.height) * -5;
+                    const rotateY = ((x - rect.width/2) / rect.width) * 5;
+                    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0)';
+                });
+            });
+
+            // Count Up
+            gsap.utils.toArray('.count-up').forEach(el => {
+                let target = parseInt(el.getAttribute('data-target'));
+                gsap.to(el, {
+                    scrollTrigger: { trigger: el, start: 'top 80%' },
+                    innerHTML: target, duration: 2, snap: { innerHTML: 1 }, ease: 'power1.out'
+                });
+            });
+
+            // Terminal
+            window.runCmd = function(cmd) {
+                const output = document.getElementById('terminal-output');
+                const newCmd = document.createElement('div');
+                newCmd.className = "mb-2";
+                newCmd.innerHTML = `<span class="text-red-500 mr-2">➜</span><span class="text-white">~ ${cmd}</span>`;
+                output.insertBefore(newCmd, output.lastElementChild);
+                const respEl = document.createElement('div');
+                respEl.innerHTML = `<div class="text-gray-400 pl-6 mb-2">Executing ${cmd}... [SUCCESS]</div>`;
+                output.insertBefore(respEl, output.lastElementChild);
+                output.scrollTop = output.scrollHeight;
+            }
+
+            // Lag Marquee (From 2.html & 123)
+            const lagTextContent = " @everyone 틓탑컏쳍쫋죉웇쓅싃상뺿벽못뢹뚷뒵늳낱꺯겭ꪫꢩꚧ꒥ꊣꂡ麟鲝骛颙隗钕銓邑躏貍誋袉蚇蒅芃肁繿籽穻硹癷瑵牳灱湯汭橫桩晧摥扣恡幟屝婛塙噗呕剓偑乏䱍䩋䡉䙇䑅䉃䁁㸿㰽㨻㠹㘷㐵㈳〱ⸯⰭ⨫⠩☧␥∣‡ḟᰝᨛ᠙ᘗᐕሓထฏ఍਋ࠉ؇Ѕȃ";
+            const lagContainer = document.getElementById('lag-track-1');
+            if (lagContainer) {
+                const item1 = document.createElement('div');
+                item1.className = 'lag-text-item';
+                item1.innerText = lagTextContent.repeat(10);
+                const item2 = document.createElement('div');
+                item2.className = 'lag-text-item';
+                item2.innerText = lagTextContent.repeat(10);
+                lagContainer.appendChild(item1);
+                lagContainer.appendChild(item2);
+                
+                gsap.to(lagContainer, {
+                    xPercent: -50, ease: "none", duration: 30, repeat: -1
+                });
+            }
+        });
+    </script>
+</body>
+</html>
