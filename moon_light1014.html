@@ -30,6 +30,88 @@
         }
 
         /* --- 2. 背景影片/圖片 --- */
+        /* --- 0. Custom Cursor & Boot --- */
+        #boot-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 10000;
+            padding: 2rem;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+            color: #0f0;
+            overflow: hidden;
+            display: none;
+            /* Shown on click */
+            pointer-events: none;
+        }
+
+        .terminal-line {
+            display: block;
+            margin-bottom: 2px;
+            text-shadow: 0 0 5px #0f0;
+            opacity: 0;
+            animation: fadeIn 0.1s forwards;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Scanline / CRT Effect */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom,
+                    rgba(255, 255, 255, 0),
+                    rgba(255, 255, 255, 0) 50%,
+                    rgba(0, 0, 0, 0.1) 50%,
+                    rgba(0, 0, 0, 0.1));
+            background-size: 100% 4px;
+            z-index: 20000;
+            pointer-events: none;
+            opacity: 0.6;
+            mix-blend-mode: overlay;
+        }
+
+        /* Cursor Ring */
+        .cursor-ring {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 40px;
+            height: 40px;
+            border: 1px dashed rgba(0, 255, 255, 0.4);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 20001;
+            transform: translate(-50%, -50%);
+            transition: width 0.15s, height 0.15s, border-color 0.15s;
+            animation: rotate-cursor 8s linear infinite;
+        }
+
+        .cursor-ring.active {
+            width: 30px;
+            height: 30px;
+            border-color: rgba(255, 0, 100, 0.8);
+            border-style: solid;
+        }
+
+        @keyframes rotate-cursor {
+            to {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
+
+        /* --- 2. 背景影片/圖片 --- */
         #bg-media {
             position: fixed;
             top: 0;
@@ -108,8 +190,11 @@
             text-align: center;
             opacity: 0;
             visibility: hidden;
-            transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+            transition: opacity 0.8s ease, visibility 0.8s;
+            /* Removed transform from transition for smoother 3D tilt */
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            perspective: 1000px;
+            transform-style: preserve-3d;
         }
 
         .avatar {
@@ -117,7 +202,7 @@
             height: 120px;
             border-radius: 50%;
             border: 2px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 15px;
+            /* margin-bottom removed for alignment */
             box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
             transition: transform 0.5s;
         }
@@ -137,6 +222,8 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             animation: gradient-anim 3s infinite linear;
+            position: relative;
+            display: inline-block;
         }
 
         @keyframes gradient-anim {
@@ -148,6 +235,7 @@
                 background-position: 200%;
             }
         }
+
 
         /* --- Glitch Effect --- */
         .glitch {
@@ -163,234 +251,84 @@
             width: 100%;
             height: 100%;
             background: #050505;
-            /* Matches body background */
+            /* Consistent with bg */
+            overflow: hidden;
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
         }
 
         .glitch::before {
             left: 2px;
             text-shadow: -1px 0 #ff00c1;
-            clip: rect(44px, 450px, 56px, 0);
-            animation: glitch-anim 5s infinite linear alternate-reverse;
+            animation: glitch-anim-1 2s infinite linear alternate-reverse;
         }
 
         .glitch::after {
             left: -2px;
             text-shadow: -1px 0 #00fff9;
-            clip: rect(44px, 450px, 56px, 0);
-            animation: glitch-anim2 5s infinite linear alternate-reverse;
+            animation: glitch-anim-2 3s infinite linear alternate-reverse;
         }
 
-        @keyframes glitch-anim {
+        @keyframes glitch-anim-1 {
             0% {
-                clip: rect(31px, 9999px, 94px, 0);
-                transform: skew(0.85deg);
-            }
-
-            5% {
-                clip: rect(70px, 9999px, 11px, 0);
-                transform: skew(0.85deg);
-            }
-
-            10% {
-                clip: rect(6px, 9999px, 83px, 0);
-                transform: skew(0.12deg);
-            }
-
-            15% {
-                clip: rect(32px, 9999px, 55px, 0);
-                transform: skew(0.02deg);
+                clip-path: inset(20% 0 80% 0);
+                transform: translate(-2px, 1px);
             }
 
             20% {
-                clip: rect(72px, 9999px, 86px, 0);
-                transform: skew(0.78deg);
-            }
-
-            25% {
-                clip: rect(6px, 9999px, 3px, 0);
-                transform: skew(0.66deg);
-            }
-
-            30% {
-                clip: rect(67px, 9999px, 91px, 0);
-                transform: skew(0.53deg);
-            }
-
-            35% {
-                clip: rect(51px, 9999px, 9px, 0);
-                transform: skew(0.86deg);
+                clip-path: inset(60% 0 10% 0);
+                transform: translate(2px, -1px);
             }
 
             40% {
-                clip: rect(96px, 9999px, 7px, 0);
-                transform: skew(0.05deg);
-            }
-
-            45% {
-                clip: rect(30px, 9999px, 9px, 0);
-                transform: skew(0.24deg);
-            }
-
-            50% {
-                clip: rect(48px, 9999px, 63px, 0);
-                transform: skew(0.21deg);
-            }
-
-            55% {
-                clip: rect(2px, 9999px, 34px, 0);
-                transform: skew(0.95deg);
+                clip-path: inset(40% 0 50% 0);
+                transform: translate(-2px, 2px);
             }
 
             60% {
-                clip: rect(59px, 9999px, 4px, 0);
-                transform: skew(0.39deg);
-            }
-
-            65% {
-                clip: rect(25px, 9999px, 41px, 0);
-                transform: skew(0.18deg);
-            }
-
-            70% {
-                clip: rect(71px, 9999px, 1px, 0);
-                transform: skew(0.04deg);
-            }
-
-            75% {
-                clip: rect(46px, 9999px, 7px, 0);
-                transform: skew(0.79deg);
+                clip-path: inset(80% 0 5% 0);
+                transform: translate(2px, -2px);
             }
 
             80% {
-                clip: rect(59px, 9999px, 2px, 0);
-                transform: skew(0.74deg);
-            }
-
-            85% {
-                clip: rect(54px, 9999px, 5px, 0);
-                transform: skew(0.01deg);
-            }
-
-            90% {
-                clip: rect(59px, 9999px, 20px, 0);
-                transform: skew(0.76deg);
-            }
-
-            95% {
-                clip: rect(26px, 9999px, 97px, 0);
-                transform: skew(0.63deg);
+                clip-path: inset(10% 0 70% 0);
+                transform: translate(-1px, 1px);
             }
 
             100% {
-                clip: rect(53px, 9999px, 79px, 0);
-                transform: skew(0.1deg);
+                clip-path: inset(30% 0 50% 0);
+                transform: translate(1px, -1px);
             }
         }
 
-        @keyframes glitch-anim2 {
+        @keyframes glitch-anim-2 {
             0% {
-                clip: rect(65px, 9999px, 100px, 0);
-                transform: skew(0.4deg);
-            }
-
-            5% {
-                clip: rect(52px, 9999px, 74px, 0);
-                transform: skew(0.58deg);
-            }
-
-            10% {
-                clip: rect(79px, 9999px, 85px, 0);
-                transform: skew(0.35deg);
-            }
-
-            15% {
-                clip: rect(75px, 9999px, 5px, 0);
-                transform: skew(0.05deg);
+                clip-path: inset(10% 0 60% 0);
+                transform: translate(2px, -1px);
             }
 
             20% {
-                clip: rect(67px, 9999px, 61px, 0);
-                transform: skew(0.68deg);
-            }
-
-            25% {
-                clip: rect(10px, 9999px, 23px, 0);
-                transform: skew(0.16deg);
-            }
-
-            30% {
-                clip: rect(1px, 9999px, 69px, 0);
-                transform: skew(0.85deg);
-            }
-
-            35% {
-                clip: rect(51px, 9999px, 16px, 0);
-                transform: skew(0.97deg);
+                clip-path: inset(80% 0 5% 0);
+                transform: translate(-2px, 1px);
             }
 
             40% {
-                clip: rect(78px, 9999px, 4px, 0);
-                transform: skew(0.86deg);
-            }
-
-            45% {
-                clip: rect(50px, 9999px, 32px, 0);
-                transform: skew(0.66deg);
-            }
-
-            50% {
-                clip: rect(36px, 9999px, 21px, 0);
-                transform: skew(0.2deg);
-            }
-
-            55% {
-                clip: rect(74px, 9999px, 69px, 0);
-                transform: skew(0.38deg);
+                clip-path: inset(30% 0 20% 0);
+                transform: translate(2px, 2px);
             }
 
             60% {
-                clip: rect(4px, 9999px, 91px, 0);
-                transform: skew(0.65deg);
-            }
-
-            65% {
-                clip: rect(93px, 9999px, 25px, 0);
-                transform: skew(0.05deg);
-            }
-
-            70% {
-                clip: rect(54px, 9999px, 31px, 0);
-                transform: skew(0.48deg);
-            }
-
-            75% {
-                clip: rect(68px, 9999px, 14px, 0);
-                transform: skew(0.97deg);
+                clip-path: inset(10% 0 80% 0);
+                transform: translate(-2px, -2px);
             }
 
             80% {
-                clip: rect(21px, 9999px, 96px, 0);
-                transform: skew(0.59deg);
-            }
-
-            85% {
-                clip: rect(1px, 9999px, 11px, 0);
-                transform: skew(0.79deg);
-            }
-
-            90% {
-                clip: rect(73px, 9999px, 94px, 0);
-                transform: skew(0.07deg);
-            }
-
-            95% {
-                clip: rect(31px, 9999px, 4px, 0);
-                transform: skew(0.08deg);
+                clip-path: inset(40% 0 10% 0);
+                transform: translate(1px, 1px);
             }
 
             100% {
-                clip: rect(7px, 9999px, 36px, 0);
-                transform: skew(0.47deg);
+                clip-path: inset(50% 0 30% 0);
+                transform: translate(-1px, -1px);
             }
         }
 
@@ -450,9 +388,37 @@
 
         .link-item:hover {
             background: rgba(255, 255, 255, 0.1);
-            transform: scale(1.02);
-            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
-            text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+            transform: scale(1.02) rotateY(10deg);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 1);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* 按钮点击粒子效果 */
+        .link-item:active {
+            transform: scale(0.98);
+        }
+
+        .particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 100;
+            animation: particle-fade 1s ease-out forwards;
+        }
+
+        @keyframes particle-fade {
+            0% {
+                transform: translate(0, 0);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translate(var(--tx), var(--ty));
+                opacity: 0;
+            }
         }
 
         /* --- 底部資訊 --- */
@@ -480,6 +446,447 @@
             z-index: 9999;
             box-shadow: 0 0 10px cyan, 0 0 20px cyan;
         }
+
+        /* --- 6. Avatar Magic Circle (Enhanced) --- */
+        .avatar-container {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 40px;
+            /* Increased to compensate for removed avatar margin */
+        }
+
+        .magic-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: -1;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.1);
+        }
+
+        /* Outer Runes/Dashed Ring */
+        .ring-1 {
+            width: 170px;
+            height: 170px;
+            border: 1px dashed rgba(0, 255, 255, 0.4);
+            animation: rotate-right 20s linear infinite;
+        }
+
+        /* Inner Hexagon/Tech Ring */
+        .ring-2 {
+            width: 150px;
+            height: 150px;
+            border: 2px solid transparent;
+            border-top: 2px solid rgba(255, 0, 150, 0.6);
+            border-bottom: 2px solid rgba(255, 0, 150, 0.6);
+            animation: rotate-left 12s linear infinite;
+        }
+
+        .ring-2::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-left: 2px solid rgba(0, 255, 255, 0.6);
+            border-right: 2px solid rgba(0, 255, 255, 0.6);
+            transform: rotate(90deg);
+        }
+
+        /* Pulsing Core Ring */
+        .ring-3 {
+            width: 130px;
+            height: 130px;
+            border: 1px dotted rgba(255, 255, 255, 0.3);
+            animation: pulse-ring 2s ease-in-out infinite alternate, rotate-right 30s linear infinite;
+        }
+
+        /* Complex Decorative Ring */
+        .ring-4 {
+            width: 190px;
+            height: 190px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            animation: rotate-left 40s linear infinite;
+        }
+
+        .ring-4::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: -5px;
+            width: 10px;
+            height: 10px;
+            background: rgba(0, 255, 255, 0.5);
+            border-radius: 50%;
+            box-shadow: 0 0 10px cyan;
+        }
+
+        @keyframes rotate-right {
+            to {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
+
+        @keyframes rotate-left {
+            to {
+                transform: translate(-50%, -50%) rotate(-360deg);
+            }
+        }
+
+        @keyframes pulse-ring {
+            0% {
+                transform: translate(-50%, -50%) scale(0.95);
+                opacity: 0.3;
+                border-color: rgba(255, 255, 255, 0.1);
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1.05);
+                opacity: 0.7;
+                border-color: rgba(0, 255, 255, 0.5);
+            }
+        }
+
+        /* --- 7. HUD / Tech Elements --- */
+        .hud-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .hud-item {
+            position: absolute;
+            font-family: 'Courier New', monospace;
+            font-size: 0.7rem;
+            color: rgba(0, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .hud-tl {
+            top: 20px;
+            left: 20px;
+            text-align: left;
+        }
+
+        .hud-tr {
+            top: 20px;
+            right: 20px;
+            text-align: right;
+        }
+
+        .hud-bl {
+            bottom: 20px;
+            left: 20px;
+            text-align: left;
+        }
+
+        .hud-br {
+            bottom: 20px;
+            right: 20px;
+            text-align: right;
+        }
+
+        .hud-line {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .scan-line {
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 255, 255, 0.2);
+            position: absolute;
+            top: 0;
+            left: 0;
+            animation: scan 3s linear infinite;
+            opacity: 0.5;
+        }
+
+        @keyframes scan {
+            0% {
+                top: 0%;
+                opacity: 0;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                top: 100%;
+                opacity: 0;
+            }
+        }
+
+        /* --- Scramble Effect Helper --- */
+        .scramble-highlight {
+            color: #0ff;
+            text-shadow: 0 0 5px #0ff;
+        }
+
+        /* --- 8. Magic Circle Click Effect --- */
+        .click-magic-ring {
+            position: fixed;
+            pointer-events: none;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 255, 255, 0.8);
+            box-shadow: 0 0 15px cyan, inset 0 0 15px cyan;
+            z-index: 9998;
+            animation: magic-expand 0.8s ease-out forwards;
+        }
+
+        .click-magic-ring::before,
+        .click-magic-ring::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 50%;
+            border: 1px dashed rgba(255, 0, 255, 0.5);
+        }
+
+        .click-magic-ring::before {
+            animation: rotate-right 0.8s linear;
+        }
+
+        .click-magic-ring::after {
+            animation: rotate-left 0.8s linear;
+        }
+
+        @keyframes magic-expand {
+            0% {
+                width: 0;
+                height: 0;
+                opacity: 1;
+                transform: translate(-50%, -50%) rotate(0deg);
+            }
+
+            100% {
+                width: 300px;
+                height: 300px;
+                opacity: 0;
+                transform: translate(-50%, -50%) rotate(45deg);
+            }
+        }
+
+        /* --- 9. Pseudo Audio Visualizer --- */
+        .visualizer-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 3px;
+            height: 30px;
+            margin-top: 15px;
+        }
+
+        .viz-bar {
+            width: 4px;
+            background: cyan;
+            box-shadow: 0 0 5px cyan;
+            animation: viz-bounce 0.5s infinite ease-in-out alternate;
+        }
+
+        .viz-bar:nth-child(odd) {
+            animation-duration: 0.4s;
+            background: #ff00ff;
+            box-shadow: 0 0 5px #ff00ff;
+        }
+
+        .viz-bar:nth-child(2n) {
+            animation-duration: 0.6s;
+        }
+
+        .viz-bar:nth-child(3n) {
+            animation-duration: 0.3s;
+        }
+
+        @keyframes viz-bounce {
+            0% {
+                height: 5px;
+                opacity: 0.5;
+            }
+
+            100% {
+                height: 100%;
+                opacity: 1;
+            }
+        }
+
+        /* --- 10. Global Screen Glitch (Subtle) --- */
+        @keyframes screen-twitch {
+            0% {
+                transform: translate(0, 0);
+                filter: brightness(1);
+            }
+
+            95% {
+                transform: translate(0, 0);
+                filter: brightness(1);
+            }
+
+            96% {
+                transform: translate(-2px, 1px);
+                filter: hue-rotate(90deg) brightness(1.2);
+            }
+
+            97% {
+                transform: translate(2px, -1px);
+                filter: invert(0.1);
+            }
+
+            98% {
+                transform: translate(0, 2px);
+                filter: brightness(1);
+            }
+
+            100% {
+                transform: translate(0, 0);
+            }
+        }
+
+        /* Apply to body or a wrapper if preferred. Using body for max effect */
+        body {
+            animation: screen-twitch 10s infinite;
+        }
+
+        /* --- 11. New Animation Additions (Chuunibyou) --- */
+
+        /* System Warning Overlay */
+        .system-warning-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 0, 0, 0.1);
+            z-index: 15000;
+            pointer-events: none;
+            opacity: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            mix-blend-mode: overlay;
+        }
+
+        .warning-text {
+            font-size: 5rem;
+            color: red;
+            font-weight: 900;
+            border: 10px solid red;
+            padding: 20px 40px;
+            text-transform: uppercase;
+            letter-spacing: 10px;
+            transform: rotate(-10deg);
+            opacity: 0;
+            text-shadow: 0 0 20px red;
+            box-shadow: 0 0 50px red, inset 0 0 50px red;
+        }
+
+        .severe-glitch-anim {
+            animation: severe-glitch 0.2s infinite;
+        }
+
+        @keyframes severe-glitch {
+            0% {
+                transform: translate(0, 0) skew(0deg);
+                opacity: 1;
+            }
+
+            20% {
+                transform: translate(-10px, 5px) skew(10deg);
+                opacity: 0.8;
+            }
+
+            40% {
+                transform: translate(10px, -5px) skew(-10deg);
+                opacity: 1;
+            }
+
+            60% {
+                transform: translate(-5px, 10px) skew(5deg);
+                opacity: 0.9;
+            }
+
+            80% {
+                transform: translate(5px, -10px) skew(-5deg);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translate(0, 0) skew(0deg);
+                opacity: 1;
+            }
+        }
+
+        /* Digital Particles */
+        .digital-particle {
+            position: absolute;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 0.8rem;
+            color: #0ff;
+            pointer-events: none;
+            z-index: 10001;
+            user-select: none;
+            text-shadow: 0 0 5px cyan;
+            animation: float-up-fade 1.5s ease-out forwards;
+        }
+
+        @keyframes float-up-fade {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-50px) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        /* Power Bar in HUD */
+        .power-bar-container {
+            width: 150px;
+            height: 10px;
+            border: 1px solid rgba(0, 255, 255, 0.5);
+            background: rgba(0, 0, 0, 0.5);
+            margin-top: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .power-bar-fill {
+            height: 100%;
+            width: 50%;
+            background: linear-gradient(90deg, transparent, #0ff, transparent);
+            background-size: 200% 100%;
+            animation: power-pulse 2s infinite linear;
+            box-shadow: 0 0 10px cyan;
+            transition: width 0.2s ease-out;
+        }
+
+        @keyframes power-pulse {
+            0% {
+                background-position: 100% 0;
+            }
+
+            100% {
+                background-position: -100% 0;
+            }
+        }
     </style>
 </head>
 
@@ -496,11 +903,58 @@
     </audio>
 
     <div id="enter-overlay">
-        <div class="enter-text">click to enter...</div>
+        <div class="enter-text">System Offline. Click to Initialize.</div>
+    </div>
+
+    <!-- Boot Sequence Overlay -->
+    <div id="boot-overlay">
+        <div id="term-content"></div>
+    </div>
+
+    <!-- System Warning Overlay -->
+    <div class="system-warning-overlay" id="sys-warning">
+        <div class="warning-text">SYSTEM FAILURE</div>
+    </div>
+
+    <!-- CRT Scanlines -->
+    <div class="scanlines"></div>
+
+    <!-- HUD Overlay -->
+    <div class="hud-container">
+        <div class="scan-line"></div>
+        <div class="hud-item hud-tl">
+            <span class="hud-line">SYS.ONLINE</span>
+            <span class="hud-line">TGT: USER</span>
+            <span class="hud-line">SEC: LOW</span>
+        </div>
+        <div class="hud-item hud-tr">
+            <span class="hud-line">CPU: <span id="cpu-val">34</span>%</span>
+            <span class="hud-line">RAM: <span id="ram-val">12</span>%</span>
+            <span class="hud-line">NET: CON</span>
+        </div>
+        <div class="hud-item hud-bl">
+            <span class="hud-line">LOC: UNKNOWN</span>
+            <span class="hud-line">BIO: LOADED</span>
+        </div>
+        <div class="hud-item hud-br">
+            <span class="hud-line">VER: 2.0.77</span>
+            <span class="hud-line">ID: #0592</span>
+            <span class="hud-line">PWR:</span>
+            <div class="power-bar-container">
+                <div class="power-bar-fill" id="power-fill"></div>
+            </div>
+        </div>
     </div>
 
     <div id="main-card">
-        <img src="https://i.pinimg.com/474x/0f/73/8e/0f738ec9db6c97916df1982962b085a6.jpg" alt="Profile" class="avatar">
+        <div class="avatar-container">
+            <div class="magic-ring ring-1"></div>
+            <div class="magic-ring ring-2"></div>
+            <div class="magic-ring ring-3"></div>
+            <div class="magic-ring ring-4"></div>
+            <img src="https://i.pinimg.com/474x/0f/73/8e/0f738ec9db6c97916df1982962b085a6.jpg" alt="Profile"
+                class="avatar">
+        </div>
 
         <div class="username glitch" data-text="Lighting Moon">Lighting Moon</div>
 
@@ -534,15 +988,47 @@
             <span><i class="fas fa-eye"></i> 14,203</span>
             <span><i class="fas fa-copyright"></i> 2024</span>
         </div>
+
+        <div class="visualizer-container">
+            <div class="viz-bar"></div>
+            <div class="viz-bar"></div>
+            <div class="viz-bar"></div>
+            <div class="viz-bar"></div>
+            <div class="viz-bar"></div>
+            <div class="viz-bar"></div>
+            <div class="viz-bar"></div>
+            <div class="viz-bar"></div>
+            <div class="viz-bar"></div>
+            <div class="viz-bar"></div>
+            <div class="viz-bar"></div>
+            <div class="viz-bar"></div>
+            <div class="viz-bar"></div>
+            <div class="viz-bar"></div>
+            <div class="viz-bar"></div>
+        </div>
     </div>
 
     <script>
         // --- 設定區 ---
-        const pageTitle = "Lighting Moon | Welcome | "; // 滾動標題文字
-        const bioText = ["Developer.", "Gamer.", "Sleepy.", "Welcome to my profile."]; // 打字機內容陣列
-        const typingSpeed = 100;
-        const deleteSpeed = 50;
-        const pauseTime = 1500; // 打完一句後的暫停時間
+        // --- 設定區 ---
+        const pageTitle = "Lighting Moon | System Online | ";
+        const bioText = ["Developer.", "Gamer.", "Sleepy.", "Welcome to my profile."];
+        const typingSpeed = 50;
+        const deleteSpeed = 30;
+        const pauseTime = 2000;
+
+        // Boot Log Data
+        const bootLog = [
+            "Initializing kernel...",
+            "Loading system modules...",
+            "Connecting to neural network...",
+            "[SUCCESS] Network secured.",
+            "Bypassing firewalls...",
+            "Accessing user profile database...",
+            "Decrypting bio data...",
+            "rendering graphics engine...",
+            "SYSTEM ONLINE."
+        ];
 
         // --- 變數 ---
         let titleIndex = 0;
@@ -552,26 +1038,136 @@
         const bgMusic = document.getElementById('bg-music');
         const typewriterSpan = document.getElementById('typewriter');
 
+        // --- TextScramble Class (Moved for scope) ---
+        class TextScramble {
+            constructor(el) {
+                this.el = el;
+                this.chars = '!<>-_\\/[]{}—=+*^?#________';
+                this.update = this.update.bind(this);
+            }
+            setText(newText) {
+                const oldText = this.el.innerText;
+                const length = Math.max(oldText.length, newText.length);
+                const promise = new Promise((resolve) => this.resolve = resolve);
+                this.queue = [];
+                for (let i = 0; i < length; i++) {
+                    const from = oldText[i] || '';
+                    const to = newText[i] || '';
+                    const start = Math.floor(Math.random() * 40);
+                    const end = start + Math.floor(Math.random() * 40);
+                    this.queue.push({ from, to, start, end });
+                }
+                cancelAnimationFrame(this.frameRequest);
+                this.frame = 0;
+                this.update();
+                return promise;
+            }
+            update() {
+                let output = '';
+                let complete = 0;
+                for (let i = 0, n = this.queue.length; i < n; i++) {
+                    let { from, to, start, end, char } = this.queue[i];
+                    if (this.frame >= end) {
+                        complete++;
+                        output += to;
+                    } else if (this.frame >= start) {
+                        if (!char || Math.random() < 0.28) {
+                            char = this.randomChar();
+                            this.queue[i].char = char;
+                        }
+                        output += `<span class="scramble-highlight">${char}</span>`;
+                    } else {
+                        output += from;
+                    }
+                }
+                this.el.innerHTML = output;
+                if (complete === this.queue.length) {
+                    this.resolve();
+                } else {
+                    this.frameRequest = requestAnimationFrame(this.update);
+                    this.frame++;
+                }
+            }
+            randomChar() {
+                return this.chars[Math.floor(Math.random() * this.chars.length)];
+            }
+        }
+
         // --- 1. 點擊進入邏輯 ---
+
         enterOverlay.addEventListener('click', () => {
-            // 淡出遮罩
-            enterOverlay.style.opacity = '0';
-            enterOverlay.style.visibility = 'hidden';
-
-            // 顯示卡片
-            mainCard.style.opacity = '1';
-            mainCard.style.visibility = 'visible';
-            mainCard.style.transform = 'translate(-50%, -50%) scale(1)';
-
-            // 播放媒體
-            bgMedia.play();
+            // 1. Play Music immediately
             bgMusic.volume = 0.4;
             bgMusic.play().catch(e => console.log("Audio play failed:", e));
 
-            // 啟動打字機與標題滾動
-            initTypewriter();
-            setInterval(scrollTitle, 200);
+            // 2. Hide Enter Overlay
+            enterOverlay.style.opacity = '0';
+            setTimeout(() => { enterOverlay.style.display = 'none'; }, 800);
+
+            // 3. Start Boot Sequence
+            runBootSequence();
         });
+
+        function runBootSequence() {
+            const bootOverlay = document.getElementById('boot-overlay');
+            const termContent = document.getElementById('term-content');
+            bootOverlay.style.display = 'block';
+
+            let lineIndex = 0;
+
+            function printLine() {
+                if (lineIndex < bootLog.length) {
+                    const div = document.createElement('div');
+                    div.className = 'terminal-line';
+                    div.innerText = `> ${bootLog[lineIndex]}`;
+                    termContent.appendChild(div);
+
+                    // Specific sound effect could go here
+
+                    lineIndex++;
+                    // Random delay for realism
+                    setTimeout(printLine, Math.random() * 300 + 100);
+                } else {
+                    // Boot Complete
+                    setTimeout(() => {
+                        // Flash effect or fade out
+                        bootOverlay.style.transition = 'opacity 0.5s ease';
+                        bootOverlay.style.opacity = '0';
+                        setTimeout(() => { bootOverlay.style.display = 'none'; }, 500);
+
+                        // Show Main Card
+                        showMainCard();
+                    }, 800);
+                }
+            }
+            printLine();
+        }
+
+        function showMainCard() {
+            // Show Card
+            mainCard.style.opacity = '1';
+            mainCard.style.visibility = 'visible';
+            // Scale and rotate reset happens in CSS or updated via JS tilt
+
+            bgMedia.play();
+
+            // Init interactions
+            animateElements();
+            initParallax();
+            initBioScramble();
+            setInterval(scrollTitle, 200);
+
+            // Enable 3D Tilt
+            document.addEventListener('mousemove', handleCardTilt);
+        }
+
+        // --- 3D Card Tilt ---
+        function handleCardTilt(e) {
+            const xAxis = (window.innerWidth / 2 - e.pageX) / 25;
+            const yAxis = (window.innerHeight / 2 - e.pageY) / 25;
+            // Rotate the card
+            mainCard.style.transform = `translate(-50%, -50%) rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+        }
 
         // --- 2. 標題滾動特效 ---
         function scrollTitle() {
@@ -579,40 +1175,87 @@
             titleIndex = (titleIndex + 1) % pageTitle.length;
         }
 
-        // --- 3. 打字機特效 ---
-        let textIndex = 0;
-        let charIndex = 0;
-        let isDeleting = false;
-
-        function initTypewriter() {
-            const currentText = bioText[textIndex];
-
-            if (isDeleting) {
-                typewriterSpan.textContent = currentText.substring(0, charIndex - 1);
-                charIndex--;
-            } else {
-                typewriterSpan.textContent = currentText.substring(0, charIndex + 1);
-                charIndex++;
-            }
-
-            let typeSpeedCurrent = isDeleting ? deleteSpeed : typingSpeed;
-
-            if (!isDeleting && charIndex === currentText.length) {
-                typeSpeedCurrent = pauseTime;
-                isDeleting = true;
-            } else if (isDeleting && charIndex === 0) {
-                isDeleting = false;
-                textIndex = (textIndex + 1) % bioText.length;
-                typeSpeedCurrent = 500;
-            }
-
-            setTimeout(initTypewriter, typeSpeedCurrent);
+        // --- 3. Bio Scramble Effect ---
+        function initBioScramble() {
+            const el = document.getElementById('typewriter');
+            const fx = new TextScramble(el);
+            let counter = 0;
+            const next = () => {
+                fx.setText(bioText[counter]).then(() => {
+                    setTimeout(next, 2500);
+                });
+                counter = (counter + 1) % bioText.length;
+            };
+            next();
         }
 
-        // --- 4. 粒子特效 (簡易版雪花 Canvas) ---
+        // 按钮点击粒子效果 & Magic Circle
+        document.addEventListener('click', (e) => {
+            // Create Magic Ring
+            const ring = document.createElement('div');
+            ring.className = 'click-magic-ring';
+            ring.style.left = e.clientX + 'px';
+            ring.style.top = e.clientY + 'px';
+            document.body.appendChild(ring);
+
+            // Cleanup ring
+            setTimeout(() => {
+                if (ring.parentNode) ring.parentNode.removeChild(ring);
+            }, 800);
+
+            // Create Sparkles
+            for (let i = 0; i < 15; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = e.clientX + 'px';
+                particle.style.top = e.clientY + 'px';
+
+                // Varied shapes
+                const shapeType = Math.random();
+                if (shapeType > 0.6) {
+                    particle.style.borderRadius = '0%'; // Square
+                    particle.style.transform = `rotate(${Math.random() * 360}deg)`;
+                } else if (shapeType > 0.3) {
+                    particle.style.height = '2px'; // Line
+                    particle.style.width = '10px';
+                }
+
+                particle.style.background = `hsl(${Math.random() * 60 + 180}, 100%, 70%)`;
+                particle.style.boxShadow = `0 0 10px ${particle.style.background}`;
+
+                particle.style.setProperty('--tx', `${Math.random() * 200 - 100}px`);
+                particle.style.setProperty('--ty', `${Math.random() * 200 - 100}px`);
+                document.body.appendChild(particle);
+
+                setTimeout(() => {
+                    if (particle.parentNode) particle.parentNode.removeChild(particle);
+                }, 1000);
+            }
+
+            // Digital Text Particles
+            const particleTexts = ["CRIT", "HIT", "0xFA", "ERR", "NULL", "1011"];
+            for (let i = 0; i < 3; i++) {
+                const dt = document.createElement('div');
+                dt.className = 'digital-particle';
+                dt.innerText = particleTexts[Math.floor(Math.random() * particleTexts.length)];
+                dt.style.left = (e.clientX + Math.random() * 40 - 20) + 'px';
+                dt.style.top = (e.clientY + Math.random() * 40 - 20) + 'px';
+                document.body.appendChild(dt);
+
+                setTimeout(() => {
+                    if (dt.parentNode) dt.parentNode.removeChild(dt);
+                }, 1500);
+            }
+
+            // Randomly Trigger System Warning on Click (Low Chance)
+            if (Math.random() > 0.9) {
+                triggerSystemWarning();
+            }
+        });
+
+        // --- 4. 粒子特效 (Matrix Rain Code) ---
         const canvas = document.getElementById('canvas-overlay');
         const ctx = canvas.getContext('2d');
-        let particles = [];
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -621,52 +1264,91 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        class Particle {
-            constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.size = Math.random() * 2;
-                this.speedY = Math.random() * 1 + 0.5;
-                this.speedX = (Math.random() - 0.5) * 0.5;
-            }
-            update() {
-                this.y += this.speedY;
-                this.x += this.speedX;
-                if (this.y > canvas.height) this.y = 0;
-                if (this.x > canvas.width) this.x = 0;
-                if (this.x < 0) this.x = canvas.width;
-            }
-            draw() {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-            }
+        const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const fontSize = 14;
+        const columns = Math.floor(window.innerWidth / fontSize);
+        const drops = []; // y positions
+
+        for (let x = 0; x < columns; x++) {
+            drops[x] = Math.random() * -100; // Randomize start
         }
 
-        function initParticles() {
-            for (let i = 0; i < 100; i++) { // 粒子數量
-                particles.push(new Particle());
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)'; // Fade effect
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#0F0'; // Green text
+            ctx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = katakana.charAt(Math.floor(Math.random() * katakana.length));
+                // Random color for extra style
+                if (Math.random() > 0.95) ctx.fillStyle = '#FFF';
+                else if (Math.random() > 0.9) ctx.fillStyle = '#0FF';
+                else ctx.fillStyle = '#0F0';
+
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975)
+                    drops[i] = 0;
+
+                drops[i]++;
             }
+            requestAnimationFrame(drawMatrix);
         }
 
-        function animateParticles() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for (let i = 0; i < particles.length; i++) {
-                particles[i].update();
-                particles[i].draw();
-            }
-            requestAnimationFrame(animateParticles);
-        }
-
-        initParticles();
-        animateParticles();
+        drawMatrix();
 
         // --- 5. 游標拖尾特效 ---
         const cursorTrails = [];
         const maxTrails = 20;
 
+        // 页面元素入场动画
+        function animateElements() {
+            const elements = [
+                document.querySelector('.avatar'),
+                document.querySelector('.username'),
+                document.querySelector('.badges'),
+                document.querySelector('.uid'),
+                document.querySelector('.bio-box'),
+                ...document.querySelectorAll('.link-item')
+            ];
+
+            elements.forEach((el, i) => {
+                if (el) {
+                    el.style.opacity = 0;
+                    el.style.transform = 'translateY(20px)';
+                    setTimeout(() => {
+                        el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                        el.style.opacity = 1;
+                        el.style.transform = 'translateY(0)';
+                    }, 100 * i);
+                }
+            });
+        }
+
+        // 背景视差效果
+        function initParallax() {
+            window.addEventListener('scroll', () => {
+                const scrollY = window.scrollY;
+                bgMedia.style.transform = `translateY(${scrollY * 0.3}px)`;
+            });
+        }
+
+
+
+        // --- Custom Cursor Ring Logic ---
+        const cursorRing = document.createElement('div');
+        cursorRing.className = 'cursor-ring';
+        document.body.appendChild(cursorRing);
+
         document.addEventListener('mousemove', (e) => {
+            // Update Cursor Ring Position with slight delay? 
+            // For performance, just direct update
+            cursorRing.style.left = e.clientX + 'px';
+            cursorRing.style.top = e.clientY + 'px';
+
+            // Trail Logic
             const trail = document.createElement('div');
             trail.className = 'cursor-trail';
             trail.style.left = e.pageX + 'px';
@@ -680,8 +1362,15 @@
 
             if (cursorTrails.length > maxTrails) {
                 const old = cursorTrails.shift();
-                document.body.removeChild(old.element);
+                if (old.element.parentNode) old.element.parentNode.removeChild(old.element);
             }
+        });
+
+        document.addEventListener('mousedown', () => {
+            cursorRing.classList.add('active');
+        });
+        document.addEventListener('mouseup', () => {
+            cursorRing.classList.remove('active');
         });
 
         // Loop to animate fade out
@@ -700,6 +1389,90 @@
             requestAnimationFrame(animateTrails);
         }
         animateTrails();
+
+
+
+        // Apply Scramble to Links
+        document.querySelectorAll('.link-item').forEach(link => {
+            const originalText = link.innerText.trim();
+            const scrambler = new TextScramble(link);
+
+            // fix: icon is inside, we need to handle text node separately or just scramble the whole thing carefully
+            // Actually, simplest is to wrap the text in a span or just handle it. 
+            // Better approach for this structure: Scramble only on hover enter, reset on leave.
+            // But since links have icons, let's just target the text nodes or wrap text.
+            // Simplified: Just scramble a specific span if possible, or just the whole text content relative to the icon?
+            // Let's wrap the text part in a span for safety first in a separate snippet, or just hack it here.
+
+            // Re-approach: The links have <i class="..."></i> Text. 
+            // We should wrap the text in a span to scramble ONLY the text.
+            const icon = link.querySelector('i');
+            const textNode = Array.from(link.childNodes).find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0);
+
+            if (textNode) {
+                const span = document.createElement('span');
+                span.textContent = textNode.textContent;
+                link.replaceChild(span, textNode);
+
+                const fx = new TextScramble(span);
+
+                // Trigger scramble on hover enter
+                link.addEventListener('mouseenter', () => {
+                    fx.setText(span.textContent);
+                });
+
+                // Optional: Scramble back or clean up? 
+                // Currently just scrambles to the same text, which produces the decoding effect.
+            }
+        });
+
+        // --- 7. HUD Value Updates ---
+        const cpuVal = document.getElementById('cpu-val');
+        const ramVal = document.getElementById('ram-val');
+
+        setInterval(() => {
+            if (cpuVal) cpuVal.innerText = Math.floor(Math.random() * 30) + 20;
+            if (ramVal) ramVal.innerText = Math.floor(Math.random() * 20) + 10;
+        }, 2000);
+
+        // Power Bar Logic
+        const powerFill = document.getElementById('power-fill');
+        setInterval(() => {
+            if (powerFill) {
+                const level = Math.random() * 80 + 20; // 20% to 100%
+                powerFill.style.width = level + '%';
+                // Color change based on level
+                if (level > 80) powerFill.style.background = 'linear-gradient(90deg, transparent, #ff0055, transparent)';
+                else powerFill.style.background = 'linear-gradient(90deg, transparent, #0ff, transparent)';
+            }
+        }, 300);
+
+        // System Warning Logic
+        const warningOverlay = document.getElementById('sys-warning');
+        const warningText = warningOverlay.querySelector('.warning-text');
+
+        function triggerSystemWarning() {
+            warningOverlay.style.opacity = '1';
+            warningText.style.opacity = '1';
+            warningText.classList.add('severe-glitch-anim');
+            document.body.classList.add('severe-glitch-anim');
+
+            // Audio effect simulation here if needed
+
+            setTimeout(() => {
+                warningOverlay.style.opacity = '0';
+                warningText.style.opacity = '0';
+                warningText.classList.remove('severe-glitch-anim');
+                document.body.classList.remove('severe-glitch-anim');
+            }, 800);
+        }
+
+        // Randomly trigger warning occasionally
+        setInterval(() => {
+            if (Math.random() > 0.98) { // rare
+                triggerSystemWarning();
+            }
+        }, 10000);
 
     </script>
 </body>
