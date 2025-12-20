@@ -4,705 +4,341 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ala_jim| Loading...</title>
+    <title>!E Xun | Loading...</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-
-    <style>
-        /* --- 1. 全局設定與自定義游標 --- */
-        :root {
-            --primary-color: #ffffff;
-            --glass-bg: rgba(15, 15, 15, 0.65);
-            --glass-border: rgba(255, 255, 255, 0.08);
-        }
-
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #050505;
-            color: white;
-            font-family: 'Poppins', sans-serif;
-            overflow: hidden;
-            /* 禁止滾動 */
-            height: 100vh;
-            cursor: crosshair;
-            /* 十字準心游標 */
-        }
-
-        /* --- 2. 背景影片/圖片 --- */
-        #bg-media {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            z-index: -2;
-            filter: brightness(0.3) blur(0px);
-            /* 模糊 20px */
-            transition: filter 0.8s ease;
-        }
-
-        /* --- 3. 粒子特效畫布 (雪花) --- */
-        #canvas-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            pointer-events: none;
-        }
-
-        /* --- 4. Click to Enter 遮罩 --- */
-        #enter-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            z-index: 9999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            transition: opacity 1s ease, visibility 1s;
-        }
-
-        .enter-text {
-            font-size: 1.5rem;
-            font-weight: 700;
-            text-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
-            animation: glow 2s infinite ease-in-out;
-        }
-
-        @keyframes glow {
-
-            0%,
-            100% {
-                opacity: 0.5;
-                text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-            }
-
-            50% {
-                opacity: 1;
-                text-shadow: 0 0 20px rgba(255, 255, 255, 1);
-            }
-        }
-
-        /* --- 5. 主內容卡片 (Guns.lol 風格) --- */
-        #main-card {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.9);
-            width: 90%;
-            max-width: 400px;
-            background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-            border-radius: 15px;
-            padding: 40px 20px;
-            text-align: center;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
-        }
-
-        .avatar {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 15px;
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
-            transition: transform 0.5s;
-        }
-
-        .avatar:hover {
-            transform: rotate(360deg);
-        }
-
-        .username {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-bottom: 5px;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
-            /* 模擬高級會員的鑽石/發光名字效果 */
-            background: linear-gradient(90deg, #fff, #b3b3b3, #fff);
-            background-size: 200%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: gradient-anim 3s infinite linear;
-        }
-
-        @keyframes gradient-anim {
-            0% {
-                background-position: 0%;
-            }
-
-            100% {
-                background-position: 200%;
-            }
-        }
-
-        /* --- Glitch Effect --- */
-        .glitch {
-            position: relative;
-        }
-
-        .glitch::before,
-        .glitch::after {
-            content: attr(data-text);
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #050505;
-            /* Matches body background */
-        }
-
-        .glitch::before {
-            left: 2px;
-            text-shadow: -1px 0 #ff00c1;
-            clip: rect(44px, 450px, 56px, 0);
-            animation: glitch-anim 5s infinite linear alternate-reverse;
-        }
-
-        .glitch::after {
-            left: -2px;
-            text-shadow: -1px 0 #00fff9;
-            clip: rect(44px, 450px, 56px, 0);
-            animation: glitch-anim2 5s infinite linear alternate-reverse;
-        }
-
-        @keyframes glitch-anim {
-            0% {
-                clip: rect(31px, 9999px, 94px, 0);
-                transform: skew(0.85deg);
-            }
-
-            5% {
-                clip: rect(70px, 9999px, 11px, 0);
-                transform: skew(0.85deg);
-            }
-
-            10% {
-                clip: rect(6px, 9999px, 83px, 0);
-                transform: skew(0.12deg);
-            }
-
-            15% {
-                clip: rect(32px, 9999px, 55px, 0);
-                transform: skew(0.02deg);
-            }
-
-            20% {
-                clip: rect(72px, 9999px, 86px, 0);
-                transform: skew(0.78deg);
-            }
-
-            25% {
-                clip: rect(6px, 9999px, 3px, 0);
-                transform: skew(0.66deg);
-            }
-
-            30% {
-                clip: rect(67px, 9999px, 91px, 0);
-                transform: skew(0.53deg);
-            }
-
-            35% {
-                clip: rect(51px, 9999px, 9px, 0);
-                transform: skew(0.86deg);
-            }
-
-            40% {
-                clip: rect(96px, 9999px, 7px, 0);
-                transform: skew(0.05deg);
-            }
-
-            45% {
-                clip: rect(30px, 9999px, 9px, 0);
-                transform: skew(0.24deg);
-            }
-
-            50% {
-                clip: rect(48px, 9999px, 63px, 0);
-                transform: skew(0.21deg);
-            }
-
-            55% {
-                clip: rect(2px, 9999px, 34px, 0);
-                transform: skew(0.95deg);
-            }
-
-            60% {
-                clip: rect(59px, 9999px, 4px, 0);
-                transform: skew(0.39deg);
-            }
-
-            65% {
-                clip: rect(25px, 9999px, 41px, 0);
-                transform: skew(0.18deg);
-            }
-
-            70% {
-                clip: rect(71px, 9999px, 1px, 0);
-                transform: skew(0.04deg);
-            }
-
-            75% {
-                clip: rect(46px, 9999px, 7px, 0);
-                transform: skew(0.79deg);
-            }
-
-            80% {
-                clip: rect(59px, 9999px, 2px, 0);
-                transform: skew(0.74deg);
-            }
-
-            85% {
-                clip: rect(54px, 9999px, 5px, 0);
-                transform: skew(0.01deg);
-            }
-
-            90% {
-                clip: rect(59px, 9999px, 20px, 0);
-                transform: skew(0.76deg);
-            }
-
-            95% {
-                clip: rect(26px, 9999px, 97px, 0);
-                transform: skew(0.63deg);
-            }
-
-            100% {
-                clip: rect(53px, 9999px, 79px, 0);
-                transform: skew(0.1deg);
-            }
-        }
-
-        @keyframes glitch-anim2 {
-            0% {
-                clip: rect(65px, 9999px, 100px, 0);
-                transform: skew(0.4deg);
-            }
-
-            5% {
-                clip: rect(52px, 9999px, 74px, 0);
-                transform: skew(0.58deg);
-            }
-
-            10% {
-                clip: rect(79px, 9999px, 85px, 0);
-                transform: skew(0.35deg);
-            }
-
-            15% {
-                clip: rect(75px, 9999px, 5px, 0);
-                transform: skew(0.05deg);
-            }
-
-            20% {
-                clip: rect(67px, 9999px, 61px, 0);
-                transform: skew(0.68deg);
-            }
-
-            25% {
-                clip: rect(10px, 9999px, 23px, 0);
-                transform: skew(0.16deg);
-            }
-
-            30% {
-                clip: rect(1px, 9999px, 69px, 0);
-                transform: skew(0.85deg);
-            }
-
-            35% {
-                clip: rect(51px, 9999px, 16px, 0);
-                transform: skew(0.97deg);
-            }
-
-            40% {
-                clip: rect(78px, 9999px, 4px, 0);
-                transform: skew(0.86deg);
-            }
-
-            45% {
-                clip: rect(50px, 9999px, 32px, 0);
-                transform: skew(0.66deg);
-            }
-
-            50% {
-                clip: rect(36px, 9999px, 21px, 0);
-                transform: skew(0.2deg);
-            }
-
-            55% {
-                clip: rect(74px, 9999px, 69px, 0);
-                transform: skew(0.38deg);
-            }
-
-            60% {
-                clip: rect(4px, 9999px, 91px, 0);
-                transform: skew(0.65deg);
-            }
-
-            65% {
-                clip: rect(93px, 9999px, 25px, 0);
-                transform: skew(0.05deg);
-            }
-
-            70% {
-                clip: rect(54px, 9999px, 31px, 0);
-                transform: skew(0.48deg);
-            }
-
-            75% {
-                clip: rect(68px, 9999px, 14px, 0);
-                transform: skew(0.97deg);
-            }
-
-            80% {
-                clip: rect(21px, 9999px, 96px, 0);
-                transform: skew(0.59deg);
-            }
-
-            85% {
-                clip: rect(1px, 9999px, 11px, 0);
-                transform: skew(0.79deg);
-            }
-
-            90% {
-                clip: rect(73px, 9999px, 94px, 0);
-                transform: skew(0.07deg);
-            }
-
-            95% {
-                clip: rect(31px, 9999px, 4px, 0);
-                transform: skew(0.08deg);
-            }
-
-            100% {
-                clip: rect(7px, 9999px, 36px, 0);
-                transform: skew(0.47deg);
-            }
-        }
-
-        .badges {
-            margin-bottom: 5px;
-            font-size: 1rem;
-            color: #ddd;
-            text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
-        }
-
-        .uid {
-            font-size: 0.9rem;
-            color: rgba(255, 255, 255, 0.7);
-            margin-bottom: 15px;
-            text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
-            font-family: monospace;
-        }
-
-        .badges i {
-            margin: 0 3px;
-            cursor: help;
-        }
-
-        .bio-box {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-            padding: 10px;
-            margin: 15px 0;
-            min-height: 24px;
-            font-size: 0.9rem;
-            color: #ccc;
-            font-family: 'Courier New', monospace;
-            /* 打字機字體 */
-        }
-
-        /* --- 社交按鈕 --- */
-        .links {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-top: 20px;
-        }
-
-        .link-item {
-            display: block;
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
-            text-decoration: none;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s;
-            font-weight: 600;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .link-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: scale(1.02);
-            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
-            text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
-        }
-
-        /* --- 底部資訊 --- */
-        .footer {
-            margin-top: 25px;
-            font-size: 0.7rem;
-            color: #666;
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        /* 隱藏原生播放器 */
-        audio {
-            display: none;
-        }
-
-        .cursor-trail {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            background: cyan;
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 9999;
-            box-shadow: 0 0 10px cyan, 0 0 20px cyan;
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-    <img id="bg-media"
-        src="https://cdn.discordapp.com/attachments/1423894284016291880/1451614944633294958/IMG_0783.jpg?ex=6946d144&is=69457fc4&hm=20e6cff4f57af65a7cc558fcd686623dfe69d7c7c57eaf8c9534446c6047b1fe&"
-        alt="Background">
+    <!-- Replaced Video with User's Image -->
+    <img id="bg-video" src="tech_dark_background.jpg" alt="Background">
 
+    <div id="star-container"></div>
+    <audio id="bg-music" loop src="https://t.wejfknwejfkerf.org/dl.php?id=ab92297e1ee042a4c340896c52484415"></audio>
     <canvas id="canvas-overlay"></canvas>
 
-    <audio id="bg-music" loop>
-        <source src="https://audio.jukehost.co.uk/Vg3wTJAMYlx19fKCoHNI0XnnrSnZfJos" type="audio/mp3">
-    </audio>
+    <!-- Hidden YouTube Player -->
+    <div id="youtube-player"></div>
+    <!-- <audio id="bg-music" loop> ... </audio> REMOVED -->
 
     <div id="enter-overlay">
-        <div class="enter-text">click to enter...</div>
+        <div class="palace-wireframe">
+            <svg viewBox="0 0 1000 400" xmlns="http://www.w3.org/2000/svg">
+                <!-- 1. The Multi-Tier Foundation & Cornices (Horizontal Rhythm) -->
+                <line x1="20" y1="340" x2="980" y2="340" stroke="white" stroke-width="1.2" /> <!-- Ground -->
+                <line x1="20" y1="315" x2="980" y2="315" stroke="white" stroke-width="0.5" opacity="0.4" />
+                <!-- First Floor Line -->
+                <line x1="20" y1="280" x2="980" y2="280" stroke="white" stroke-width="0.5" opacity="0.4" />
+                <!-- Second Floor Line -->
+                <line x1="20" y1="245" x2="980" y2="245" stroke="white" stroke-width="0.5" opacity="0.4" />
+                <!-- Third Floor Line -->
+                <line x1="30" y1="345" x2="970" y2="345" stroke="white" stroke-width="0.8" opacity="0.5" />
+
+                <!-- 2. Central Pavillion (Projection) -->
+                <g class="central-pavillion">
+                    <!-- Main Body -->
+                    <rect x="420" y="80" width="160" height="260" stroke="white" fill="none" stroke-width="1.2" />
+                    <!-- Top Pediment & Decorative Sculpture Base -->
+                    <path d="M420 80 L500 40 L580 80" stroke="white" fill="none" stroke-width="1.2" />
+                    <path d="M430 85 L500 50 L570 85" stroke="white" fill="none" stroke-width="0.6" opacity="0.6" />
+                    <!-- Flag & Mast -->
+                    <line x1="500" y1="40" x2="500" y2="0" stroke="white" stroke-width="0.8" />
+                    <path d="M500 5 L525 12 L500 20" stroke="white" fill="none" stroke-width="0.6" opacity="0.8" />
+                    <!-- Grand Columns -->
+                    <g stroke="white" stroke-width="0.7">
+                        <line x1="435" y1="80" x2="435" y2="340" />
+                        <line x1="445" y1="80" x2="445" y2="340" />
+                        <line x1="485" y1="80" x2="485" y2="340" />
+                        <line x1="515" y1="80" x2="515" y2="340" />
+                        <line x1="555" y1="80" x2="555" y2="340" />
+                        <line x1="565" y1="80" x2="565" y2="340" />
+                    </g>
+                    <!-- Central Arched Portal -->
+                    <path d="M480 340 L480 300 C480 285 520 285 520 300 L520 340" stroke="white" fill="none"
+                        stroke-width="1.5" />
+                    <!-- Windows (Central) -->
+                    <g opacity="0.6" stroke="white" fill="none" stroke-width="0.3">
+                        <rect x="445" y="110" width="10" height="15" />
+                        <rect x="545" y="110" width="10" height="15" />
+                        <rect x="485" y="110" width="30" height="20" stroke-width="0.5" />
+                        <rect x="445" y="150" width="10" height="15" />
+                        <rect x="545" y="150" width="10" height="15" />
+                        <rect x="485" y="150" width="30" height="25" stroke-width="0.8" /> <!-- The Balcony Window -->
+                    </g>
+                </g>
+
+                <!-- 3. Recessed Inner Wings (Left & Right) -->
+                <g class="inner-wings" opacity="0.7">
+                    <!-- Left -->
+                    <rect x="280" y="100" width="140" height="240" stroke="white" fill="none" stroke-width="1" />
+                    <!-- Right -->
+                    <rect x="580" y="100" width="140" height="240" stroke="white" fill="none" stroke-width="1" />
+                    <!-- Repeating Windows with Columns -->
+                    <g stroke="white" fill="none" stroke-width="0.2" opacity="0.5">
+                        <!-- Left Windows -->
+                        <rect x="300" y="130" width="10" height="18" />
+                        <rect x="330" y="130" width="10" height="18" />
+                        <rect x="360" y="130" width="10" height="18" />
+                        <rect x="390" y="130" width="10" height="18" />
+                        <rect x="300" y="170" width="10" height="18" />
+                        <rect x="330" y="170" width="10" height="18" />
+                        <rect x="360" y="170" width="10" height="18" />
+                        <rect x="390" y="170" width="10" height="18" />
+                        <rect x="300" y="210" width="10" height="18" />
+                        <rect x="330" y="210" width="10" height="18" />
+                        <rect x="360" y="210" width="10" height="18" />
+                        <rect x="390" y="210" width="10" height="18" />
+                        <!-- Right Windows -->
+                        <rect x="600" y="130" width="10" height="18" />
+                        <rect x="630" y="130" width="10" height="18" />
+                        <rect x="660" y="130" width="10" height="18" />
+                        <rect x="690" y="130" width="10" height="18" />
+                        <rect x="600" y="170" width="10" height="18" />
+                        <rect x="630" y="170" width="10" height="18" />
+                        <rect x="660" y="170" width="10" height="18" />
+                        <rect x="690" y="170" width="10" height="18" />
+                    </g>
+                </g>
+
+                <!-- 4. Outer Wings (Projection) -->
+                <g class="outer-wings">
+                    <!-- Left -->
+                    <rect x="50" y="110" width="230" height="230" stroke="white" fill="none" stroke-width="1.2" />
+                    <!-- Right -->
+                    <rect x="720" y="110" width="230" height="230" stroke="white" fill="none" stroke-width="1.2" />
+                    <!-- Pediments on Wings -->
+                    <path d="M50 110 L90 95 L130 110" stroke="white" fill="none" stroke-width="0.8" />
+                    <path d="M870 110 L910 95 L950 110" stroke="white" fill="none" stroke-width="0.8" />
+
+                    <!-- DENSE Windows Pattern for Outer Wings -->
+                    <g class="window-grid" stroke="white" fill="none" stroke-width="0.25" opacity="0.4">
+                        <!-- Left Outer Pattern -->
+                        <rect x="70" y="140" width="8" height="15" />
+                        <rect x="95" y="140" width="8" height="15" />
+                        <rect x="120" y="140" width="8" height="15" />
+                        <rect x="145" y="140" width="8" height="15" />
+                        <rect x="170" y="140" width="8" height="15" />
+                        <rect x="195" y="140" width="8" height="15" />
+                        <rect x="220" y="140" width="8" height="15" />
+                        <rect x="245" y="140" width="8" height="15" />
+                        <rect x="70" y="180" width="8" height="15" />
+                        <rect x="95" y="180" width="8" height="15" />
+                        <rect x="120" y="180" width="8" height="15" />
+                        <rect x="145" y="180" width="8" height="15" />
+                        <rect x="170" y="180" width="8" height="15" />
+                        <rect x="195" y="180" width="8" height="15" />
+                        <rect x="220" y="180" width="8" height="15" />
+                        <rect x="245" y="180" width="8" height="15" />
+                        <rect x="70" y="220" width="8" height="15" />
+                        <rect x="95" y="220" width="8" height="15" />
+                        <rect x="120" y="220" width="8" height="15" />
+                        <rect x="145" y="220" width="8" height="15" />
+                        <rect x="170" y="220" width="8" height="15" />
+                        <rect x="195" y="220" width="8" height="15" />
+                        <rect x="220" y="220" width="8" height="15" />
+                        <rect x="245" y="220" width="8" height="15" />
+                        <!-- Lower Ground Floor Arches -->
+                        <path d="M100 340 L100 315 C100 305 130 305 130 315 L130 340" stroke-width="0.8" />
+                        <path d="M200 340 L200 315 C200 305 230 305 230 315 L230 340" stroke-width="0.8" />
+                        <path x="770" d="M770 340 L770 315 C770 305 800 305 800 315 L800 340" stroke-width="0.8" />
+                        <path d="M870 340 L870 315 C870 305 900 305 900 315 L900 340" stroke-width="0.8" />
+                    </g>
+                    <!-- Pillars between Outer Windows -->
+                    <g stroke="white" stroke-width="0.4" opacity="0.3">
+                        <line x1="85" y1="130" x2="85" y2="340" />
+                        <line x1="110" y1="130" x2="110" y2="340" />
+                        <line x1="135" y1="130" x2="135" y2="340" />
+                        <line x1="160" y1="130" x2="160" y2="340" />
+                        <line x1="185" y1="130" x2="185" y2="340" />
+                        <line x1="210" y1="130" x2="210" y2="340" />
+                        <line x1="235" y1="130" x2="235" y2="340" />
+                        <line x1="760" y1="130" x2="760" y2="340" />
+                        <line x1="785" y1="130" x2="785" y2="340" />
+                        <line x1="810" y1="130" x2="810" y2="340" />
+                        <line x1="835" y1="130" x2="835" y2="340" />
+                        <line x1="860" y1="130" x2="860" y2="340" />
+                        <line x1="885" y1="130" x2="885" y2="340" />
+                        <line x1="910" y1="130" x2="910" y2="340" />
+                    </g>
+                </g>
+            </svg>
+        </div>
+        <div class="enter-text">👑</div>
     </div>
 
-    <div id="main-card">
-        <img src="https://cdn.discordapp.com/attachments/1423894284016291880/1451614438502301858/IMG_0738.png?ex=6946d0cb&is=69457f4b&hm=5a5f0c89b93a3d51cd66a479a9e5b55ecef9b44de0af499b2a1f764c2c0d1c52&"
-            alt="Profile" class="avatar">
+    <div id="card-container">
+        <div id="profile-card">
 
-        <div class="username glitch" data-text="Ala_jim">Ala_jim</div>
+            <div class="avatar-container scroll-reveal">
+                <div class="car-bg-placeholder"></div>
+                <img src="cyberpunk_avatar.jpg" alt="Avatar" class="avatar">
+            </div>
 
-        <div class="badges">
-            <i class="fas fa-crown" title="Premium"></i>
-            <i class="fas fa-code" title="Developer"></i>
-            <i class="fas fa-terminal" title="Hacker"></i>
-            <i class="fas fa-check-circle" title="Verified"></i>
-        </div>
-        <div class="uid">UID: 3</div>
+            <div class="username scroll-reveal">LAjim</div>
+            <div class="uid scroll-reveal">
+                UID: -22
+                <div class="mc-health-bar">
+                    <div class="heart full" style="--i: 1;"></div>
+                    <div class="heart full" style="--i: 2;"></div>
+                    <div class="heart full" style="--i: 3;"></div>
+                    <div class="heart full" style="--i: 4;"></div>
+                    <div class="heart full" style="--i: 5;"></div>
+                </div>
+            </div>
 
-        <div class="bio-box">
-            <span id="typewriter"></span><span class="cursor">|</span>
-        </div>
+            <div class="badges-wrapper">
+                <div class="badge" data-tooltip="Developer">
+                    <img src="https://cdn.discordapp.com/emojis/1446726487163142204.webp?size=128">
+                </div>
+                <div class="badge" data-tooltip="Staff">
+                    <img src="https://cdn.discordapp.com/emojis/1446726503877443624.webp?size=128">
+                </div>
+                <div class="badge" data-tooltip="OG">
+                    <img src="https://cdn.discordapp.com/emojis/1446729322365845645.webp?size=128">
+                </div>
+                <div class="badge" data-tooltip="Premium">
+                    <img src="https://cdn.discordapp.com/emojis/1446726556792918157.webp?size=128">
+                </div>
+                <!-- Added Crown/Money/Diamond as requested previously -->
+                <div class="badge" data-tooltip="King">
+                    <svg viewBox="0 0 24 24" fill="#ffd700">
+                        <path
+                            d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z" />
+                    </svg>
+                </div>
+                <div class="badge" data-tooltip="Wealth">
+                    <svg viewBox="0 0 24 24" fill="#00f3ff">
+                        <path d="M12,2l-9.5,4L4,11h16l1.5-5L12,2z M4,12l4.5,9L12,12H4z M15.5,21L20,12h-8L15.5,21z" />
+                    </svg>
+                </div>
+                <div class="badge" data-tooltip="Protection">
+                    <svg viewBox="0 0 24 24" fill="#ff4d4d">
+                        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
+                    </svg>
+                </div>
+                <div class="badge" data-tooltip="Alert">🔔</div>
+                <div class="badge" data-tooltip="Builder">🛠️</div>
+                <div class="badge" data-tooltip="Fighter">⚔️</div>
+                <div class="badge" data-tooltip="History">📜</div>
+                <div class="badge" data-tooltip="Coin">🪙</div>
+                <div class="badge" data-tooltip="Cash">💵</div>
+                <div class="badge" data-tooltip="Star">💫</div>
+                <div class="badge" data-tooltip="Hazard">☢️</div>
+                <div class="badge" data-tooltip="Rookie">🔰</div>
+            </div>
 
-        <div class="links">
-            <a href="https://discord.gg/VvcdzzXX" target="_blank" class="link-item">
-                <i class="fab fa-discord"></i> Discord Server
+            <div class="bio-box scroll-reveal">
+                <span id="typewriter"></span><span class="cursor">|</span>
+            </div>
+
+            <a href="https://discord.gg/FDq7Tu7UCf" target="_blank" class="discord-widget scroll-reveal">
+                <div class="discord-icon">
+                    <img src="https://i.pinimg.com/736x/af/f1/34/aff1344d223066e7a908b3cb60e16d36.jpg" alt="Icon">
+                </div>
+                <div class="discord-info">
+                    <span class="discord-name">Join ZyNuk3Bot</span>
+                    <div class="discord-status">
+                        <div class="status-item">
+                            <span class="status-dot"></span>
+                            <span id="online-count">Fetching...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-dot gray" style="margin-left: 8px;"></span>
+                            <span id="total-count">...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="join-btn">Join</div>
             </a>
-            <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ&start_radio=1&pp=ygUXbmV2ZXIgZ29ubmEgZ2l2ZSB5b3UgdXCgBwE%3D"
-                target="_blank" class="link-item">
-                <i class="fab fa-youtube"></i> YouTube Channel
-            </a>
-            <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ&start_radio=1&pp=ygUXbmV2ZXIgZ29ubmEgZ2l2ZSB5b3UgdXCgBwE%3D"
-                target="_blank" class="link-item">
-                <i class="fab fa-github"></i> GitHub Profile
-            </a>
-        </div>
 
-        <div class="footer">
-            <span><i class="fas fa-eye"></i> 14,203</span>
-            <span><i class="fas fa-copyright"></i> 2024</span>
+            <div class="social-grid scroll-reveal">
+                <a href="https://www.youtube.com/@%E9%A4%9B%E9%A3%A9%E5%A4%A7%E6%AE%BF%E4%B8%8B" target="_blank"
+                    class="social-btn" title="YouTube"><i class="fab fa-youtube"></i></a>
+                <a href="https://github.com/a0961008482-debug" target="_blank" class="social-btn" title="GitHub"><i
+                        class="fab fa-github"></i></a>
+                <a href="https://steamcommunity.com/id/IFromTaiwan/" target="_blank" class="social-btn" title="Steam"><i
+                        class="fab fa-steam"></i></a>
+                <a href="https://www.tiktok.com/@7708sx801314520" target="_blank" class="social-btn" title="TikTok"><i
+                        class="fab fa-tiktok"></i></a>
+                <a href="https://www.spotify.com/tw/account/overview/?utm_source=spotify&utm_medium=menu&utm_campaign=your_account"
+                    target="_blank" class="social-btn" title="Spotify"><i class="fab fa-spotify"></i></a>
+            </div>
+
+            <div class="volume-control scroll-reveal">
+                <div class="volume-visualizer">
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                </div>
+                <i class="fas fa-volume-down"></i>
+                <input type="range" id="vol-slider" min="0" max="100" value="40">
+                <i class="fas fa-volume-up"></i>
+            </div>
+
+            <div class="footer">
+                <span><i class="fas fa-eye"></i> 69,114,514</span>
+                <span><i class="fas fa-copyright"></i> 2025-2125</span>
+            </div>
+
+
+            <div class="next-page-container scroll-reveal">
+                <button id="next-page-btn" class="tech-btn-3d">
+                    Next Page
+                    <span class="btn-glitch">DATA_LINK</span>
+                </button>
+            </div>
         </div>
     </div>
 
-    <script>
-        // --- 設定區 ---
-        const pageTitle = "Ala_jim | Welcome | "; // 滾動標題文字
-        const bioText = ["Money", "Mamma Mia!", "Original Motion P", "Welcome to my profile."]; // 打字機內容陣列
-        const typingSpeed = 100;
-        const deleteSpeed = 50;
-        const pauseTime = 1500; // 打完一句後的暫停時間
+    <!-- About Section (Hidden by Default) -->
+    <div id="about-section" class="hidden">
+        <div class="about-container">
+            <div class="about-card">
+                <!-- Premium Decorations -->
+                <div class="rr-grille">
+                    <span style="--i:1"></span><span style="--i:2"></span><span style="--i:3"></span><span
+                        style="--i:4"></span><span style="--i:5"></span>
+                    <span style="--i:6"></span><span style="--i:7"></span><span style="--i:8"></span><span
+                        style="--i:9"></span><span style="--i:10"></span>
+                    <span style="--i:11"></span><span style="--i:12"></span><span style="--i:13"></span><span
+                        style="--i:14"></span><span style="--i:15"></span>
+                    <span style="--i:16"></span><span style="--i:17"></span><span style="--i:18"></span><span
+                        style="--i:19"></span><span style="--i:20"></span>
+                    <span style="--i:21"></span><span style="--i:22"></span><span style="--i:23"></span><span
+                        style="--i:24"></span><span style="--i:25"></span>
+                    <span style="--i:26"></span><span style="--i:27"></span><span style="--i:28"></span><span
+                        style="--i:29"></span><span style="--i:30"></span>
+                </div>
+                <div class="hud-container">
+                    <div class="hud-top-left">SYSTEM_ACTIVE: [LAjim_V1]</div>
+                    <div class="hud-bottom-right">ENCRYPTION: AES-256-WEALTH</div>
+                    <div class="scanning-line"></div>
+                </div>
+                <div class="matrix-canvas-container">
+                    <canvas id="matrix-canvas"></canvas>
+                </div>
+                <div id="money-rain-container"></div>
+                <div class="data-stream"></div>
 
-        // --- 變數 ---
-        let titleIndex = 0;
-        const enterOverlay = document.getElementById('enter-overlay');
-        const mainCard = document.getElementById('main-card');
-        const bgMedia = document.getElementById('bg-media');
-        const bgMusic = document.getElementById('bg-music');
-        const typewriterSpan = document.getElementById('typewriter');
+                <h2>About <span class="highlight">LAjim</span></h2>
+                <div class="about-content">
+                    <!-- Typing effect starts here -->
+                </div>
 
-        // --- 1. 點擊進入邏輯 ---
-        enterOverlay.addEventListener('click', () => {
-            // 淡出遮罩
-            enterOverlay.style.opacity = '0';
-            enterOverlay.style.visibility = 'hidden';
+                <!-- Tri-Mirror side panels -->
+                <div class="mirror mirror-left"></div>
+                <div class="mirror mirror-right"></div>
 
-            // 顯示卡片
-            mainCard.style.opacity = '1';
-            mainCard.style.visibility = 'visible';
-            mainCard.style.transform = 'translate(-50%, -50%) scale(1)';
+                <button id="back-btn" class="tech-btn-3d small-btn">Back</button>
+            </div>
+        </div>
+    </div>
 
-            // 播放媒體
-            // bgMedia.play(); // Image requires no play
-            bgMusic.volume = 0.4;
-            bgMusic.play().catch(e => console.log("Audio play failed:", e));
-
-            // 啟動打字機與標題滾動
-            initTypewriter();
-            setInterval(scrollTitle, 200);
-        });
-
-        // --- 2. 標題滾動特效 ---
-        function scrollTitle() {
-            document.title = pageTitle.substring(titleIndex) + pageTitle.substring(0, titleIndex);
-            titleIndex = (titleIndex + 1) % pageTitle.length;
-        }
-
-        // --- 3. 打字機特效 ---
-        let textIndex = 0;
-        let charIndex = 0;
-        let isDeleting = false;
-
-        function initTypewriter() {
-            const currentText = bioText[textIndex];
-
-            if (isDeleting) {
-                typewriterSpan.textContent = currentText.substring(0, charIndex - 1);
-                charIndex--;
-            } else {
-                typewriterSpan.textContent = currentText.substring(0, charIndex + 1);
-                charIndex++;
-            }
-
-            let typeSpeedCurrent = isDeleting ? deleteSpeed : typingSpeed;
-
-            if (!isDeleting && charIndex === currentText.length) {
-                typeSpeedCurrent = pauseTime;
-                isDeleting = true;
-            } else if (isDeleting && charIndex === 0) {
-                isDeleting = false;
-                textIndex = (textIndex + 1) % bioText.length;
-                typeSpeedCurrent = 500;
-            }
-
-            setTimeout(initTypewriter, typeSpeedCurrent);
-        }
-
-        // --- 4. 粒子特效 (簡易版雪花 Canvas) ---
-        const canvas = document.getElementById('canvas-overlay');
-        const ctx = canvas.getContext('2d');
-        let particles = [];
-
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
-        class Particle {
-            constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.size = Math.random() * 2;
-                this.speedY = Math.random() * 1 + 0.5;
-                this.speedX = (Math.random() - 0.5) * 0.5;
-            }
-            update() {
-                this.y += this.speedY;
-                this.x += this.speedX;
-                if (this.y > canvas.height) this.y = 0;
-                if (this.x > canvas.width) this.x = 0;
-                if (this.x < 0) this.x = canvas.width;
-            }
-            draw() {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-
-        function initParticles() {
-            for (let i = 0; i < 100; i++) { // 粒子數量
-                particles.push(new Particle());
-            }
-        }
-
-        function animateParticles() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for (let i = 0; i < particles.length; i++) {
-                particles[i].update();
-                particles[i].draw();
-            }
-            requestAnimationFrame(animateParticles);
-        }
-
-        initParticles();
-        animateParticles();
-
-        // --- 5. 游標拖尾特效 ---
-        const cursorTrails = [];
-        const maxTrails = 20;
-
-        document.addEventListener('mousemove', (e) => {
-            const trail = document.createElement('div');
-            trail.className = 'cursor-trail';
-            trail.style.left = e.pageX + 'px';
-            trail.style.top = e.pageY + 'px';
-            document.body.appendChild(trail);
-
-            cursorTrails.push({
-                element: trail,
-                alpha: 1.0
-            });
-
-            if (cursorTrails.length > maxTrails) {
-                const old = cursorTrails.shift();
-                document.body.removeChild(old.element);
-            }
-        });
-
-        // Loop to animate fade out
-        function animateTrails() {
-            for (let i = 0; i < cursorTrails.length; i++) {
-                const item = cursorTrails[i];
-                item.alpha -= 0.05;
-                item.element.style.opacity = item.alpha;
-                item.element.style.transform = `scale(${item.alpha})`;
-            }
-            // Remove invisible
-            while (cursorTrails.length > 0 && cursorTrails[0].alpha <= 0) {
-                const old = cursorTrails.shift();
-                if (old.element.parentNode) old.element.parentNode.removeChild(old.element);
-            }
-            requestAnimationFrame(animateTrails);
-        }
-        animateTrails();
-
-    </script>
+    <script src="script.js"></script>
 </body>
 
 </html>
