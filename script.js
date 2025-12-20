@@ -495,7 +495,7 @@ function goToNextPage() {
         setTimeout(() => {
             flash.remove();
             // Change BG to the computer screen image
-            if (bgImage) bgImage.src = "second_bg.jpg";
+            if (bgImage) bgImage.src = "https://zynuke.lol/second_bg.jpg";
 
             // Show About Section with Simple Fade-In
             if (aboutSection) {
@@ -567,7 +567,7 @@ function goToMainPage() {
     // Show Main Panel & Stock Chart
     setTimeout(() => {
         // Reset BG to original
-        if (bgImage) bgImage.src = "tech_dark_background.jpg";
+        if (bgImage) bgImage.src = "https://zynuke.lol/tech_dark_background.jpg";
 
         if (canvasOverlay) canvasOverlay.style.opacity = '1';
 

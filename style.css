@@ -101,7 +101,7 @@ body {
     background:
         linear-gradient(rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.95)),
         /* Darker Luxury Overlay */
-        url('monitor_bg.jpg');
+        url('https://zynuke.lol/monitor_bg.jpg');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
@@ -282,7 +282,7 @@ body {
     width: 200px;
     /* Wider than avatar */
     height: 140px;
-    background: url('uploaded_image_1766176816441.png') no-repeat center center;
+    background: url('https://zynuke.lol/uploaded_image_1766176816441.png') no-repeat center center;
     /* Use uploaded image if available, else placeholder */
     background-size: contain;
     z-index: -1;
@@ -908,7 +908,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     border-radius: 24px;
     background:
         linear-gradient(rgba(10, 10, 10, 0.6), rgba(0, 0, 0, 0.7)) padding-box,
-        url('car_interior.jpg') center/cover no-repeat padding-box,
+        url('https://zynuke.lol/car_interior.jpg') center/cover no-repeat padding-box,
         linear-gradient(45deg, #d4af37, #f9f6ee, #b8860b, #d4af37) border-box !important;
 
     background-size: 100% 100%, cover, 400% 400% !important;
@@ -1308,7 +1308,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     /* Luxury Mirror: Original boy image with gold border */
     background:
         linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.7)) padding-box,
-        url('about_panel_bg.jpg') center/cover no-repeat padding-box,
+        url('https://zynuke.lol/about_panel_bg.jpg') center/cover no-repeat padding-box,
         linear-gradient(45deg, #d4af37, #b8860b) border-box !important;
 
     backdrop-filter: blur(15px);
