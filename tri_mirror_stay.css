@@ -1,0 +1,14 @@
+/* --- Tri-Mirror Stay Open (Permanent 3D Effect) --- */
+.tri-mirror-stay::before,
+.tri-mirror-stay::after {
+    opacity: 1 !important;
+    animation: none !important;
+}
+
+.tri-mirror-stay::before {
+    transform: translateX(0) rotateY(-45deg) translateZ(-50px) !important;
+}
+
+.tri-mirror-stay::after {
+    transform: translateX(0) rotateY(45deg) translateZ(-50px) !important;
+}

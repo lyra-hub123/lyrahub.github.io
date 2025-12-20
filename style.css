@@ -1,0 +1,1409 @@
+/* --- Global Settings --- */
+:root {
+    --bg-color: #050505;
+    --card-bg: rgba(10, 10, 10, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --discord-color: #5865F2;
+    --tooltip-bg: rgba(0, 0, 0, 0.95);
+}
+
+
+/* --- Scroll Reveal --- */
+
+/* --- Scroll Reveal --- */
+.scroll-reveal {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+    transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.scroll-reveal.revealed {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.scroll-reveal.slide-left {
+    transform: translateX(-50px);
+}
+
+.scroll-reveal.slide-right {
+    transform: translateX(50px);
+}
+
+.scroll-reveal.revealed.slide-left,
+.scroll-reveal.revealed.slide-right {
+    transform: translateX(0);
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-color);
+    color: white;
+    font-family: 'Poppins', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    user-select: none;
+    cursor: crosshair;
+}
+
+/* --- Background Effects --- */
+#bg-video {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -3;
+    filter: brightness(0.35) contrast(1.1);
+    transition: filter 1s ease;
+}
+
+#scanlines {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0.2));
+    background-size: 100% 4px;
+    z-index: -2;
+    pointer-events: none;
+}
+
+#canvas-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    pointer-events: none;
+}
+
+#youtube-player {
+    position: fixed;
+    top: -9999px;
+    left: -9999px;
+    opacity: 0;
+    z-index: -10;
+    pointer-events: none;
+}
+
+/* --- Click to Enter --- */
+#enter-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background:
+        linear-gradient(rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.95)),
+        /* Darker Luxury Overlay */
+        url('monitor_bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: opacity 0.8s ease, visibility 0.8s;
+}
+
+.enter-text {
+    font-size: 5rem;
+    /* Significantly enlarged as requested */
+    font-weight: 700;
+    letter-spacing: 5px;
+    animation: crownGlow 3s infinite ease-in-out;
+    position: relative;
+    z-index: 10;
+    filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.5));
+}
+
+.palace-wireframe {
+    position: absolute;
+    width: 1200px;
+    /* Even larger for the grand palace facade */
+    opacity: 0.25;
+    z-index: 1;
+    pointer-events: none;
+    animation: palacePulse 6s infinite alternate ease-in-out;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.4));
+}
+
+@keyframes palacePulse {
+    0% {
+        opacity: 0.1;
+        transform: scale(0.98);
+    }
+
+    100% {
+        opacity: 0.3;
+        transform: scale(1.02);
+    }
+}
+
+@keyframes crownGlow {
+
+    0%,
+    100% {
+        text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+        transform: scale(1);
+    }
+
+    50% {
+        text-shadow: 0 0 50px rgba(255, 215, 0, 0.9), 0 0 100px rgba(255, 150, 0, 0.6);
+        transform: scale(1.1);
+    }
+}
+
+/* Crown Zoom Animation */
+.enter-text.zooming {
+    animation: crownZoom 1.5s forwards cubic-bezier(0.7, 0, 0.3, 1);
+    z-index: 10001;
+    /* Ensure on top */
+}
+
+@keyframes crownZoom {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(50);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: scale(150);
+        opacity: 0;
+    }
+}
+
+/* Overlay Vanish (Shockwave/Tear) */
+.enter-overlay.vanish {
+    animation: overlayVanish 1.2s forwards ease-in-out;
+}
+
+@keyframes overlayVanish {
+    0% {
+        clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+        background: #000;
+        transform: scale(1);
+    }
+
+    30% {
+        background: radial-gradient(circle at center, transparent 20%, #000 30%);
+    }
+
+    100% {
+        /* Screen Tear Effect */
+        clip-path: polygon(0 0, 45% 0, 50% 50%, 55% 0, 100% 0, 100% 100%, 55% 100%, 50% 50%, 45% 100%, 0 100%);
+        transform: scale(1.5);
+        opacity: 0;
+        visibility: hidden;
+    }
+}
+
+/* --- 3D Card Container --- */
+#card-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    opacity: 1;
+    visibility: visible;
+    /* opacity: 0; */
+    /* visibility: hidden; */
+    transition: opacity 1s ease 0.5s, visibility 1s;
+}
+
+#profile-card {
+    width: 420px;
+    background: var(--card-bg);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--glass-border);
+    border-radius: 18px;
+    padding: 45px 30px;
+    text-align: center;
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+    animation: borderGlow 4s infinite ease-in-out;
+}
+
+@keyframes borderGlow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 60px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 0 10px rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    50% {
+        box-shadow: 0 0 60px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 0 20px rgba(255, 255, 255, 0.4);
+        border-color: rgba(255, 255, 255, 0.5);
+    }
+}
+
+/* --- Content Elements --- */
+.avatar-container {
+    position: relative;
+    width: 115px;
+    height: 115px;
+    margin: 0 auto 15px;
+    transform: none;
+}
+
+.avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+    transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.avatar:hover {
+    transform: scale(1.05) rotate(5deg);
+}
+
+.car-bg-placeholder {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    /* Wider than avatar */
+    height: 140px;
+    background: url('uploaded_image_1766176816441.png') no-repeat center center;
+    /* Use uploaded image if available, else placeholder */
+    background-size: contain;
+    z-index: -1;
+    opacity: 0.6;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+    pointer-events: none;
+    /* Border removed */
+}
+
+/* Volume Visualizer */
+.volume-visualizer {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 20px;
+    margin-right: 15px;
+}
+
+.volume-visualizer .bar {
+    width: 4px;
+    background: #00aaff;
+    border-radius: 2px;
+    height: 5px;
+    transition: height 0.1s ease;
+    box-shadow: 0 0 5px #00aaff;
+}
+
+.username {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 2px;
+    transform: translateZ(30px);
+    letter-spacing: 1px;
+    /* Rainbow Glow Animation */
+    animation: rainbowGlow 3s linear infinite;
+}
+
+@keyframes rainbowGlow {
+    0% {
+        text-shadow: 2px 2px 10px rgba(255, 0, 0, 0.7);
+    }
+
+    20% {
+        text-shadow: 2px 2px 10px rgba(255, 165, 0, 0.7);
+    }
+
+    40% {
+        text-shadow: 2px 2px 10px rgba(255, 255, 0, 0.7);
+    }
+
+    60% {
+        text-shadow: 2px 2px 10px rgba(0, 128, 0, 0.7);
+    }
+
+    80% {
+        text-shadow: 2px 2px 10px rgba(0, 0, 255, 0.7);
+    }
+
+    100% {
+        text-shadow: 2px 2px 10px rgba(238, 130, 238, 0.7);
+    }
+}
+
+.uid {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-family: 'Courier New', monospace;
+    margin-bottom: 5px;
+    transform: translateZ(25px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+/* --- MC Hearts --- */
+.mc-health-bar {
+    display: flex;
+    gap: 4px;
+    margin-top: 5px;
+}
+
+.heart {
+    width: 16px;
+    height: 16px;
+    position: relative;
+    background-color: transparent;
+    image-rendering: pixelated;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    animation: heartPulse 2s infinite ease-in-out;
+    animation-delay: calc(var(--i) * 0.1s);
+}
+
+
+
+/* Using SVG for better precision if CSS is too clunky, but let's try a better pixel look */
+.heart {
+    width: 18px;
+    height: 18px;
+    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 9" shape-rendering="crispEdges"><path fill="%23333" d="M1 1h2v1h1v1h1V2h2V1h1v4H8v1H7v1H6v1H5v1H4V8H3V7H2V6H1V5H0V1h1z"/><path fill="%23fff" d="M1 2h2v1h3V2h2v3H7v1H6v1H5v1H4V7H3V6H2V5H1V2z"/><path fill="%23f0f0f0" d="M2 2h1v1H2V2z"/></svg>') no-repeat center;
+    background-size: contain;
+    animation: heartPulse 1.5s infinite;
+    animation-delay: calc(var(--i) * 0.15s);
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+}
+
+
+.heart.empty {
+    filter: grayscale(1) opacity(0.3);
+}
+
+@keyframes heartPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.15) translateY(-2px);
+        filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8));
+    }
+}
+
+
+/* Hover Effect: Damage Animation */
+.mc-health-bar:hover .heart {
+    animation: heartShake 0.2s infinite;
+}
+
+@keyframes heartShake {
+    0% {
+        transform: translate(1px, 1px) rotate(0deg);
+    }
+
+    10% {
+        transform: translate(-1px, -2px) rotate(-1deg);
+    }
+
+    20% {
+        transform: translate(-3px, 0px) rotate(1deg);
+    }
+
+    30% {
+        transform: translate(3px, 2px) rotate(0deg);
+    }
+
+    40% {
+        transform: translate(1px, -1px) rotate(1deg);
+    }
+
+    50% {
+        transform: translate(-1px, 2px) rotate(-1deg);
+    }
+
+    60% {
+        transform: translate(-3px, 1px) rotate(0deg);
+    }
+
+    70% {
+        transform: translate(3px, 1px) rotate(-1deg);
+    }
+
+    80% {
+        transform: translate(-1px, -1px) rotate(1deg);
+    }
+
+    90% {
+        transform: translate(1px, 2px) rotate(0deg);
+    }
+
+    100% {
+        transform: translate(1px, -2px) rotate(-1deg);
+    }
+}
+
+.heart.full:active {
+    filter: hue-rotate(90deg) brightness(1.5);
+    animation: pulseFlash 0.1s infinite;
+}
+
+@keyframes pulseFlash {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+/* --- Badges --- */
+.badges-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin: 15px 0 20px 0;
+    transform: translateZ(35px);
+    padding: 0 10px;
+}
+
+.badge {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: help;
+    transition: transform 0.2s;
+    font-size: 1.2rem;
+    /* Ensure emojis are sized correctly */
+    /* Subtle Glow */
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+}
+
+.badge img,
+.badge svg {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* Extra glow for images/svgs */
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.3));
+}
+
+.badge:hover {
+    transform: scale(1.15);
+}
+
+/* Tooltip */
+.badge::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%) translateY(5px);
+    background: var(--tooltip-bg);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    pointer-events: none;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    z-index: 100;
+}
+
+.badge:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* --- Bio --- */
+.bio-box {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 10px;
+    margin: 15px 0 25px 0;
+    min-height: 24px;
+    font-size: 0.9rem;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    transform: translateZ(30px);
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+/* --- Discord Widget --- */
+.discord-widget {
+    background: rgba(30, 30, 30, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    margin-bottom: 25px;
+    text-decoration: none;
+    transform: translateZ(35px);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.discord-widget:hover {
+    background: rgba(88, 101, 242, 0.15);
+    border-color: rgba(88, 101, 242, 0.5);
+    transform: translateZ(45px) scale(1.02);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.discord-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    margin-right: 15px;
+    overflow: hidden;
+    background: #2b2d31;
+    flex-shrink: 0;
+}
+
+.discord-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.discord-info {
+    text-align: left;
+    flex-grow: 1;
+}
+
+.discord-name {
+    display: block;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: white;
+    margin-bottom: 3px;
+}
+
+.discord-status {
+    font-size: 0.7rem;
+    color: #aaa;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    background-color: #23a559;
+    border-radius: 50%;
+    margin-right: 5px;
+    box-shadow: 0 0 6px #23a559;
+}
+
+.status-dot.gray {
+    background-color: #747f8d;
+    box-shadow: none;
+}
+
+.join-btn {
+    background: var(--discord-color);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 7px 16px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+/* --- Social Grid --- */
+.social-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    transform: translateZ(35px);
+    margin-bottom: 25px;
+}
+
+.social-btn {
+    width: 45px;
+    height: 45px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-size: 1.3rem;
+    transition: all 0.3s;
+}
+
+.social-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-5px);
+    color: white;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+}
+
+.social-btn:hover .fa-youtube {
+    color: #ff0000;
+}
+
+.social-btn:hover .fa-github {
+    color: #fff;
+}
+
+.social-btn:hover .fa-steam {
+    color: #66c0f4;
+}
+
+.social-btn:hover .fa-tiktok {
+    color: #ff0050;
+    text-shadow: 2px 2px 0px #00f2ea;
+}
+
+.social-btn:hover .fa-spotify {
+    color: #1DB954;
+}
+
+.social-btn:hover svg {
+    fill: #fff;
+}
+
+/* Volume Control */
+.volume-control {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: rgba(255, 255, 255, 0.4);
+    transform: translateZ(20px);
+    font-size: 0.85rem;
+}
+
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 150px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    outline: none;
+    opacity: 0.7;
+    transition: opacity .2s;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px;
+    height: 10px;
+    background: #fff;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.5);
+}
+
+.footer {
+    margin-top: 30px;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.2);
+    transform: translateZ(10px);
+}
+
+/* --- Click Effect --- */
+.click-effect {
+    position: fixed;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 9999;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.5), inset 0 0 10px rgba(0, 243, 255, 0.2);
+    animation: clickRipple 0.6s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
+@keyframes clickRipple {
+    0% {
+        width: 0;
+        height: 0;
+        opacity: 1;
+        border-width: 3px;
+    }
+
+    100% {
+        width: 120px;
+        height: 120px;
+        opacity: 0;
+        border-width: 0.5px;
+    }
+}
+
+/* --- Cursor Trail --- */
+.cursor-trail {
+    position: fixed;
+    width: 6px;
+    height: 6px;
+    background: #fff;
+    border-radius: 50%;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px #fff, 0 0 20px #0ff;
+    z-index: 9998;
+    animation: fadeTrail 0.6s linear forwards;
+}
+
+@keyframes fadeTrail {
+    0% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.2);
+    }
+}
+
+/* --- Next Page Button --- */
+.next-page-container {
+    margin-top: 25px;
+    transform: translateZ(45px);
+    text-align: center;
+}
+
+.tech-btn-3d {
+    position: relative;
+    background: linear-gradient(135deg, #0044ff, #0088ff);
+    /* DEEP BLUE */
+    border: none;
+    border-radius: 8px;
+    padding: 12px 30px;
+    color: white;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    /* 3D Depth - Blue Tone */
+    box-shadow:
+        0 6px 0 #002288,
+        0 12px 20px rgba(0, 68, 255, 0.4),
+        inset 0 0 10px rgba(255, 255, 255, 0.2);
+
+    text-transform: uppercase;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tech-btn-3d:active {
+    transform: translateY(6px);
+    box-shadow:
+        0 0 0 #002288,
+        0 2px 5px rgba(0, 68, 255, 0.4),
+        inset 0 0 15px rgba(0, 0, 0, 0.2);
+}
+
+.tech-btn-3d:hover {
+    background: linear-gradient(135deg, #2266ff, #44aaff);
+    box-shadow:
+        0 6px 0 #002288,
+        0 15px 30px rgba(0, 100, 255, 0.6),
+        inset 0 0 20px rgba(255, 255, 255, 0.4);
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+}
+
+.btn-glitch {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0044ff;
+    opacity: 0;
+    transition: opacity 0.1s;
+    pointer-events: none;
+    font-size: 0.8rem;
+    letter-spacing: 4px;
+}
+
+.tech-btn-3d:hover .btn-glitch {
+    opacity: 0.1;
+    transform: translateX(2px);
+}
+
+/* --- Second Page (About) --- */
+.hidden {
+    display: none !important;
+}
+
+.about-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+    width: 90%;
+    max-width: 600px;
+    opacity: 0;
+    transition: opacity 1s ease;
+}
+
+
+
+.about-card {
+    padding: 80px 40px;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+
+    /* 1. Sharp Luxury Border (Gold/Champagne) */
+    border: 1px solid transparent !important;
+    border-radius: 24px;
+    background:
+        linear-gradient(rgba(10, 10, 10, 0.6), rgba(0, 0, 0, 0.7)) padding-box,
+        url('car_interior.jpg') center/cover no-repeat padding-box,
+        linear-gradient(45deg, #d4af37, #f9f6ee, #b8860b, #d4af37) border-box !important;
+
+    background-size: 100% 100%, cover, 400% 400% !important;
+    animation: goldBorderFlow 12s linear infinite;
+
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(25px);
+    transition: transform 0.3s ease-out;
+    /* Smooth return to center */
+}
+
+/* 2. Noble Fusion Glow (Champagne Gold) */
+.about-card::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    right: -8px;
+    bottom: -8px;
+    background: radial-gradient(circle, rgba(212, 175, 55, 0.15), transparent 70%);
+    filter: blur(15px);
+    z-index: -1;
+    border-radius: 32px;
+    animation: noblePulse 4s ease-in-out infinite alternate;
+}
+
+@keyframes noblePulse {
+    0% {
+        opacity: 0.4;
+        transform: scale(0.98);
+    }
+
+    100% {
+        opacity: 0.7;
+        transform: scale(1.02);
+    }
+}
+
+@keyframes goldBorderFlow {
+    0% {
+        background-position: 0% 0%, center, 0% 50%;
+    }
+
+    50% {
+        background-position: 0% 0%, center, 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 0%, center, 0% 50%;
+    }
+}
+
+/* 3. Diagonal Glass Glint (On top of everything) */
+.about-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -150%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(to right,
+            transparent,
+            rgba(255, 255, 255, 0.02) 40%,
+            rgba(255, 255, 255, 0.08) 50%,
+            rgba(255, 255, 255, 0.02) 60%,
+            transparent);
+    transform: skewX(-20deg);
+    animation: glassGlint 10s infinite;
+    z-index: 2;
+    pointer-events: none;
+}
+
+@keyframes glassGlint {
+    0% {
+        left: -150%;
+    }
+
+    30% {
+        left: 150%;
+    }
+
+    100% {
+        left: 150%;
+    }
+}
+
+/* Subtle "fusion" glow behind the sharp border */
+/* The original ::after content was here, but it's replaced by the glint effect.
+   The instruction implies replacing the existing ::after with the new glint effect.
+   If the user intended to keep both, they would have specified a different selector or an addition.
+   Given the instruction "Implement glint, slow down rainbow, and polish text", and the provided
+   `about-card::after` block, it's a replacement.
+*/
+
+
+
+
+
+/* --- RR Grille Style --- */
+.rr-grille {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    /* Denser gap */
+    pointer-events: none;
+    z-index: -1;
+    opacity: 0.12;
+}
+
+.rr-grille span {
+    width: 1.5px;
+    height: 100%;
+    background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.9), transparent);
+    animation: grilleFlow 3s infinite ease-in-out;
+    animation-delay: calc(var(--i) * 0.1s);
+}
+
+/* HUD Overlay Styles */
+.hud-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.75rem;
+    color: rgba(0, 243, 255, 0.6);
+    padding: 20px;
+}
+
+.hud-top-left {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    border-left: 1px solid #00f3ff;
+    padding-left: 10px;
+    animation: hudGlow 2s infinite alternate;
+}
+
+.hud-bottom-right {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    border-right: 1px solid #00f3ff;
+    padding-right: 10px;
+    animation: hudGlow 2s infinite alternate-reverse;
+}
+
+.scanning-line {
+    position: absolute;
+    width: 100%;
+    height: 1px;
+    background: rgba(0, 243, 255, 0.2);
+    top: 0;
+    left: 0;
+    animation: hudScan 4s infinite linear;
+}
+
+@keyframes hudScan {
+    0% {
+        top: 0%;
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 1;
+    }
+
+    90% {
+        opacity: 1;
+    }
+
+    100% {
+        top: 100%;
+        opacity: 0;
+    }
+}
+
+@keyframes hudGlow {
+    from {
+        opacity: 0.4;
+        text-shadow: 0 0 5px rgba(0, 243, 255, 0.4);
+    }
+
+    to {
+        opacity: 1;
+        text-shadow: 0 0 15px rgba(0, 243, 255, 1);
+    }
+}
+
+@keyframes grilleFlow {
+    0% {
+        transform: scaleY(0.8);
+        opacity: 0.3;
+    }
+
+    50% {
+        transform: scaleY(1.2);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scaleY(0.8);
+        opacity: 0.3;
+    }
+}
+
+/* --- Data Stream Background --- */
+.data-stream {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background:
+        radial-gradient(circle at 2px 2px, rgba(0, 170, 255, 0.05) 1px, transparent 0);
+    background-size: 20px 20px;
+    z-index: -2;
+    mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+}
+
+.data-stream::after {
+    content: '';
+    position: absolute;
+    top: -100%;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    background: linear-gradient(to bottom, transparent, rgba(0, 170, 255, 0.1), transparent);
+    animation: scanLine 6s infinite linear;
+}
+
+@keyframes scanLine {
+    0% {
+        top: -50%;
+    }
+
+    100% {
+        top: 150%;
+    }
+}
+
+.about-card h2 {
+    font-size: 2.3rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    margin-bottom: 25px;
+    text-transform: uppercase;
+    background: linear-gradient(to bottom, #fff, #999);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.15));
+    position: relative;
+    z-index: 100;
+}
+
+.about-content {
+    position: relative;
+    z-index: 100;
+}
+
+.about-content p {
+    font-size: 1.3rem;
+    margin-bottom: 25px;
+    line-height: 1.8;
+    color: #fff;
+    font-weight: 500;
+    text-align: left;
+    border-left: 2px solid #00aaff;
+    padding-left: 20px;
+}
+
+.highlight {
+    color: #ffd700;
+    /* Gold */
+    font-weight: bold;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+    animation: nobleGlow 2s infinite alternate;
+}
+
+@keyframes nobleGlow {
+    0% {
+        color: #ffd700;
+        text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        transform: scale(1);
+    }
+
+    100% {
+        color: #fff7b1;
+        text-shadow: 0 0 20px rgba(255, 215, 0, 0.9);
+        transform: scale(1.05);
+    }
+}
+
+.small-btn {
+    margin-top: 20px;
+    padding: 8px 20px;
+    font-size: 0.9rem;
+    position: relative;
+    z-index: 100;
+}
+
+
+
+/* --- Matrix & Money Rain Overlays --- */
+.matrix-canvas-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -3;
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+#matrix-canvas {
+    width: 100%;
+    height: 100%;
+}
+
+#money-rain-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+    overflow: hidden;
+}
+
+.money-particle {
+    position: absolute;
+    font-size: 24px;
+    color: #00ff88;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    user-select: none;
+    animation: moneyFall linear forwards;
+}
+
+@keyframes moneyFall {
+    0% {
+        transform: translateY(-50px) rotate(0deg);
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 1;
+    }
+
+    90% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+
+.death-glitch {
+    animation: deathShake 0.1s infinite alternate !important;
+    filter: hue-rotate(180deg) invert(1) !important;
+}
+
+@keyframes deathShake {
+    0% {
+        transform: translate(-5px, -5px) rotate(-1deg);
+    }
+
+    100% {
+        transform: translate(5px, 5px) rotate(1deg);
+    }
+}
+
+/* --- Tri-Mirror Opening Animation with Dedicated Mirror Elements --- */
+.about-card {
+    perspective: 2000px;
+    transform-style: preserve-3d;
+}
+
+.mirror {
+    position: absolute;
+    top: 0;
+    width: 55%;
+    height: 100%;
+    /* Luxury Mirror: Original boy image with gold border */
+    background:
+        linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.7)) padding-box,
+        url('about_panel_bg.jpg') center/cover no-repeat padding-box,
+        linear-gradient(45deg, #d4af37, #b8860b) border-box !important;
+
+    backdrop-filter: blur(15px);
+    border: 1px solid transparent !important;
+    border-radius: 24px;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+    z-index: -2;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+    overflow: hidden;
+    /* For diamond sparkles */
+}
+
+/* Diamond Sparkle Effect on Mirrors */
+.mirror::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        radial-gradient(1px 1px at 20px 30px, #fff, rgba(0, 0, 0, 0)),
+        radial-gradient(1.5px 1.5px at 100px 50px, #fff, rgba(0, 0, 0, 0)),
+        radial-gradient(1px 1px at 150px 150px, #fff, rgba(0, 0, 0, 0)),
+        radial-gradient(2px 2px at 50px 200px, #fff, rgba(0, 0, 0, 0)),
+        radial-gradient(1px 1px at 200px 100px, #fff, rgba(0, 0, 0, 0));
+    background-size: 250px 250px;
+    opacity: 0;
+    animation: diamondTwinkle 3s infinite;
+}
+
+@keyframes diamondTwinkle {
+
+    0%,
+    100% {
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.tri-mirror-active .mirror {
+    opacity: 1;
+}
+
+.mirror-left {
+    left: 0;
+    transform-origin: left center;
+}
+
+.mirror-right {
+    right: 0;
+    transform-origin: right center;
+}
+
+/* Animations */
+.tri-mirror-active .mirror-left {
+    animation: mirrorUnfoldLeft 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.tri-mirror-active .mirror-right {
+    animation: mirrorUnfoldRight 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes mirrorUnfoldLeft {
+    0% {
+        transform: rotateY(0deg);
+    }
+
+    100% {
+        transform: rotateY(25deg) translateX(-102%);
+    }
+}
+
+@keyframes mirrorUnfoldRight {
+    0% {
+        transform: rotateY(0deg);
+    }
+
+    100% {
+        transform: rotateY(-25deg) translateX(102%);
+    }
+}
+
+/* Stay Open State */
+.tri-mirror-stay .mirror-left {
+    opacity: 1;
+    transform: rotateY(25deg) translateX(-102%) !important;
+}
+
+.tri-mirror-stay .mirror-right {
+    opacity: 1;
+    transform: rotateY(-25deg) translateX(102%) !important;
+}
