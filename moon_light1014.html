@@ -1,1480 +1,1249 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lighting Moon | Loading...</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>† INTERNET YAMERO - ULTRA OVERDOSE †</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=VT323&family=Press+Start+2P&family=Noto+Sans+JP:wght@700;900&family=Zen+Kurenaido&family=Rubik+Glitch&display=swap" rel="stylesheet">
 
     <style>
-        /* --- 1. 全局設定與自定義游標 --- */
+        /* * ==========================================================================
+         * † SYSTEM CONFIGURATION & VARIABLES †
+         * ==========================================================================
+         */
         :root {
-            --primary-color: #ffffff;
-            --glass-bg: rgba(15, 15, 15, 0.65);
-            --glass-border: rgba(255, 255, 255, 0.08);
+            /* Palette */
+            --c-bg: #050505;
+            --c-text: #ffffff;
+            --c-pink: #ff00ff;
+            --c-pink-dim: #b300b3;
+            --c-pink-glow: #ff80ff;
+            --c-cyan: #00ffff;
+            --c-cyan-dim: #008080;
+            --c-blue: #0000ff;
+            --c-purple: #800080;
+            --c-red: #ff0000;
+            --c-green: #00ff00;
+            --c-yellow: #ffff00;
+            
+            /* Windows 98/2000 Palette */
+            --win-gray: #c0c0c0;
+            --win-gray-light: #dfdfdf;
+            --win-gray-dark: #808080;
+            --win-black: #000000;
+            --win-white: #ffffff;
+            --win-title-blue-1: #000080;
+            --win-title-blue-2: #1084d0;
+            --win-title-active-1: #ff00ff;
+            --win-title-active-2: #800080;
+
+            /* Fonts */
+            --font-pixel: 'DotGothic16', sans-serif;
+            --font-mono: 'VT323', monospace;
+            --font-arcade: 'Press Start 2P', cursive;
+            --font-jp: 'Noto Sans JP', sans-serif;
+            --font-horror: 'Zen Kurenaido', sans-serif;
+            --font-glitch: 'Rubik Glitch', system-ui;
+
+            /* Z-Index Layers */
+            --z-bg-video: -20;
+            --z-bg-pattern: -15;
+            --z-bg-matrix: -10;
+            --z-desktop: 0;
+            --z-icon: 5;
+            --z-window: 100;
+            --z-particles: 5000;
+            --z-spiral: 8000;
+            --z-taskbar: 9500;
+            --z-overlay: 9999;
+            --z-warning: 20000; /* Highest Priority */
+            --z-cursor: 10000;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-drag: none;
         }
 
         body {
+            background-color: var(--c-bg);
+            color: var(--c-text);
+            font-family: var(--font-pixel);
+            overflow: hidden;
             margin: 0;
             padding: 0;
-            background-color: #050505;
-            color: white;
-            font-family: 'Poppins', sans-serif;
-            overflow: hidden;
-            /* 禁止滾動 */
             height: 100vh;
-            cursor: crosshair;
-            /* 十字準心游標 */
-        }
-
-        /* --- 2. 背景影片/圖片 --- */
-        /* --- 0. Custom Cursor & Boot --- */
-        #boot-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
             width: 100vw;
-            height: 100vh;
-            background: #000;
-            z-index: 10000;
-            padding: 2rem;
-            box-sizing: border-box;
-            font-family: 'Courier New', monospace;
-            color: #0f0;
-            overflow: hidden;
-            display: none;
-            /* Shown on click */
-            pointer-events: none;
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white" stroke="black" stroke-width="1"><path d="M0,0 L12,24 L14,14 L24,12 L0,0 Z"/></svg>'), auto;
+            transition: filter 0.05s, transform 0.05s;
         }
 
-        .terminal-line {
-            display: block;
-            margin-bottom: 2px;
-            text-shadow: 0 0 5px #0f0;
+        /* YAMERO MODE CLASS - Triggered on heavy kicks */
+        body.yamero-kick {
+            filter: invert(1) hue-rotate(180deg) contrast(1.2);
+            transform: scale(1.02);
+        }
+
+        ::-webkit-scrollbar { width: 14px; height: 14px; }
+        ::-webkit-scrollbar-track { background: var(--win-gray); border: 2px solid var(--win-gray-light); }
+        ::-webkit-scrollbar-thumb { 
+            background: var(--win-gray); 
+            border-top: 2px solid var(--win-white); border-left: 2px solid var(--win-white); 
+            border-right: 2px solid var(--win-black); border-bottom: 2px solid var(--win-black);
+        }
+        ::-webkit-scrollbar-button { background: var(--win-gray); width: 14px; height: 14px; border: 2px outset white; }
+
+        /* * ==========================================================================
+         * † FULLSCREEN EFFECTS & FILTERS †
+         * ==========================================================================
+         */
+        
+        /* 1. CRT Scanlines */
+        #fx-scanlines {
+            position: fixed; inset: 0; pointer-events: none; z-index: var(--z-overlay);
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 3px 100%;
+            animation: scanline-flicker 0.15s infinite;
+            opacity: 0.7;
+        }
+
+        /* 2. VHS Noise */
+        #fx-noise {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: var(--z-overlay);
+            opacity: 0.04;
+            background-image: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noise"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noise)"/%3E%3C/svg%3E');
+        }
+
+        /* 3. RGB Shift */
+        #fx-rgb-split {
+            position: fixed; inset: 0; pointer-events: none; z-index: 9998;
+            mix-blend-mode: exclusion;
             opacity: 0;
-            animation: fadeIn 0.1s forwards;
+            background: transparent;
+            transition: opacity 0.05s;
         }
-
-        @keyframes fadeIn {
-            to {
-                opacity: 1;
-            }
-        }
-
-        /* Scanline / CRT Effect */
-        .scanlines {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to bottom,
-                    rgba(255, 255, 255, 0),
-                    rgba(255, 255, 255, 0) 50%,
-                    rgba(0, 0, 0, 0.1) 50%,
-                    rgba(0, 0, 0, 0.1));
-            background-size: 100% 4px;
-            z-index: 20000;
-            pointer-events: none;
-            opacity: 0.6;
-            mix-blend-mode: overlay;
-        }
-
-        /* Cursor Ring */
-        .cursor-ring {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 40px;
-            height: 40px;
-            border: 1px dashed rgba(0, 255, 255, 0.4);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 20001;
-            transform: translate(-50%, -50%);
-            transition: width 0.15s, height 0.15s, border-color 0.15s;
-            animation: rotate-cursor 8s linear infinite;
-        }
-
-        .cursor-ring.active {
-            width: 30px;
-            height: 30px;
-            border-color: rgba(255, 0, 100, 0.8);
-            border-style: solid;
-        }
-
-        @keyframes rotate-cursor {
-            to {
-                transform: translate(-50%, -50%) rotate(360deg);
-            }
-        }
-
-        /* --- 2. 背景影片/圖片 --- */
-        #bg-media {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            z-index: -2;
-            filter: brightness(0.3) blur(0px);
-            /* 進入後無模糊 */
-            transition: filter 0.8s ease;
-        }
-
-        /* --- 3. 粒子特效畫布 (雪花) --- */
-        #canvas-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            pointer-events: none;
-        }
-
-        /* --- 4. Click to Enter 遮罩 --- */
-        #enter-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            z-index: 9999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            transition: opacity 1s ease, visibility 1s;
-        }
-
-        .enter-text {
-            font-size: 1.5rem;
-            font-weight: 700;
-            text-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
-            animation: glow 2s infinite ease-in-out;
-        }
-
-        @keyframes glow {
-
-            0%,
-            100% {
-                opacity: 0.5;
-                text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-            }
-
-            50% {
-                opacity: 1;
-                text-shadow: 0 0 20px rgba(255, 255, 255, 1);
-            }
-        }
-
-        /* --- 5. 主內容卡片 (Guns.lol 風格) --- */
-        #main-card {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.9);
-            width: 90%;
-            max-width: 400px;
-            background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-            border-radius: 15px;
-            padding: 40px 20px;
-            text-align: center;
+        
+        /* 4. YAMERO MODE OVERLAY (Rainbow Strobe) */
+        #fx-yamero {
+            position: fixed; inset: 0; pointer-events: none; z-index: 9997;
+            background: transparent;
+            mix-blend-mode: hard-light;
             opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.8s ease, visibility 0.8s;
-            /* Removed transform from transition for smoother 3D tilt */
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
-            perspective: 1000px;
-            transform-style: preserve-3d;
+            transition: opacity 0.1s;
+        }
+        #fx-yamero.active {
+            animation: rainbow-flash 0.5s infinite;
+            opacity: 0.3;
         }
 
-        .avatar {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            /* margin-bottom removed for alignment */
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
-            transition: transform 0.5s;
+        /* 5. Flash Overlay */
+        #fx-flash {
+            position: fixed; inset: 0; background: white; z-index: 100000;
+            pointer-events: none; opacity: 0;
         }
 
-        .avatar:hover {
-            transform: rotate(360deg);
-        }
-
-        .username {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-bottom: 5px;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
-            /* 模擬高級會員的鑽石/發光名字效果 */
-            background: linear-gradient(90deg, #fff, #b3b3b3, #fff);
-            background-size: 200%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: gradient-anim 3s infinite linear;
-            position: relative;
-            display: inline-block;
-        }
-
-        @keyframes gradient-anim {
-            0% {
-                background-position: 0%;
-            }
-
-            100% {
-                background-position: 200%;
-            }
-        }
-
-
-        /* --- Glitch Effect --- */
-        .glitch {
-            position: relative;
-        }
-
-        .glitch::before,
-        .glitch::after {
-            content: attr(data-text);
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #050505;
-            /* Consistent with bg */
-            overflow: hidden;
-            clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-        }
-
-        .glitch::before {
-            left: 2px;
-            text-shadow: -1px 0 #ff00c1;
-            animation: glitch-anim-1 2s infinite linear alternate-reverse;
-        }
-
-        .glitch::after {
-            left: -2px;
-            text-shadow: -1px 0 #00fff9;
-            animation: glitch-anim-2 3s infinite linear alternate-reverse;
-        }
-
-        @keyframes glitch-anim-1 {
-            0% {
-                clip-path: inset(20% 0 80% 0);
-                transform: translate(-2px, 1px);
-            }
-
-            20% {
-                clip-path: inset(60% 0 10% 0);
-                transform: translate(2px, -1px);
-            }
-
-            40% {
-                clip-path: inset(40% 0 50% 0);
-                transform: translate(-2px, 2px);
-            }
-
-            60% {
-                clip-path: inset(80% 0 5% 0);
-                transform: translate(2px, -2px);
-            }
-
-            80% {
-                clip-path: inset(10% 0 70% 0);
-                transform: translate(-1px, 1px);
-            }
-
-            100% {
-                clip-path: inset(30% 0 50% 0);
-                transform: translate(1px, -1px);
-            }
-        }
-
-        @keyframes glitch-anim-2 {
-            0% {
-                clip-path: inset(10% 0 60% 0);
-                transform: translate(2px, -1px);
-            }
-
-            20% {
-                clip-path: inset(80% 0 5% 0);
-                transform: translate(-2px, 1px);
-            }
-
-            40% {
-                clip-path: inset(30% 0 20% 0);
-                transform: translate(2px, 2px);
-            }
-
-            60% {
-                clip-path: inset(10% 0 80% 0);
-                transform: translate(-2px, -2px);
-            }
-
-            80% {
-                clip-path: inset(40% 0 10% 0);
-                transform: translate(1px, 1px);
-            }
-
-            100% {
-                clip-path: inset(50% 0 30% 0);
-                transform: translate(-1px, -1px);
-            }
-        }
-
-        .badges {
-            margin-bottom: 5px;
-            font-size: 1rem;
-            color: #ddd;
-            text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
-        }
-
-        .uid {
-            font-size: 0.9rem;
-            color: rgba(255, 255, 255, 0.7);
-            margin-bottom: 15px;
-            text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
-            font-family: monospace;
-        }
-
-        .badges i {
-            margin: 0 3px;
-            cursor: help;
-        }
-
-        .bio-box {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-            padding: 10px;
-            margin: 15px 0;
-            min-height: 24px;
-            font-size: 0.9rem;
-            color: #ccc;
-            font-family: 'Courier New', monospace;
-            /* 打字機字體 */
-        }
-
-        /* --- 社交按鈕 --- */
-        .links {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-top: 20px;
-        }
-
-        .link-item {
-            display: block;
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
-            text-decoration: none;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s;
-            font-weight: 600;
-            position: relative;
+        /* 6. Typography Attack Layer */
+        #fx-typo {
+            position: fixed; inset: 0; pointer-events: none; z-index: 9500;
+            display: flex; justify-content: center; align-items: center;
             overflow: hidden;
         }
 
-        .link-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: scale(1.02) rotateY(10deg);
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
-            text-shadow: 0 0 10px rgba(255, 255, 255, 1);
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        /* 按钮点击粒子效果 */
-        .link-item:active {
-            transform: scale(0.98);
-        }
-
-        .particle {
-            position: absolute;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
+        /* 7. Holy Light (God Rays) */
+        #fx-holy-light {
+            position: fixed; inset: -50%; width: 200%; height: 200%;
+            z-index: var(--z-bg-pattern);
+            background: repeating-conic-gradient(
+                from 0deg,
+                rgba(255, 255, 255, 0.05) 0deg,
+                rgba(255, 255, 255, 0.05) 10deg,
+                transparent 10deg,
+                transparent 20deg
+            );
+            animation: holy-spin 20s linear infinite;
             pointer-events: none;
-            z-index: 100;
-            animation: particle-fade 1s ease-out forwards;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        #fx-holy-light.active { opacity: 1; }
+
+        /* * ==========================================================================
+         * † ANIMATIONS DEFINITIONS †
+         * ==========================================================================
+         */
+        
+        @keyframes scanline-flicker { 0% { opacity: 0.7; } 50% { opacity: 0.8; } 100% { opacity: 0.7; } }
+        
+        @keyframes rainbow-flash { 
+            0% { background-color: rgba(255,0,0,0.5); } 20% { background-color: rgba(255,255,0,0.5); } 
+            40% { background-color: rgba(0,255,0,0.5); } 60% { background-color: rgba(0,255,255,0.5); } 
+            80% { background-color: rgba(0,0,255,0.5); } 100% { background-color: rgba(255,0,255,0.5); } 
+        }
+        
+        @keyframes shake-violent { 
+            0% { transform: translate(0, 0) rotate(0deg); } 20% { transform: translate(10px, -10px) rotate(5deg); } 
+            40% { transform: translate(-10px, 10px) rotate(-5deg); } 60% { transform: translate(5px, 5px) rotate(2deg); } 
+            80% { transform: translate(-5px, -5px) rotate(-2deg); } 100% { transform: translate(0, 0) rotate(0deg); } 
+        }
+        
+        @keyframes typo-slam { 
+            0% { transform: scale(3) rotate(20deg); opacity: 0; filter: blur(10px); } 
+            30% { transform: scale(0.9) rotate(-5deg); opacity: 1; filter: blur(0px); } 
+            70% { transform: scale(1.1) rotate(2deg); opacity: 1; } 
+            100% { transform: scale(1.5) rotate(0deg); opacity: 0; filter: blur(5px); } 
+        }
+        
+        @keyframes popup-spawn { 0% { transform: translate(-50%, -50%) scale(0.1); opacity: 0; } 80% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+        
+        @keyframes blink { 50% { opacity: 0; } }
+
+        @keyframes ring-rotate {
+            0% { transform: translate(-50%, -50%) rotate(0deg) scale(0.5); opacity: 0; }
+            10% { opacity: 1; }
+            100% { transform: translate(-50%, -50%) rotate(360deg) scale(1.5); opacity: 0; }
         }
 
-        @keyframes particle-fade {
-            0% {
-                transform: translate(0, 0);
-                opacity: 1;
-            }
+        @keyframes holy-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes float-up { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-100vh) scale(0); opacity: 0; } }
+        @keyframes beat-pulse { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.02); } 100% { transform: translate(-50%, -50%) scale(1); } }
 
-            100% {
-                transform: translate(var(--tx), var(--ty));
-                opacity: 0;
-            }
+        /* * ==========================================================================
+         * † UI COMPONENTS †
+         * ==========================================================================
+         */
+        
+        .win-frame {
+            position: absolute; background-color: var(--win-gray);
+            border-top: 2px solid var(--win-white); border-left: 2px solid var(--win-white);
+            border-right: 2px solid var(--win-black); border-bottom: 2px solid var(--win-black);
+            box-shadow: 6px 6px 0 rgba(0,0,0,0.5); display: flex; flex-direction: column;
+            padding: 2px; min-width: 200px; min-height: 100px; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); animation: popup-spawn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: border 0.1s;
+        }
+        .win-frame.active { z-index: var(--z-window) + 10; border: 2px solid var(--c-pink); box-shadow: 0 0 15px var(--c-pink); }
+        .win-frame.glitch-mode { animation: shake-violent 0.5s infinite; filter: invert(1); }
+        .win-frame.beating { animation: beat-pulse 0.4s ease-out; }
+
+        .win-titlebar {
+            background: linear-gradient(90deg, var(--win-title-blue-1), var(--win-title-blue-2));
+            color: white; padding: 2px 4px; display: flex; justify-content: space-between; align-items: center;
+            height: 24px; cursor: default;
+        }
+        .win-frame.active .win-titlebar { background: linear-gradient(90deg, var(--win-title-active-1), var(--win-title-active-2)); }
+        
+        .win-title-text {
+            font-family: var(--font-bold); font-size: 12px; letter-spacing: 0.5px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            text-shadow: 1px 1px 0 #000; pointer-events: none; display: flex; align-items: center; gap: 6px;
         }
 
-        /* --- 底部資訊 --- */
-        .footer {
-            margin-top: 25px;
-            font-size: 0.7rem;
-            color: #666;
-            display: flex;
-            justify-content: center;
-            gap: 10px;
+        .win-controls { display: flex; gap: 2px; }
+        .win-btn {
+            width: 16px; height: 16px; background: var(--win-gray);
+            border-top: 1px solid var(--win-white); border-left: 1px solid var(--win-white);
+            border-right: 1px solid var(--win-black); border-bottom: 1px solid var(--win-black);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 10px; color: black; font-weight: bold; cursor: pointer; line-height: 1;
+        }
+        .win-btn:active { border-top: 1px solid var(--win-black); border-left: 1px solid var(--win-black); border-right: 1px solid var(--win-white); border-bottom: 1px solid var(--win-white); transform: translate(1px, 1px); }
+        .win-btn:hover { background: #e0e0e0; }
+        .win-btn.close:hover { background: #ff0000; color: white; }
+
+        .win-content { flex-grow: 1; margin-top: 2px; position: relative; display: flex; flex-direction: column; overflow: hidden; }
+        .inset-deep { border-top: 2px solid var(--win-gray-dark); border-left: 2px solid var(--win-gray-dark); border-right: 2px solid var(--win-white); border-bottom: 2px solid var(--win-white); background: white; flex-grow: 1; overflow: auto; }
+        .inset-deep.black { background: black; color: #00ff00; }
+
+        /* Taskbar */
+        #taskbar {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 32px;
+            background: var(--win-gray); border-top: 2px solid var(--win-white);
+            z-index: var(--z-taskbar); display: flex; align-items: center; padding: 2px;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.5);
+        }
+        #btn-start {
+            height: 26px; padding: 0 8px; margin-right: 6px; display: flex; align-items: center; gap: 6px;
+            font-family: var(--font-arcade); font-size: 10px; font-weight: bold;
+            background: var(--win-gray); border-top: 2px solid var(--win-white);
+            border-left: 2px solid var(--win-white); border-right: 2px solid var(--win-black);
+            border-bottom: 2px solid var(--win-black); cursor: pointer; box-shadow: 1px 1px 0 #000;
+        }
+        #btn-start.active { border-top: 2px solid var(--win-black); border-left: 2px solid var(--win-black); border-right: 2px solid var(--win-white); border-bottom: 2px solid var(--win-white); background: #ccc; transform: translate(1px, 1px); }
+        .task-divider { width: 2px; height: 22px; background: var(--win-gray-dark); border-right: 1px solid var(--win-white); margin: 0 4px; }
+        #task-tray {
+            margin-left: auto; border-top: 2px solid var(--win-gray-dark);
+            border-left: 2px solid var(--win-gray-dark); border-right: 2px solid var(--win-white);
+            border-bottom: 2px solid var(--win-white); padding: 0 8px; height: 26px;
+            display: flex; align-items: center; gap: 8px; font-size: 11px;
+            font-family: var(--font-pixel); background: #c0c0c0;
+        }
+        #task-list { display: flex; gap: 2px; overflow: hidden; flex-grow: 1; }
+        .task-item {
+            width: 140px; height: 26px; background: var(--win-gray);
+            border-top: 2px solid var(--win-white); border-left: 2px solid var(--win-white);
+            border-right: 2px solid var(--win-black); border-bottom: 2px solid var(--win-black);
+            display: flex; align-items: center; padding: 0 4px; cursor: pointer; font-size: 11px; gap: 5px;
+        }
+        .task-item.active {
+            background: #e0e0e0; border-top: 2px solid var(--win-black); border-left: 2px solid var(--win-black);
+            border-right: 2px solid var(--win-white); border-bottom: 2px solid var(--win-white);
+            background-image: repeating-linear-gradient(45deg, #ccc 0, #ccc 1px, #eee 1px, #eee 2px); font-weight: bold;
+        }
+        .task-item span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Start Menu */
+        #menu-start {
+            position: fixed; bottom: 34px; left: 2px; width: 250px;
+            background: var(--win-gray); border-top: 2px solid var(--win-white);
+            border-left: 2px solid var(--win-white); border-right: 2px solid var(--win-black);
+            border-bottom: 2px solid var(--win-black); z-index: var(--z-taskbar) + 1;
+            display: none; box-shadow: 10px 10px 0 rgba(0,0,0,0.5);
+        }
+        .menu-sidebar {
+            position: absolute; left: 2px; top: 2px; bottom: 2px; width: 30px;
+            background: linear-gradient(to bottom, var(--win-title-blue-1), var(--c-pink));
+            display: flex; align-items: flex-end; justify-content: center;
+        }
+        .menu-sidebar span { writing-mode: vertical-rl; transform: rotate(180deg); color: white; font-family: var(--font-arcade); font-weight: bold; font-size: 20px; margin-bottom: 10px; }
+        .menu-content { margin-left: 34px; padding: 2px; }
+        .menu-entry { padding: 8px 10px; display: flex; align-items: center; gap: 10px; font-size: 13px; cursor: pointer; color: black; }
+        .menu-entry:hover { background: var(--win-title-blue-1); color: white; }
+        .menu-hr { height: 2px; border-top: 1px solid var(--win-gray-dark); border-bottom: 1px solid var(--win-white); margin: 4px 0; }
+
+        /* Desktop */
+        #bg-video-container { position: fixed; inset: 0; z-index: var(--z-bg-video); background: #000; overflow: hidden; pointer-events: none; }
+        #bg-video { width: 100vw; height: 100vh; object-fit: cover; filter: brightness(0.8) contrast(1.2); opacity: 1; transform: scale(1.05); }
+        #bg-matrix { position: fixed; inset: 0; z-index: var(--z-bg-matrix); pointer-events: none; mix-blend-mode: screen; }
+
+        .icon-grid { position: absolute; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 20px; z-index: var(--z-icon); }
+        .d-icon {
+            width: 80px; display: flex; flex-direction: column; align-items: center;
+            cursor: pointer; color: white; text-shadow: 1px 1px 2px black;
+            border: 1px solid transparent; padding: 5px; transition: transform 0.1s;
+        }
+        .d-icon:hover { border: 1px dotted rgba(255,255,255,0.5); background: rgba(0,0,0,0.3); }
+        .d-icon:active { transform: scale(0.95); }
+        .d-icon i { font-size: 32px; margin-bottom: 5px; filter: drop-shadow(2px 2px 0 black); }
+        .d-icon span { font-size: 12px; text-align: center; background: rgba(0,0,0,0.5); padding: 0 2px; line-height: 1.2; }
+
+        /* Content Styling */
+        .winamp-display { background: #000; color: #0f0; font-family: var(--font-mono); padding: 5px; border: 2px solid #555; margin-bottom: 5px; height: 80px; display: flex; flex-direction: column; position: relative; }
+        .vis-canvas { width: 100%; height: 40px; image-rendering: pixelated; margin-top: auto; }
+        .song-marquee { overflow: hidden; white-space: nowrap; font-size: 14px; margin-bottom: 2px; color: #0f0; }
+        .song-info { font-size: 12px; display: flex; justify-content: space-between; color: #aaa; }
+        .player-btns { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; gap: 4px; }
+        .player-btns .win-btn { flex-grow: 1; height: 20px; font-size: 11px; width: auto; }
+        .vol-slider { width: 100%; height: 6px; -webkit-appearance: none; background: #555; margin-top: 5px; }
+        .vol-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; background: var(--win-gray); border: 1px solid white; cursor: pointer; }
+
+        .feed-container { background: #f0f0f0; height: 100%; overflow-y: scroll; padding: 0; }
+        .tweet { background: white; border-bottom: 1px solid #ddd; padding: 10px; display: flex; gap: 10px; animation: popup-spawn 0.3s ease-out; transition: background 0.2s; }
+        .tweet:hover { background: #f9f9ff; }
+        .tweet-pfp { width: 48px; height: 48px; background: #333; flex-shrink: 0; overflow: hidden; border: 2px solid var(--c-pink); box-shadow: 2px 2px 0 rgba(0,0,0,0.2); }
+        .tweet-pfp img { width: 100%; height: 100%; object-fit: cover; }
+        .tweet-body { flex-grow: 1; font-size: 12px; min-width: 0; }
+        .tweet-user { font-weight: bold; color: #333; display: flex; justify-content: space-between; align-items: center; }
+        .tweet-time { color: #999; font-size: 10px; }
+        .tweet-text { margin-top: 4px; line-height: 1.4; color: #000; word-break: break-all; }
+        .tweet-text.psycho { color: var(--c-red); font-family: var(--font-horror); font-size: 18px; font-weight: bold; text-shadow: 1px 1px 0 #000; }
+
+        .chat-log { background: #000; color: #fff; height: calc(100% - 30px); overflow-y: scroll; padding: 5px; font-family: var(--font-mono); font-size: 13px; border-bottom: 1px solid #444; }
+        .msg { margin-bottom: 4px; line-height: 1.3; animation: popup-spawn 0.1s; }
+        .msg .time { color: #888; margin-right: 5px; font-size: 10px; }
+        .msg .user { color: var(--c-cyan); font-weight: bold; margin-right: 5px; }
+        .msg .angel { color: var(--c-pink); font-weight: bold; margin-right: 5px; text-shadow: 0 0 5px var(--c-pink); background: rgba(255,0,255,0.1); padding: 0 2px;}
+        .msg.sys { color: var(--c-yellow); font-style: italic; }
+        .chat-input-area { display: flex; height: 30px; margin-top: 2px; gap: 2px; }
+        .chat-input { flex-grow: 1; background: #000; color: #fff; border: 1px solid #555; font-family: var(--font-mono); padding: 0 5px; }
+
+        .file-explorer { display: flex; flex-direction: column; height: 100%; }
+        .fe-toolbar { display: flex; padding: 4px; gap: 4px; border-bottom: 1px solid #888; background: #f0f0f0; }
+        .fe-path { flex-grow: 1; border: 1px solid #888; background: #fff; padding: 0 4px; font-size: 12px; }
+        .fe-grid { flex-grow: 1; background: #fff; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); grid-auto-rows: 80px; gap: 4px; overflow-y: auto; }
+        .fe-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; padding: 4px; }
+        .fe-item:hover { background: #e0e0e0; }
+        .fe-icon { font-size: 32px; margin-bottom: 2px; color: #e6b800; }
+        .fe-name { font-size: 11px; text-align: center; word-break: break-word; line-height: 1.1; }
+
+        .typo-word {
+            position: absolute; font-family: var(--font-jp); font-weight: 900; color: var(--c-red);
+            text-shadow: 2px 2px 0 #fff; pointer-events: none; white-space: nowrap; z-index: 10000;
         }
 
-        /* 隱藏原生播放器 */
-        audio {
-            display: none;
-        }
+        .console-screen { background: #111; color: #0f0; font-family: 'Courier New', monospace; padding: 5px; height: 100%; overflow-y: auto; font-size: 12px; }
+        .cmd-line { display: flex; }
+        .cmd-input { background: transparent; border: none; color: #fff; flex-grow: 1; outline: none; font-family: inherit; }
 
+        /* Effects Elements */
+        .yamero-ring-container {
+            position: fixed; top: 50%; left: 50%; width: 0; height: 0;
+            transform: translate(-50%, -50%); z-index: var(--z-spiral); pointer-events: none;
+            animation: ring-rotate 4s linear infinite;
+        }
+        .yamero-ring-text {
+            position: absolute; top: 0; left: 0; font-family: var(--font-jp); font-weight: 900; font-size: 28px;
+            color: var(--c-pink); text-shadow: 0 0 10px var(--c-pink), 0 0 20px white; white-space: nowrap;
+        }
+        .dopamine-particle {
+            position: fixed; font-size: 24px; pointer-events: none; z-index: var(--z-particles);
+            animation: float-up 2s ease-out forwards;
+        }
         .cursor-trail {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            background: cyan;
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 9999;
-            box-shadow: 0 0 10px cyan, 0 0 20px cyan;
+            position: fixed; width: 10px; height: 10px; background: var(--c-cyan);
+            border-radius: 50%; pointer-events: none; z-index: var(--z-cursor); opacity: 0.5;
+            mix-blend-mode: screen; animation: fade-out 0.5s forwards;
         }
-
-        /* --- 6. Avatar Magic Circle (Enhanced) --- */
-        .avatar-container {
-            position: relative;
-            display: inline-block;
-            margin-bottom: 40px;
-            /* Increased to compensate for removed avatar margin */
+        @keyframes fade-out { to { opacity: 0; transform: scale(0); } }
+        
+        .toast-popup {
+            position: fixed; bottom: 50px; right: 10px; width: 200px;
+            background: var(--win-gray); border: 2px solid var(--win-white);
+            border-right-color: #000; border-bottom-color: #000;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.5); z-index: var(--z-overlay);
+            font-family: var(--font-pixel); animation: popup-spawn 0.3s;
         }
+        .toast-header { background: var(--win-title-blue-1); color: white; padding: 2px; font-size: 10px; font-weight: bold; display: flex; justify-content: space-between; }
+        .toast-body { padding: 10px; font-size: 11px; display: flex; align-items: center; gap: 8px; }
 
-        .magic-ring {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: -1;
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.1);
-        }
+        /* Screens */
+        #screen-warning { position: fixed; inset: 0; background: black; color: red; z-index: var(--z-warning); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-family: var(--font-horror); font-size: 24px; font-weight: bold; }
+        #screen-bios { position: fixed; inset: 0; background: #000; color: #ccc; font-family: var(--font-mono); padding: 20px; z-index: 100000; font-size: 18px; display: none; flex-direction: column; }
+        #screen-bsod { position: fixed; inset: 0; background: var(--win-title-blue-1); color: #fff; font-family: var(--font-mono); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100001; cursor: pointer; text-align: center; }
 
-        /* Outer Runes/Dashed Ring */
-        .ring-1 {
-            width: 170px;
-            height: 170px;
-            border: 1px dashed rgba(0, 255, 255, 0.4);
-            animation: rotate-right 20s linear infinite;
-        }
-
-        /* Inner Hexagon/Tech Ring */
-        .ring-2 {
-            width: 150px;
-            height: 150px;
-            border: 2px solid transparent;
-            border-top: 2px solid rgba(255, 0, 150, 0.6);
-            border-bottom: 2px solid rgba(255, 0, 150, 0.6);
-            animation: rotate-left 12s linear infinite;
-        }
-
-        .ring-2::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            border-radius: 50%;
-            border: 2px solid transparent;
-            border-left: 2px solid rgba(0, 255, 255, 0.6);
-            border-right: 2px solid rgba(0, 255, 255, 0.6);
-            transform: rotate(90deg);
-        }
-
-        /* Pulsing Core Ring */
-        .ring-3 {
-            width: 130px;
-            height: 130px;
-            border: 1px dotted rgba(255, 255, 255, 0.3);
-            animation: pulse-ring 2s ease-in-out infinite alternate, rotate-right 30s linear infinite;
-        }
-
-        /* Complex Decorative Ring */
-        .ring-4 {
-            width: 190px;
-            height: 190px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            animation: rotate-left 40s linear infinite;
-        }
-
-        .ring-4::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: -5px;
-            width: 10px;
-            height: 10px;
-            background: rgba(0, 255, 255, 0.5);
-            border-radius: 50%;
-            box-shadow: 0 0 10px cyan;
-        }
-
-        @keyframes rotate-right {
-            to {
-                transform: translate(-50%, -50%) rotate(360deg);
-            }
-        }
-
-        @keyframes rotate-left {
-            to {
-                transform: translate(-50%, -50%) rotate(-360deg);
-            }
-        }
-
-        @keyframes pulse-ring {
-            0% {
-                transform: translate(-50%, -50%) scale(0.95);
-                opacity: 0.3;
-                border-color: rgba(255, 255, 255, 0.1);
-            }
-
-            100% {
-                transform: translate(-50%, -50%) scale(1.05);
-                opacity: 0.7;
-                border-color: rgba(0, 255, 255, 0.5);
-            }
-        }
-
-        /* --- 7. HUD / Tech Elements --- */
-        .hud-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            overflow: hidden;
-            z-index: 10;
-        }
-
-        .hud-item {
-            position: absolute;
-            font-family: 'Courier New', monospace;
-            font-size: 0.7rem;
-            color: rgba(0, 255, 255, 0.5);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        .hud-tl {
-            top: 20px;
-            left: 20px;
-            text-align: left;
-        }
-
-        .hud-tr {
-            top: 20px;
-            right: 20px;
-            text-align: right;
-        }
-
-        .hud-bl {
-            bottom: 20px;
-            left: 20px;
-            text-align: left;
-        }
-
-        .hud-br {
-            bottom: 20px;
-            right: 20px;
-            text-align: right;
-        }
-
-        .hud-line {
-            display: block;
-            margin-bottom: 5px;
-        }
-
-        .scan-line {
-            width: 100%;
-            height: 2px;
-            background: rgba(0, 255, 255, 0.2);
-            position: absolute;
-            top: 0;
-            left: 0;
-            animation: scan 3s linear infinite;
-            opacity: 0.5;
-        }
-
-        @keyframes scan {
-            0% {
-                top: 0%;
-                opacity: 0;
-            }
-
-            50% {
-                opacity: 0.5;
-            }
-
-            100% {
-                top: 100%;
-                opacity: 0;
-            }
-        }
-
-        /* --- Scramble Effect Helper --- */
-        .scramble-highlight {
-            color: #0ff;
-            text-shadow: 0 0 5px #0ff;
-        }
-
-        /* --- 8. Magic Circle Click Effect --- */
-        .click-magic-ring {
-            position: fixed;
-            pointer-events: none;
-            border-radius: 50%;
-            border: 2px solid rgba(0, 255, 255, 0.8);
-            box-shadow: 0 0 15px cyan, inset 0 0 15px cyan;
-            z-index: 9998;
-            animation: magic-expand 0.8s ease-out forwards;
-        }
-
-        .click-magic-ring::before,
-        .click-magic-ring::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            border-radius: 50%;
-            border: 1px dashed rgba(255, 0, 255, 0.5);
-        }
-
-        .click-magic-ring::before {
-            animation: rotate-right 0.8s linear;
-        }
-
-        .click-magic-ring::after {
-            animation: rotate-left 0.8s linear;
-        }
-
-        @keyframes magic-expand {
-            0% {
-                width: 0;
-                height: 0;
-                opacity: 1;
-                transform: translate(-50%, -50%) rotate(0deg);
-            }
-
-            100% {
-                width: 300px;
-                height: 300px;
-                opacity: 0;
-                transform: translate(-50%, -50%) rotate(45deg);
-            }
-        }
-
-        /* --- 9. Pseudo Audio Visualizer --- */
-        .visualizer-container {
-            display: flex;
-            justify-content: center;
-            align-items: flex-end;
-            gap: 3px;
-            height: 30px;
-            margin-top: 15px;
-        }
-
-        .viz-bar {
-            width: 4px;
-            background: cyan;
-            box-shadow: 0 0 5px cyan;
-            animation: viz-bounce 0.5s infinite ease-in-out alternate;
-        }
-
-        .viz-bar:nth-child(odd) {
-            animation-duration: 0.4s;
-            background: #ff00ff;
-            box-shadow: 0 0 5px #ff00ff;
-        }
-
-        .viz-bar:nth-child(2n) {
-            animation-duration: 0.6s;
-        }
-
-        .viz-bar:nth-child(3n) {
-            animation-duration: 0.3s;
-        }
-
-        @keyframes viz-bounce {
-            0% {
-                height: 5px;
-                opacity: 0.5;
-            }
-
-            100% {
-                height: 100%;
-                opacity: 1;
-            }
-        }
-
-        /* --- 10. Global Screen Glitch (Subtle) --- */
-        @keyframes screen-twitch {
-            0% {
-                transform: translate(0, 0);
-                filter: brightness(1);
-            }
-
-            95% {
-                transform: translate(0, 0);
-                filter: brightness(1);
-            }
-
-            96% {
-                transform: translate(-2px, 1px);
-                filter: hue-rotate(90deg) brightness(1.2);
-            }
-
-            97% {
-                transform: translate(2px, -1px);
-                filter: invert(0.1);
-            }
-
-            98% {
-                transform: translate(0, 2px);
-                filter: brightness(1);
-            }
-
-            100% {
-                transform: translate(0, 0);
-            }
-        }
-
-        /* Apply to body or a wrapper if preferred. Using body for max effect */
-        body {
-            animation: screen-twitch 10s infinite;
-        }
-
-        /* --- 11. New Animation Additions (Chuunibyou) --- */
-
-        /* System Warning Overlay */
-        .system-warning-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 0, 0, 0.1);
-            z-index: 15000;
-            pointer-events: none;
-            opacity: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            mix-blend-mode: overlay;
-        }
-
-        .warning-text {
-            font-size: 5rem;
-            color: red;
-            font-weight: 900;
-            border: 10px solid red;
-            padding: 20px 40px;
-            text-transform: uppercase;
-            letter-spacing: 10px;
-            transform: rotate(-10deg);
-            opacity: 0;
-            text-shadow: 0 0 20px red;
-            box-shadow: 0 0 50px red, inset 0 0 50px red;
-        }
-
-        .severe-glitch-anim {
-            animation: severe-glitch 0.2s infinite;
-        }
-
-        @keyframes severe-glitch {
-            0% {
-                transform: translate(0, 0) skew(0deg);
-                opacity: 1;
-            }
-
-            20% {
-                transform: translate(-10px, 5px) skew(10deg);
-                opacity: 0.8;
-            }
-
-            40% {
-                transform: translate(10px, -5px) skew(-10deg);
-                opacity: 1;
-            }
-
-            60% {
-                transform: translate(-5px, 10px) skew(5deg);
-                opacity: 0.9;
-            }
-
-            80% {
-                transform: translate(5px, -10px) skew(-5deg);
-                opacity: 1;
-            }
-
-            100% {
-                transform: translate(0, 0) skew(0deg);
-                opacity: 1;
-            }
-        }
-
-        /* Digital Particles */
-        .digital-particle {
-            position: absolute;
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            font-size: 0.8rem;
-            color: #0ff;
-            pointer-events: none;
-            z-index: 10001;
-            user-select: none;
-            text-shadow: 0 0 5px cyan;
-            animation: float-up-fade 1.5s ease-out forwards;
-        }
-
-        @keyframes float-up-fade {
-            0% {
-                transform: translateY(0) scale(1);
-                opacity: 1;
-            }
-
-            100% {
-                transform: translateY(-50px) scale(1.5);
-                opacity: 0;
-            }
-        }
-
-        /* Power Bar in HUD */
-        .power-bar-container {
-            width: 150px;
-            height: 10px;
-            border: 1px solid rgba(0, 255, 255, 0.5);
-            background: rgba(0, 0, 0, 0.5);
-            margin-top: 5px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .power-bar-fill {
-            height: 100%;
-            width: 50%;
-            background: linear-gradient(90deg, transparent, #0ff, transparent);
-            background-size: 200% 100%;
-            animation: power-pulse 2s infinite linear;
-            box-shadow: 0 0 10px cyan;
-            transition: width 0.2s ease-out;
-        }
-
-        @keyframes power-pulse {
-            0% {
-                background-position: 100% 0;
-            }
-
-            100% {
-                background-position: -100% 0;
-            }
-        }
     </style>
 </head>
-
 <body>
 
-    <video id="bg-media" loop muted playsinline>
-        <source src="https://r2.guns.lol/11173a4c-5c66-4bbe-ac8f-e2641bdabcd3.mp4" type="video/mp4">
-    </video>
+    <!-- Layer Stack -->
+    <div id="fx-scanlines"></div>
+    <div id="fx-noise"></div>
+    <div id="fx-rgb-split"></div>
+    <div id="fx-yamero"></div>
+    <div id="fx-flash"></div>
+    <div id="fx-holy-light"></div>
+    <div id="fx-typo"></div>
 
-    <canvas id="canvas-overlay"></canvas>
+    <!-- 0. Warning Screen -->
+    <div id="screen-warning">
+        <h1 class="text-4xl md:text-6xl mb-4" style="text-shadow: 0 0 10px red;">WARNING / 警告</h1>
+        <p class="mb-2">此頁面包含極度強烈的閃光與大量動態元素</p>
+        <p class="mb-8">光敏性癲癇患者請勿觀看</p>
+        <p class="text-white text-sm mb-8 font-sans">This page contains extremely flashing lights and rapid motion.<br>Viewer discretion is advised.</p>
+        <button id="btn-enter" class="border-2 border-red-500 text-red-500 hover:bg-red-500 hover:text-black px-6 py-2 transition-colors font-mono">
+            [ ENTER THE VOID ]
+        </button>
+    </div>
 
-    <audio id="bg-music" loop>
+    <!-- 1. BIOS -->
+    <div id="screen-bios">
+        <div>AMIBIOS (C) 2025 American Megatrends, Inc.</div>
+        <div>ASUS P5A-B ACPI BIOS Revision 1337 Beta</div>
+        <div>CPU: Intel Pentium III 9999MHz (Lighting Moon Core)</div>
+        <div style="margin-top: 10px;">Checking NVRAM..</div>
+        <div id="bios-log" style="display: flex; flex-direction: column; color: #aaa;"></div>
+        <div style="margin-top: auto;">Press DEL to enter SETUP</div>
+        <div style="animation: blink 0.5s infinite;">_</div>
+    </div>
+
+    <!-- 2. BSOD -->
+    <div id="screen-bsod">
+        <div style="border: 2px solid white; padding: 20px; max-width: 600px;">
+            <h1 style="background: white; color: var(--win-title-blue-1); font-size: 32px; font-weight: bold; display: inline-block; padding: 0 10px;">FATAL ERROR</h1>
+            <p style="margin: 20px 0; font-size: 18px;">
+                A fatal exception 0E has occurred at 0028:C0011E36 in VXD VMM(01) + 00010E36.<br>
+                The current application [LIGHTING_MOON.EXE] will be terminated.<br><br>
+                * Press any key to overdose *
+            </p>
+            <p style="color: yellow; animation: blink 0.5s infinite; margin-top: 20px;">_</p>
+        </div>
+    </div>
+
+    <!-- 3. Desktop -->
+    <div id="desktop-layer" style="opacity: 0; transition: opacity 2s;">
+        
+        <div id="bg-video-container">
+            <video id="bg-video" loop muted playsinline autoplay crossorigin="anonymous">
+                <source src="https://r2.guns.lol/11173a4c-5c66-4bbe-ac8f-e2641bdabcd3.mp4" type="video/mp4">
+            </video>
+        </div>
+        <canvas id="bg-matrix"></canvas>
+
+        <div class="icon-grid">
+            <div class="d-icon" onclick="OS.open('my_computer')"><i class="fas fa-desktop text-white"></i><span>My Computer</span></div>
+            <div class="d-icon" onclick="OS.open('documents')"><i class="fas fa-folder text-yellow-400"></i><span>Documents</span></div>
+            <div class="d-icon" onclick="OS.open('internet')"><i class="fab fa-internet-explorer text-blue-400"></i><span>Internet</span></div>
+            <div class="d-icon" onclick="OS.open('recycle')"><i class="fas fa-trash-alt text-gray-300"></i><span>Recycle Bin</span></div>
+            <div class="d-icon" style="margin-top: 20px;" onclick="OS.open('secret')"><i class="fas fa-file-code text-red-500"></i><span>Secrets.txt</span></div>
+            <div class="d-icon" onclick="window.open('https://discord.gg/VvcdzzXX', '_blank')"><i class="fab fa-discord text-indigo-400"></i><span>Discord</span></div>
+        </div>
+
+        <div id="taskbar">
+            <div id="btn-start" onclick="OS.toggleStartMenu()"><i class="fab fa-windows text-black"></i><span style="font-weight:bold; font-style:italic;">Start</span></div>
+            <div class="task-divider"></div>
+            <div id="task-list"></div>
+            <div class="task-divider"></div>
+            <div id="task-tray"><i class="fas fa-volume-up cursor-pointer"></i><span id="clock" class="ml-2">00:00</span></div>
+        </div>
+
+        <div id="menu-start">
+            <div class="menu-sidebar"><span>INTERNET <b>98</b></span></div>
+            <div class="menu-content">
+                <div class="menu-entry" onclick="OS.open('profile')"><i class="fas fa-user-circle text-2xl text-blue-600"></i><div><b>Lighting Moon</b><br><span style="font-size:10px; color:#666;">Administrator</span></div></div>
+                <div class="menu-hr"></div>
+                <div class="menu-entry" onclick="OS.open('documents')"><i class="fas fa-folder text-yellow-500"></i> Documents</div>
+                <div class="menu-entry" onclick="OS.open('console')"><i class="fas fa-terminal text-black"></i> Command Prompt</div>
+                <div class="menu-entry" onclick="OS.open('player')"><i class="fas fa-music text-purple-600"></i> WinAmp Player</div>
+                <div class="menu-entry" onclick="window.open('https://discord.gg/VvcdzzXX', '_blank')"><i class="fab fa-discord text-indigo-500"></i> Join Discord</div>
+                <div class="menu-hr"></div>
+                <div class="menu-entry" onclick="OS.bsod()"><i class="fas fa-power-off text-red-600"></i> Shut Down</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Music -->
+    <audio id="audio-source" loop crossorigin="anonymous">
         <source src="https://audio.jukehost.co.uk/F6fHo9M8EAU3RZWAMUpE0yksLANnv4oS" type="audio/mp3">
     </audio>
 
-    <div id="enter-overlay">
-        <div class="enter-text">System Offline. Click to Initialize.</div>
-    </div>
-
-    <!-- Boot Sequence Overlay -->
-    <div id="boot-overlay">
-        <div id="term-content"></div>
-    </div>
-
-    <!-- System Warning Overlay -->
-    <div class="system-warning-overlay" id="sys-warning">
-        <div class="warning-text">SYSTEM FAILURE</div>
-    </div>
-
-    <!-- CRT Scanlines -->
-    <div class="scanlines"></div>
-
-    <!-- HUD Overlay -->
-    <div class="hud-container">
-        <div class="scan-line"></div>
-        <div class="hud-item hud-tl">
-            <span class="hud-line">SYS.ONLINE</span>
-            <span class="hud-line">TGT: USER</span>
-            <span class="hud-line">SEC: LOW</span>
-        </div>
-        <div class="hud-item hud-tr">
-            <span class="hud-line">CPU: <span id="cpu-val">34</span>%</span>
-            <span class="hud-line">RAM: <span id="ram-val">12</span>%</span>
-            <span class="hud-line">NET: CON</span>
-        </div>
-        <div class="hud-item hud-bl">
-            <span class="hud-line">LOC: UNKNOWN</span>
-            <span class="hud-line">BIO: LOADED</span>
-        </div>
-        <div class="hud-item hud-br">
-            <span class="hud-line">VER: 2.0.77</span>
-            <span class="hud-line">ID: #0592</span>
-            <span class="hud-line">PWR:</span>
-            <div class="power-bar-container">
-                <div class="power-bar-fill" id="power-fill"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="main-card">
-        <div class="avatar-container">
-            <div class="magic-ring ring-1"></div>
-            <div class="magic-ring ring-2"></div>
-            <div class="magic-ring ring-3"></div>
-            <div class="magic-ring ring-4"></div>
-            <img src="https://i.pinimg.com/474x/0f/73/8e/0f738ec9db6c97916df1982962b085a6.jpg" alt="Profile"
-                class="avatar">
-        </div>
-
-        <div class="username glitch" data-text="Lighting Moon">Lighting Moon</div>
-
-        <div class="badges">
-            <i class="fas fa-crown" title="Premium"></i>
-            <i class="fas fa-code" title="Developer"></i>
-            <i class="fas fa-terminal" title="Hacker"></i>
-            <i class="fas fa-check-circle" title="Verified"></i>
-        </div>
-        <div class="uid">UID: 1</div>
-
-        <div class="bio-box">
-            <span id="typewriter"></span><span class="cursor">|</span>
-        </div>
-
-        <div class="links">
-            <a href="https://discord.gg/VvcdzzXX" target="_blank" class="link-item">
-                <i class="fab fa-discord"></i> Discord Server
-            </a>
-            <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ&start_radio=1&pp=ygUXbmV2ZXIgZ29ubmEgZ2l2ZSB5b3UgdXCgBwE%3D"
-                target="_blank" class="link-item">
-                <i class="fab fa-youtube"></i> YouTube Channel
-            </a>
-            <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ&start_radio=1&pp=ygUXbmV2ZXIgZ29ubmEgZ2l2ZSB5b3UgdXCgBwE%3D"
-                target="_blank" class="link-item">
-                <i class="fab fa-github"></i> GitHub Profile
-            </a>
-        </div>
-
-        <div class="footer">
-            <span><i class="fas fa-eye"></i> 14,203</span>
-            <span><i class="fas fa-copyright"></i> 2024</span>
-        </div>
-
-        <div class="visualizer-container">
-            <div class="viz-bar"></div>
-            <div class="viz-bar"></div>
-            <div class="viz-bar"></div>
-            <div class="viz-bar"></div>
-            <div class="viz-bar"></div>
-            <div class="viz-bar"></div>
-            <div class="viz-bar"></div>
-            <div class="viz-bar"></div>
-            <div class="viz-bar"></div>
-            <div class="viz-bar"></div>
-            <div class="viz-bar"></div>
-            <div class="viz-bar"></div>
-            <div class="viz-bar"></div>
-            <div class="viz-bar"></div>
-            <div class="viz-bar"></div>
-        </div>
-    </div>
-
     <script>
-        // --- 設定區 ---
-        // --- 設定區 ---
-        const pageTitle = "Lighting Moon | System Online | ";
-        const bioText = ["Developer.", "Gamer.", "Sleepy.", "Welcome to my profile."];
-        const typingSpeed = 50;
-        const deleteSpeed = 30;
-        const pauseTime = 2000;
+        /**
+         * † CHAOS ENGINE V10.0 - FINAL OVERDOSE †
+         * Features:
+         * - Seizure Warning & Safe Fullscreen Entry
+         * - Invert Mode on Kick (220 Threshold)
+         * - YAMERO Text Ring
+         * - Massive Text Assets
+         */
 
-        // Boot Log Data
-        const bootLog = [
-            "Initializing kernel...",
-            "Loading system modules...",
-            "Connecting to neural network...",
-            "[SUCCESS] Network secured.",
-            "Bypassing firewalls...",
-            "Accessing user profile database...",
-            "Decrypting bio data...",
-            "rendering graphics engine...",
-            "SYSTEM ONLINE."
-        ];
+        const OS = {
+            windows: [],
+            zIndex: 100,
+            isPlaying: false,
+            audioCtx: null,
+            analyser: null,
+            kickThreshold: 220,
+            lastKick: 0,
 
-        // --- 變數 ---
-        let titleIndex = 0;
-        const enterOverlay = document.getElementById('enter-overlay');
-        const mainCard = document.getElementById('main-card');
-        const bgMedia = document.getElementById('bg-media');
-        const bgMusic = document.getElementById('bg-music');
-        const typewriterSpan = document.getElementById('typewriter');
+            // ULTRA MASSIVE TEXT ASSETS
+            textAssets: {
+                tweets: [],
+                chat: [],
+                typo: [
+                    "LIGHTING MOON", "INTERNET", "YAMERO", "ANGEL", "OVERDOSE", "承認", "欲求", 
+                    "DELETE", "ERROR", "好き", "死", "†昇天†", "NO", "HELP", "RUN", "GLITCH", 
+                    "LOVE", "HATE", "VOID", "NULL", "SYSTEM", "CRASH", "DRUGS", "NEEDY", 
+                    "REBOOT", "FATAL", "EXCEPTION", "MEMORY", "LEAK", "BUFFER", "OVERFLOW"
+                ],
+                ring: ["INTERNET", "YAMERO", "ANGEL", "OVERDOSE", "承認欲求", "最強", "無敵", "転生", "LOVE", "DEATH"],
+                lyrics: [
+                    "INTERNET OVERDOSE", "NEED YOU", "LOVE ME", "P-CHAN", "DELETE IT", 
+                    "ANGEL", "FLY HIGH", "SYSTEM DOWN", "HEART BEAT", "FAKE LOVE"
+                ]
+            },
+            
+            init() {
+                // Initialize warning screen listener
+                document.getElementById('btn-enter').addEventListener('click', () => {
+                    this.startExperience();
+                });
+                
+                // Keep video loop fix
+                document.body.addEventListener('click', () => {
+                    const v = document.getElementById('bg-video');
+                    if(v && v.paused) v.play().catch(e=>console.log("Video force play blocked"));
+                });
 
-        // --- TextScramble Class (Moved for scope) ---
-        class TextScramble {
-            constructor(el) {
-                this.el = el;
-                this.chars = '!<>-_\\/[]{}—=+*^?#________';
-                this.update = this.update.bind(this);
-            }
-            setText(newText) {
-                const oldText = this.el.innerText;
-                const length = Math.max(oldText.length, newText.length);
-                const promise = new Promise((resolve) => this.resolve = resolve);
-                this.queue = [];
-                for (let i = 0; i < length; i++) {
-                    const from = oldText[i] || '';
-                    const to = newText[i] || '';
-                    const start = Math.floor(Math.random() * 40);
-                    const end = start + Math.floor(Math.random() * 40);
-                    this.queue.push({ from, to, start, end });
+                this.generateMassiveText(); 
+            },
+
+            async startExperience() {
+                // 1. Request Fullscreen (Try/Catch)
+                const elem = document.documentElement;
+                try {
+                    if (elem.requestFullscreen) { await elem.requestFullscreen(); } 
+                    else if (elem.webkitRequestFullscreen) { await elem.webkitRequestFullscreen(); } 
+                    else if (elem.msRequestFullscreen) { await elem.msRequestFullscreen(); }
+                } catch (e) {
+                    console.log("Fullscreen blocked:", e);
                 }
-                cancelAnimationFrame(this.frameRequest);
-                this.frame = 0;
-                this.update();
-                return promise;
-            }
-            update() {
-                let output = '';
-                let complete = 0;
-                for (let i = 0, n = this.queue.length; i < n; i++) {
-                    let { from, to, start, end, char } = this.queue[i];
-                    if (this.frame >= end) {
-                        complete++;
-                        output += to;
-                    } else if (this.frame >= start) {
-                        if (!char || Math.random() < 0.28) {
-                            char = this.randomChar();
-                            this.queue[i].char = char;
-                        }
-                        output += `<span class="scramble-highlight">${char}</span>`;
+
+                // 2. Hide Warning
+                document.getElementById('screen-warning').style.display = 'none';
+
+                // 3. Start BIOS
+                document.getElementById('screen-bios').style.display = 'flex';
+                this.bootSequence();
+                this.clockLoop();
+                this.setupDragDrop();
+                this.setupMatrixRain();
+                this.setupCursorTrail();
+                this.spawnFakeToasts();
+            },
+
+            generateMassiveText() {
+                const bases = ["I love you", "Look at me", "Delete it", "System Error", "Overdose", "Angel", "Help", "Run", "Stop"];
+                const suffixes = ["...", "!!!", "???", " †", " (lol)", " (cry)", " (die)", " <3"];
+                for(let i=0; i<1000; i++) {
+                    this.textAssets.tweets.push(bases[Math.floor(Math.random()*bases.length)] + suffixes[Math.floor(Math.random()*suffixes.length)]);
+                    this.textAssets.chat.push(bases[Math.floor(Math.random()*bases.length)]);
+                }
+            },
+
+            bootSequence() {
+                const log = document.getElementById('bios-log');
+                const lines = [
+                    "Detecting Primary Master ... QUANTUM FIREBALL 20GB",
+                    "Detecting Primary Slave ... None",
+                    "Checking RAM ... 666MB OK",
+                    "Loading SYSTEM.INI ... OK",
+                    "Initializing LIGHTING_MOON.SYS ... OK",
+                    "Mounting /dev/void ... FAILED",
+                    "Bypassing Reality Check ... OK",
+                    "Injecting Visuals ... OK",
+                    "Starting GUI ..."
+                ];
+                let i = 0;
+                const int = setInterval(() => {
+                    if (i < lines.length) {
+                        const div = document.createElement('div');
+                        div.innerText = lines[i];
+                        log.appendChild(div);
+                        i++;
                     } else {
-                        output += from;
+                        clearInterval(int);
+                        setTimeout(() => {
+                            document.getElementById('screen-bios').style.display = 'none';
+                            document.getElementById('screen-bsod').style.display = 'flex';
+                        }, 800);
+                    }
+                }, 100);
+
+                document.getElementById('screen-bsod').onclick = () => {
+                    document.getElementById('screen-bsod').style.display = 'none';
+                    document.getElementById('desktop-layer').style.opacity = 1;
+                    this.initAudio();
+                    
+                    // Sequence
+                    setTimeout(() => this.open('player'), 500);
+                    setTimeout(() => this.open('feed'), 1000);
+                    setTimeout(() => this.open('profile'), 1500);
+                };
+            },
+
+            open(type, extraData) {
+                this.zIndex++;
+                const winId = 'win-' + Date.now() + Math.floor(Math.random()*1000);
+                const config = this.getWindowConfig(type, extraData);
+                
+                const win = document.createElement('div');
+                win.className = 'win-frame active';
+                win.id = winId;
+                win.style.zIndex = this.zIndex;
+                
+                const offsetX = Math.floor(Math.random() * 20) - 10;
+                const offsetY = Math.floor(Math.random() * 20) - 10;
+                win.style.left = `calc(50% + ${offsetX}%)`;
+                win.style.top = `calc(50% + ${offsetY}%)`;
+                win.style.width = config.width + 'px';
+                win.style.height = config.height + 'px';
+                win.dataset.type = type;
+
+                win.innerHTML = `
+                    <div class="win-titlebar" onmousedown="OS.focus('${winId}')">
+                        <div class="win-title-text"><i class="${config.icon}"></i> ${config.title}</div>
+                        <div class="win-controls">
+                            <div class="win-btn" onclick="OS.minimize('${winId}')">_</div>
+                            <div class="win-btn" onclick="OS.maximize('${winId}')">□</div>
+                            <div class="win-btn close" onclick="OS.close('${winId}')">X</div>
+                        </div>
+                    </div>
+                    <div class="win-content">
+                        <div class="inset-deep ${config.bgClass || ''}">
+                            ${config.content}
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(win);
+                this.windows.push(winId);
+                this.createTaskbarItem(winId, config.title, config.icon);
+                if (config.init) config.init(win);
+            },
+
+            close(id) {
+                const win = document.getElementById(id);
+                if (win) {
+                    win.remove();
+                    this.windows = this.windows.filter(w => w !== id);
+                    document.getElementById('task-' + id)?.remove();
+                }
+            },
+
+            focus(id) {
+                this.zIndex++;
+                const win = document.getElementById(id);
+                if (win) {
+                    win.style.zIndex = this.zIndex;
+                    document.querySelectorAll('.win-frame').forEach(w => w.classList.remove('active'));
+                    win.classList.add('active');
+                }
+            },
+
+            minimize(id) {
+                const win = document.getElementById(id);
+                if (win) win.style.display = 'none';
+            },
+
+            maximize(id) {
+                const win = document.getElementById(id);
+                if (win) {
+                    if (win.dataset.maximized === "true") {
+                        win.style.top = win.dataset.oldTop;
+                        win.style.left = win.dataset.oldLeft;
+                        win.style.width = win.dataset.oldWidth;
+                        win.style.height = win.dataset.oldHeight;
+                        win.style.transform = "translate(-50%, -50%)";
+                        win.dataset.maximized = "false";
+                    } else {
+                        win.dataset.oldTop = win.style.top;
+                        win.dataset.oldLeft = win.style.left;
+                        win.dataset.oldWidth = win.style.width;
+                        win.dataset.oldHeight = win.style.height;
+                        win.style.top = "0";
+                        win.style.left = "0";
+                        win.style.width = "100%";
+                        win.style.height = "calc(100% - 34px)";
+                        win.style.transform = "none";
+                        win.dataset.maximized = "true";
+                    }
+                    this.focus(id);
+                }
+            },
+
+            toggle(id) {
+                const win = document.getElementById(id);
+                if (win) {
+                    if (win.style.display === 'none') {
+                        win.style.display = 'flex';
+                        this.focus(id);
+                    } else {
+                        win.style.display = 'none';
                     }
                 }
-                this.el.innerHTML = output;
-                if (complete === this.queue.length) {
-                    this.resolve();
-                } else {
-                    this.frameRequest = requestAnimationFrame(this.update);
-                    this.frame++;
+            },
+
+            createTaskbarItem(id, title, icon) {
+                const bar = document.getElementById('task-list');
+                const item = document.createElement('div');
+                item.className = 'task-item active';
+                item.id = 'task-' + id;
+                item.innerHTML = `<i class="${icon}"></i> <span>${title}</span>`;
+                item.onclick = () => this.toggle(id);
+                bar.appendChild(item);
+            },
+
+            getWindowConfig(type, extraData) {
+                switch (type) {
+                    case 'profile':
+                        return {
+                            title: 'Lighting_Moon_Profile.exe',
+                            icon: 'fas fa-user-circle',
+                            width: 320, height: 480,
+                            content: `
+                                <div style="background:linear-gradient(to bottom, #ffebff, #fff); height:100%; padding:10px; display:flex; flex-direction:column; align-items:center;">
+                                    <div style="width:140px; height:140px; border:2px solid var(--c-pink); padding:2px; background:white;">
+                                        <img src="https://i.pinimg.com/474x/0a/30/5b/0a305b0de940482c0ca1b16dc14c27f3.jpg" style="width:100%; height:100%; object-fit:cover;">
+                                    </div>
+                                    <h2 class="glitch-text" style="color:var(--c-pink); font-family:var(--font-jp); font-size:24px; margin-top:10px; font-weight:900;">Lighting Moon</h2>
+                                    <h3 style="color:var(--c-purple); font-size:12px; font-weight:bold;">INTERNET ANGEL</h3>
+                                    <div style="display:flex; gap:5px; margin:10px 0;">
+                                        <span style="background:blue; color:white; padding:2px 4px; font-size:10px;">LV.99</span>
+                                        <span style="background:red; color:white; padding:2px 4px; font-size:10px;">MENTAL: -999</span>
+                                        <span style="background:green; color:white; padding:2px 4px; font-size:10px;">FOLLOWER: 10M</span>
+                                    </div>
+                                    <div style="width:100%; border:1px solid #ccc; background:#fff; padding:5px; font-size:12px; height:100px; overflow-y:auto; line-height:1.4;">
+                                        > The savior of the digital void.<br>
+                                        > Lighting Moon will guide you.<br>
+                                        > Please overdose on my love.<br>
+                                        > Status: ASCENDING
+                                    </div>
+                                    <div style="margin-top:auto; width:100%; display:flex; gap:5px;">
+                                        <button style="flex:1; padding:5px; background:var(--c-pink-dim); color:white; border:2px outset #fff; cursor:pointer;" onclick="OS.triggerTypographyFlash('LOVE')">♥ LOVE ♥</button>
+                                        <button style="flex:1; padding:5px; background:var(--c-blue); color:white; border:2px outset #fff; cursor:pointer;" onclick="window.open('https://discord.gg/VvcdzzXX', '_blank')">DISCORD</button>
+                                    </div>
+                                </div>
+                            `
+                        };
+                    case 'feed':
+                        return {
+                            title: 'Tweeter - Feed',
+                            icon: 'fab fa-twitter',
+                            width: 300, height: 400,
+                            content: `<div class="feed-container" id="feed-content"></div>`,
+                            init: (win) => this.startFeedLoop(win.querySelector('#feed-content'))
+                        };
+                    case 'player':
+                        return {
+                            title: 'WinAmp',
+                            icon: 'fas fa-music',
+                            width: 320, height: 200,
+                            bgClass: 'black',
+                            content: `
+                                <div class="winamp-display">
+                                    <div class="song-marquee">Ado - 愛して愛して愛して [Official MV] - INTERNET OVERDOSE REMIX</div>
+                                    <div class="song-info"><span>320kbps</span><span>44kHz</span><span>Stereo</span></div>
+                                    <canvas class="vis-canvas" id="vis-canvas"></canvas>
+                                </div>
+                                <div class="player-btns">
+                                    <button class="win-btn" onclick="OS.rewindAudio()">|&lt;</button>
+                                    <button class="win-btn" style="flex:2;" onclick="OS.toggleAudio()">PLAY / PAUSE</button>
+                                    <button class="win-btn" onclick="OS.forwardAudio()">&gt;|</button>
+                                    <button class="win-btn" onclick="OS.stopAudio()">[ ]</button>
+                                </div>
+                                <div style="margin-top:8px; color:white; font-size:10px; display:flex; align-items:center; gap:5px;">
+                                    VOL: <input type="range" class="vol-slider" min="0" max="100" value="50" oninput="OS.setVolume(this.value)">
+                                </div>
+                            `
+                        };
+                    case 'chat':
+                        return {
+                            title: '#LIGHTING_MOON_IRC',
+                            icon: 'fas fa-comments',
+                            width: 300, height: 300,
+                            content: `
+                                <div style="display:flex; flex-direction:column; height:100%;">
+                                    <div class="chat-log" id="chat-log"></div>
+                                    <div class="chat-input-area">
+                                        <input type="text" class="chat-input" placeholder="Say something..." onkeydown="if(event.key==='Enter') OS.sendChat(this)">
+                                        <button class="win-btn" onclick="OS.sendChat(this.previousElementSibling)">Send</button>
+                                    </div>
+                                </div>
+                            `,
+                            init: (win) => this.startChatLoop(win.querySelector('#chat-log'))
+                        };
+                    case 'console':
+                        return {
+                            title: 'Command Prompt',
+                            icon: 'fas fa-terminal',
+                            width: 400, height: 300,
+                            bgClass: 'black',
+                            content: `
+                                <div class="console-screen" id="console-output">
+                                    Microsoft Windows [Version 4.10.1998]<br>
+                                    (C) Copyright 1981-1998 Microsoft Corp.<br><br>
+                                    C:\\Users\\LightingMoon> <input type="text" class="cmd-input" autofocus onkeydown="if(event.key==='Enter') OS.handleCommand(this)">
+                                </div>
+                            `
+                        };
+                    case 'documents':
+                    case 'my_computer':
+                    case 'recycle':
+                    case 'files':
+                        const path = extraData || 'C:\\';
+                        return {
+                            title: path,
+                            icon: 'fas fa-folder-open',
+                            width: 400, height: 300,
+                            content: this.generateFileExplorer(path)
+                        };
+                    case 'image_viewer':
+                        return {
+                            title: 'Paint.exe',
+                            icon: 'fas fa-paint-brush',
+                            width: 300, height: 300,
+                            content: `<div style="display:flex; justify-content:center; align-items:center; height:100%; background:gray; padding:10px;"><img src="${extraData}" style="max-width:100%; max-height:100%; border:2px inset white; box-shadow:5px 5px 0 #000;"></div>`
+                        };
+                    case 'notepad':
+                        return {
+                            title: 'Notepad',
+                            icon: 'fas fa-file-alt',
+                            width: 300, height: 200,
+                            content: `<textarea style="width:100%; height:100%; resize:none; border:none; padding:5px; font-family:monospace; outline:none;">${extraData || ''}</textarea>`
+                        };
+                    case 'error_popup':
+                        return {
+                            title: 'Critical Error',
+                            icon: 'fas fa-times-circle',
+                            width: 250, height: 120,
+                            content: `
+                                <div style="padding:10px; display:flex; flex-direction:column; align-items:center; gap:10px;">
+                                    <div style="display:flex; gap:10px; align-items:center;">
+                                        <i class="fas fa-exclamation-triangle text-red-600 text-3xl"></i>
+                                        <span style="font-size:12px; font-weight:bold;">${extraData || "System Failure"}</span>
+                                    </div>
+                                    <button class="win-btn" style="width:80px;" onclick="OS.close(this.closest('.win-frame').id)">OK</button>
+                                </div>
+                            `
+                        };
+                    default: return { title: 'Error', width: 200, height: 100, content: 'Unknown' };
                 }
-            }
-            randomChar() {
-                return this.chars[Math.floor(Math.random() * this.chars.length)];
-            }
-        }
+            },
 
-        // --- 1. 點擊進入邏輯 ---
+            fileSystem: {
+                'C:\\': [{ name: 'Windows', type: 'dir' }, { name: 'Users', type: 'dir' }, { name: 'Program Files', type: 'dir' }, { name: 'autoexec.bat', type: 'file' }],
+                'C:\\Users': [{ name: 'LightingMoon', type: 'dir' }],
+                'C:\\Users\\LightingMoon': [{ name: 'Documents', type: 'dir' }, { name: 'Pictures', type: 'dir' }, { name: 'Desktop', type: 'dir' }],
+                'C:\\Users\\LightingMoon\\Documents': [
+                    { name: 'secret_diary.txt', type: 'txt', content: "I hate them all.\nI love them all.\nWho am I?" },
+                    { name: 'passwords.txt', type: 'txt', content: "twitter: angel123\nbank: 0000" },
+                    { name: 'lyrics_draft.txt', type: 'txt', content: "INTERNET OVERDOSE\nNeed more likes..." },
+                    { name: 'script.txt', type: 'txt', content: "Stream plan:\n1. Be cute\n2. Cry\n3. Take pills\n4. Profit" }
+                ]
+            },
 
-        enterOverlay.addEventListener('click', () => {
-            // 1. Play Music immediately
-            bgMusic.volume = 0.4;
-            bgMusic.play().catch(e => console.log("Audio play failed:", e));
-
-            // 2. Hide Enter Overlay
-            enterOverlay.style.opacity = '0';
-            setTimeout(() => { enterOverlay.style.display = 'none'; }, 800);
-
-            // 3. Start Boot Sequence
-            runBootSequence();
-        });
-
-        function runBootSequence() {
-            const bootOverlay = document.getElementById('boot-overlay');
-            const termContent = document.getElementById('term-content');
-            bootOverlay.style.display = 'block';
-
-            let lineIndex = 0;
-
-            function printLine() {
-                if (lineIndex < bootLog.length) {
-                    const div = document.createElement('div');
-                    div.className = 'terminal-line';
-                    div.innerText = `> ${bootLog[lineIndex]}`;
-                    termContent.appendChild(div);
-
-                    // Specific sound effect could go here
-
-                    lineIndex++;
-                    // Random delay for realism
-                    setTimeout(printLine, Math.random() * 300 + 100);
-                } else {
-                    // Boot Complete
-                    setTimeout(() => {
-                        // Flash effect or fade out
-                        bootOverlay.style.transition = 'opacity 0.5s ease';
-                        bootOverlay.style.opacity = '0';
-                        setTimeout(() => { bootOverlay.style.display = 'none'; }, 500);
-
-                        // Show Main Card
-                        showMainCard();
-                    }, 800);
+            generateFileExplorer(path) {
+                if (!this.fileSystem[path]) path = 'C:\\';
+                let html = `<div class="file-explorer"><div class="fe-toolbar"><button class="win-btn" onclick="OS.open('files', 'C:\\\\')">C:</button><div class="fe-path">${path}</div></div><div class="fe-grid">`;
+                const items = this.fileSystem[path] || [];
+                if (path !== 'C:\\') {
+                    const parent = path.substring(0, path.lastIndexOf('\\')) || 'C:\\';
+                    html += `<div class="fe-item" onclick="OS.close(this.closest('.win-frame').id); OS.open('files', '${parent.replace(/\\/g, '\\\\')}')"><i class="fas fa-level-up-alt fe-icon"></i><div class="fe-name">..</div></div>`;
                 }
-            }
-            printLine();
-        }
-
-        function showMainCard() {
-            // Show Card
-            mainCard.style.opacity = '1';
-            mainCard.style.visibility = 'visible';
-            // Scale and rotate reset happens in CSS or updated via JS tilt
-
-            bgMedia.play();
-
-            // Init interactions
-            animateElements();
-            initParallax();
-            initBioScramble();
-            setInterval(scrollTitle, 200);
-
-            // Enable 3D Tilt
-            document.addEventListener('mousemove', handleCardTilt);
-        }
-
-        // --- 3D Card Tilt ---
-        function handleCardTilt(e) {
-            const xAxis = (window.innerWidth / 2 - e.pageX) / 25;
-            const yAxis = (window.innerHeight / 2 - e.pageY) / 25;
-            // Rotate the card
-            mainCard.style.transform = `translate(-50%, -50%) rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
-        }
-
-        // --- 2. 標題滾動特效 ---
-        function scrollTitle() {
-            document.title = pageTitle.substring(titleIndex) + pageTitle.substring(0, titleIndex);
-            titleIndex = (titleIndex + 1) % pageTitle.length;
-        }
-
-        // --- 3. Bio Scramble Effect ---
-        function initBioScramble() {
-            const el = document.getElementById('typewriter');
-            const fx = new TextScramble(el);
-            let counter = 0;
-            const next = () => {
-                fx.setText(bioText[counter]).then(() => {
-                    setTimeout(next, 2500);
+                items.forEach(item => {
+                    let icon = 'fa-file'; let action = '';
+                    if (item.type === 'dir') { icon = 'fa-folder'; const newPath = (path === 'C:\\' ? path : path + '\\') + item.name; action = `onclick="OS.close(this.closest('.win-frame').id); OS.open('files', '${newPath.replace(/\\/g, '\\\\')}')"`; }
+                    else if (item.type === 'txt') { icon = 'fa-file-alt'; action = `onclick="OS.open('notepad', \`${item.content}\`)"`; }
+                    html += `<div class="fe-item" ${action}><i class="fas ${icon} fe-icon" style="color:${item.type==='dir'?'#e6b800':'#333'}"></i><div class="fe-name">${item.name}</div></div>`;
                 });
-                counter = (counter + 1) % bioText.length;
-            };
-            next();
-        }
+                html += `</div></div>`;
+                return html;
+            },
 
-        // 按钮点击粒子效果 & Magic Circle
-        document.addEventListener('click', (e) => {
-            // Create Magic Ring
-            const ring = document.createElement('div');
-            ring.className = 'click-magic-ring';
-            ring.style.left = e.clientX + 'px';
-            ring.style.top = e.clientY + 'px';
-            document.body.appendChild(ring);
+            initAudio() {
+                if (this.audioCtx) return;
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.audioCtx = new AudioContext();
+                this.analyser = this.audioCtx.createAnalyser();
+                this.analyser.fftSize = 256; 
+                this.analyser.smoothingTimeConstant = 0.8;
+                
+                const audio = document.getElementById('audio-source');
+                const source = this.audioCtx.createMediaElementSource(audio);
+                source.connect(this.analyser);
+                this.analyser.connect(this.audioCtx.destination);
+                
+                audio.volume = 0.5;
+                audio.play().then(() => {
+                    this.isPlaying = true;
+                    this.visualizerLoop();
+                }).catch(e => console.log("Audio autoplay blocked"));
+            },
 
-            // Cleanup ring
-            setTimeout(() => {
-                if (ring.parentNode) ring.parentNode.removeChild(ring);
-            }, 800);
+            toggleAudio() {
+                const audio = document.getElementById('audio-source');
+                if (audio.paused) { audio.play(); this.isPlaying = true; } else { audio.pause(); this.isPlaying = false; }
+            },
+            stopAudio() {
+                const audio = document.getElementById('audio-source');
+                audio.pause(); audio.currentTime = 0; this.isPlaying = false;
+            },
+            forwardAudio() {
+                const audio = document.getElementById('audio-source');
+                audio.currentTime += 5;
+            },
+            rewindAudio() {
+                const audio = document.getElementById('audio-source');
+                audio.currentTime -= 5;
+            },
+            setVolume(val) {
+                const audio = document.getElementById('audio-source');
+                if(audio) audio.volume = val / 100;
+            },
 
-            // Create Sparkles
-            for (let i = 0; i < 15; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                particle.style.left = e.clientX + 'px';
-                particle.style.top = e.clientY + 'px';
+            visualizerLoop() {
+                const canvas = document.getElementById('vis-canvas');
+                if (!canvas) { requestAnimationFrame(() => this.visualizerLoop()); return; }
+                const ctx = canvas.getContext('2d');
+                const bufferLength = this.analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
 
-                // Varied shapes
-                const shapeType = Math.random();
-                if (shapeType > 0.6) {
-                    particle.style.borderRadius = '0%'; // Square
-                    particle.style.transform = `rotate(${Math.random() * 360}deg)`;
-                } else if (shapeType > 0.3) {
-                    particle.style.height = '2px'; // Line
-                    particle.style.width = '10px';
-                }
+                const draw = () => {
+                    requestAnimationFrame(draw);
+                    if (!this.isPlaying) return;
 
-                particle.style.background = `hsl(${Math.random() * 60 + 180}, 100%, 70%)`;
-                particle.style.boxShadow = `0 0 10px ${particle.style.background}`;
+                    canvas.width = canvas.parentElement.clientWidth;
+                    canvas.height = canvas.parentElement.clientHeight;
+                    this.analyser.getByteFrequencyData(dataArray);
 
-                particle.style.setProperty('--tx', `${Math.random() * 200 - 100}px`);
-                particle.style.setProperty('--ty', `${Math.random() * 200 - 100}px`);
-                document.body.appendChild(particle);
+                    // Bass Detection
+                    let bassSum = 0;
+                    for(let i=0; i<8; i++) bassSum += dataArray[i];
+                    let bassAvg = bassSum / 8;
+                    
+                    // Trigger Bass Kick Effect
+                    if (bassAvg > this.kickThreshold && Date.now() - this.lastKick > 100) {
+                        this.triggerYameroEffect(bassAvg);
+                        this.lastKick = Date.now();
+                    }
 
-                setTimeout(() => {
-                    if (particle.parentNode) particle.parentNode.removeChild(particle);
-                }, 1000);
-            }
+                    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    const barWidth = (canvas.width / bufferLength) * 2.5; let x = 0;
+                    for (let i = 0; i < bufferLength; i++) {
+                        let barHeight = (dataArray[i] / 255) * canvas.height;
+                        const hue = (i * 10 + Date.now() / 2) % 360;
+                        ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                        if (Math.random() > 0.99) { ctx.fillStyle = '#fff'; ctx.fillRect(0, Math.random() * canvas.height, canvas.width, 2); }
+                        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                        x += barWidth + 1;
+                    }
+                };
+                draw();
+            },
 
-            // Digital Text Particles
-            const particleTexts = ["CRIT", "HIT", "0xFA", "ERR", "NULL", "1011"];
-            for (let i = 0; i < 3; i++) {
-                const dt = document.createElement('div');
-                dt.className = 'digital-particle';
-                dt.innerText = particleTexts[Math.floor(Math.random() * particleTexts.length)];
-                dt.style.left = (e.clientX + Math.random() * 40 - 20) + 'px';
-                dt.style.top = (e.clientY + Math.random() * 40 - 20) + 'px';
-                document.body.appendChild(dt);
+            triggerYameroEffect(intensity) {
+                const rgb = document.getElementById('fx-rgb-split');
+                rgb.style.opacity = 0.8; rgb.style.transform = `translate(${Math.random()*20-10}px, ${Math.random()*20-10}px)`;
+                setTimeout(() => { rgb.style.opacity = 0; rgb.style.transform = 'none'; }, 80);
 
-                setTimeout(() => {
-                    if (dt.parentNode) dt.parentNode.removeChild(dt);
-                }, 1500);
-            }
+                const yamero = document.getElementById('fx-yamero');
+                yamero.classList.add('active'); setTimeout(() => yamero.classList.remove('active'), 100);
+                
+                const holy = document.getElementById('fx-holy-light');
+                holy.classList.add('active'); setTimeout(() => holy.classList.remove('active'), 200);
 
-            // Randomly Trigger System Warning on Click (Low Chance)
-            if (Math.random() > 0.9) {
-                triggerSystemWarning();
-            }
-        });
-
-        // --- 4. 粒子特效 (Matrix Rain Code) ---
-        const canvas = document.getElementById('canvas-overlay');
-        const ctx = canvas.getContext('2d');
-
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
-        const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        const fontSize = 14;
-        const columns = Math.floor(window.innerWidth / fontSize);
-        const drops = []; // y positions
-
-        for (let x = 0; x < columns; x++) {
-            drops[x] = Math.random() * -100; // Randomize start
-        }
-
-        function drawMatrix() {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)'; // Fade effect
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.fillStyle = '#0F0'; // Green text
-            ctx.font = fontSize + 'px monospace';
-
-            for (let i = 0; i < drops.length; i++) {
-                const text = katakana.charAt(Math.floor(Math.random() * katakana.length));
-                // Random color for extra style
-                if (Math.random() > 0.95) ctx.fillStyle = '#FFF';
-                else if (Math.random() > 0.9) ctx.fillStyle = '#0FF';
-                else ctx.fillStyle = '#0F0';
-
-                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-
-                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975)
-                    drops[i] = 0;
-
-                drops[i]++;
-            }
-            requestAnimationFrame(drawMatrix);
-        }
-
-        drawMatrix();
-
-        // --- 5. 游標拖尾特效 ---
-        const cursorTrails = [];
-        const maxTrails = 20;
-
-        // 页面元素入场动画
-        function animateElements() {
-            const elements = [
-                document.querySelector('.avatar'),
-                document.querySelector('.username'),
-                document.querySelector('.badges'),
-                document.querySelector('.uid'),
-                document.querySelector('.bio-box'),
-                ...document.querySelectorAll('.link-item')
-            ];
-
-            elements.forEach((el, i) => {
-                if (el) {
-                    el.style.opacity = 0;
-                    el.style.transform = 'translateY(20px)';
-                    setTimeout(() => {
-                        el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-                        el.style.opacity = 1;
-                        el.style.transform = 'translateY(0)';
-                    }, 100 * i);
-                }
-            });
-        }
-
-        // 背景视差效果
-        function initParallax() {
-            window.addEventListener('scroll', () => {
-                const scrollY = window.scrollY;
-                bgMedia.style.transform = `translateY(${scrollY * 0.3}px)`;
-            });
-        }
-
-
-
-        // --- Custom Cursor Ring Logic ---
-        const cursorRing = document.createElement('div');
-        cursorRing.className = 'cursor-ring';
-        document.body.appendChild(cursorRing);
-
-        document.addEventListener('mousemove', (e) => {
-            // Update Cursor Ring Position with slight delay? 
-            // For performance, just direct update
-            cursorRing.style.left = e.clientX + 'px';
-            cursorRing.style.top = e.clientY + 'px';
-
-            // Trail Logic
-            const trail = document.createElement('div');
-            trail.className = 'cursor-trail';
-            trail.style.left = e.pageX + 'px';
-            trail.style.top = e.pageY + 'px';
-            document.body.appendChild(trail);
-
-            cursorTrails.push({
-                element: trail,
-                alpha: 1.0
-            });
-
-            if (cursorTrails.length > maxTrails) {
-                const old = cursorTrails.shift();
-                if (old.element.parentNode) old.element.parentNode.removeChild(old.element);
-            }
-        });
-
-        document.addEventListener('mousedown', () => {
-            cursorRing.classList.add('active');
-        });
-        document.addEventListener('mouseup', () => {
-            cursorRing.classList.remove('active');
-        });
-
-        // Loop to animate fade out
-        function animateTrails() {
-            for (let i = 0; i < cursorTrails.length; i++) {
-                const item = cursorTrails[i];
-                item.alpha -= 0.05;
-                item.element.style.opacity = item.alpha;
-                item.element.style.transform = `scale(${item.alpha})`;
-            }
-            // Remove invisible
-            while (cursorTrails.length > 0 && cursorTrails[0].alpha <= 0) {
-                const old = cursorTrails.shift();
-                if (old.element.parentNode) old.element.parentNode.removeChild(old.element);
-            }
-            requestAnimationFrame(animateTrails);
-        }
-        animateTrails();
-
-
-
-        // Apply Scramble to Links
-        document.querySelectorAll('.link-item').forEach(link => {
-            const originalText = link.innerText.trim();
-            const scrambler = new TextScramble(link);
-
-            // fix: icon is inside, we need to handle text node separately or just scramble the whole thing carefully
-            // Actually, simplest is to wrap the text in a span or just handle it. 
-            // Better approach for this structure: Scramble only on hover enter, reset on leave.
-            // But since links have icons, let's just target the text nodes or wrap text.
-            // Simplified: Just scramble a specific span if possible, or just the whole text content relative to the icon?
-            // Let's wrap the text part in a span for safety first in a separate snippet, or just hack it here.
-
-            // Re-approach: The links have <i class="..."></i> Text. 
-            // We should wrap the text in a span to scramble ONLY the text.
-            const icon = link.querySelector('i');
-            const textNode = Array.from(link.childNodes).find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0);
-
-            if (textNode) {
-                const span = document.createElement('span');
-                span.textContent = textNode.textContent;
-                link.replaceChild(span, textNode);
-
-                const fx = new TextScramble(span);
-
-                // Trigger scramble on hover enter
-                link.addEventListener('mouseenter', () => {
-                    fx.setText(span.textContent);
+                const activeWin = document.querySelector('.win-frame.active');
+                if (activeWin) { activeWin.classList.add('glitch-mode'); setTimeout(() => activeWin.classList.remove('glitch-mode'), 200); }
+                
+                // Shake & Beat ALL windows
+                document.querySelectorAll('.win-frame').forEach(w => {
+                    w.classList.add('beating');
+                    setTimeout(() => w.classList.remove('beating'), 200);
                 });
+                
+                // Spawn Dopamine
+                this.spawnDopamine();
 
-                // Optional: Scramble back or clean up? 
-                // Currently just scrambles to the same text, which produces the decoding effect.
+                // INVERT KICK EFFECT WITH TILT
+                if (Math.random() > 0.5) {
+                    document.body.classList.add('yamero-kick');
+                    setTimeout(() => document.body.classList.remove('yamero-kick'), 80);
+                } else {
+                    document.body.classList.add('yamero-kick-alt');
+                    setTimeout(() => document.body.classList.remove('yamero-kick-alt'), 80);
+                }
+
+                // YAMERO RING EFFECT
+                if (Math.random() > 0.7) {
+                    this.spawnYameroRing();
+                }
+
+                if (Math.random() > 0.6) {
+                    const text = this.textAssets.typo[Math.floor(Math.random() * this.textAssets.typo.length)];
+                    this.triggerTypographyFlash(text);
+                }
+                
+                // Lyrics Storm
+                if (Math.random() > 0.8) {
+                    const lyric = this.textAssets.lyrics[Math.floor(Math.random() * this.textAssets.lyrics.length)];
+                    this.triggerTypographyFlash(lyric);
+                }
+            },
+
+            spawnDopamine() {
+                const count = 5;
+                const emojis = ["💊", "💉", "💖", "✝️", "🩹", "🩸"];
+                for(let i=0; i<count; i++) {
+                    const el = document.createElement('div');
+                    el.className = 'dopamine-particle';
+                    el.innerText = emojis[Math.floor(Math.random() * emojis.length)];
+                    el.style.left = Math.random() * 100 + 'vw';
+                    el.style.top = '100vh';
+                    el.style.fontSize = (Math.random() * 20 + 20) + 'px';
+                    document.body.appendChild(el);
+                    setTimeout(() => el.remove(), 2000);
+                }
+            },
+
+            spawnFakeToasts() {
+                const msgs = [
+                    {text: "Angel.exe has stopped working", icon: "fa-times-circle"},
+                    {text: "Memory Overflow", icon: "fa-memory"},
+                    {text: "Virus Detected", icon: "fa-bug"},
+                    {text: "I see you", icon: "fa-eye"},
+                    {text: "Delete System32?", icon: "fa-trash"},
+                    {text: "Love me more!", icon: "fa-heart"}
+                ];
+                
+                let interval = 5000;
+                function spawn() {
+                    if(document.hidden) return;
+
+                    const t = document.createElement('div');
+                    t.className = 'toast-popup';
+                    const msg = msgs[Math.floor(Math.random() * msgs.length)];
+                    
+                    t.innerHTML = `
+                        <div class="toast-header" onmousedown="event.stopPropagation()">
+                            <span>Message</span><span class="cursor-pointer" onclick="this.parentElement.parentElement.remove()">X</span>
+                        </div>
+                        <div class="toast-body">
+                            <i class="fas ${msg.icon} text-xl"></i>
+                            <span>${msg.text}</span>
+                        </div>
+                    `;
+                    
+                    t.addEventListener('mousedown', () => OS.zIndex++);
+                    t.style.zIndex = OS.zIndex + 9000;
+                    
+                    const maxW = window.innerWidth - 220;
+                    const maxH = window.innerHeight - 100;
+                    t.style.left = Math.floor(Math.random() * maxW) + 'px';
+                    t.style.top = Math.floor(Math.random() * maxH) + 'px';
+                    
+                    document.body.appendChild(t);
+                    
+                    setTimeout(()=>t.remove(), Math.random() * 2000 + 3000); 
+
+                    if(interval > 800) interval -= 50; 
+                    setTimeout(spawn, interval);
+                }
+                setTimeout(spawn, 2000);
+            },
+
+            spawnYameroRing() {
+                const ring = document.createElement('div');
+                ring.className = 'yamero-ring-container';
+                const count = 10;
+                const radius = 150;
+                for(let i=0; i<count; i++) {
+                    const angle = (i / count) * Math.PI * 2;
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius;
+                    const el = document.createElement('div');
+                    el.className = 'yamero-ring-text';
+                    el.innerText = this.textAssets.ring[Math.floor(Math.random() * this.textAssets.ring.length)];
+                    el.style.transform = `translate(${x}px, ${y}px) rotate(${angle + 1.57}rad)`; // Rotate text to face center
+                    ring.appendChild(el);
+                }
+                document.body.appendChild(ring);
+                setTimeout(() => ring.remove(), 4000);
+            },
+
+            triggerTypographyFlash(text) {
+                const layer = document.getElementById('fx-typo');
+                const el = document.createElement('div');
+                el.className = 'typo-word'; el.innerText = text;
+                el.style.left = Math.random() * 80 + 10 + '%'; el.style.top = Math.random() * 80 + 10 + '%';
+                el.style.fontSize = (Math.random() * 6 + 4) + 'rem';
+                el.style.color = Math.random() > 0.5 ? 'red' : (Math.random() > 0.5 ? 'magenta' : 'white');
+                el.style.transform = `rotate(${Math.random() * 60 - 30}deg)`;
+                el.style.animation = 'typo-slam 0.3s forwards';
+                layer.appendChild(el); setTimeout(() => el.remove(), 300);
+            },
+
+            setupCursorTrail() {
+                document.addEventListener('mousemove', (e) => {
+                    const trail = document.createElement('div');
+                    trail.className = 'cursor-trail';
+                    trail.style.left = e.clientX + 'px';
+                    trail.style.top = e.clientY + 'px';
+                    document.body.appendChild(trail);
+                    setTimeout(() => trail.remove(), 500);
+                });
+            },
+
+            startFeedLoop(container) {
+                const addTweet = () => {
+                    const div = document.createElement('div'); div.className = 'tweet';
+                    const isPsycho = Math.random() > 0.8;
+                    const content = this.textAssets.tweets[Math.floor(Math.random() * this.textAssets.tweets.length)];
+                    div.innerHTML = `<div class="tweet-pfp"><img src="https://api.dicebear.com/7.x/pixel-art/svg?seed=${Math.random()}"></div><div class="tweet-body"><div class="tweet-user"><span>@User_${Math.floor(Math.random()*9999)}</span> <span class="tweet-time">now</span></div><div class="tweet-text ${isPsycho ? 'psycho' : ''}">${content}</div></div>`;
+                    container.prepend(div);
+                    if (container.children.length > 30) container.lastElementChild.remove();
+                };
+                for(let i=0; i<10; i++) addTweet();
+                setInterval(() => { if (this.isPlaying && Math.random() > 0.4) addTweet(); }, 1500);
+            },
+
+            startChatLoop(container) {
+                setInterval(() => {
+                    if (!this.isPlaying) return;
+                    const div = document.createElement('div'); div.className = 'msg';
+                    const msg = this.textAssets.chat[Math.floor(Math.random() * this.textAssets.chat.length)];
+                    div.innerHTML = `<span class="time">${new Date().toLocaleTimeString()}</span> <span class="user">User${Math.floor(Math.random()*100)}:</span> ${msg}`;
+                    container.appendChild(div); container.scrollTop = container.scrollHeight;
+                }, 500);
+            },
+
+            sendChat(btn) {
+                const input = btn.tagName === 'INPUT' ? btn : btn.previousElementSibling;
+                const text = input.value; if (!text) return;
+                const container = document.getElementById('chat-log');
+                const div = document.createElement('div'); div.className = 'msg';
+                div.innerHTML = `<span class="time">${new Date().toLocaleTimeString()}</span> <span class="angel">†LIGHTING_MOON†:</span> ${text}`;
+                container.appendChild(div); container.scrollTop = container.scrollHeight; input.value = '';
+                if (text.toLowerCase() === 'yamero') { this.triggerYameroEffect(255); this.triggerTypographyFlash("YAMERO"); }
+            },
+
+            handleCommand(input) {
+                const cmd = input.value.trim().toLowerCase(); const output = document.getElementById('console-output');
+                let response = "";
+                if (cmd === 'help') response = "COMMANDS: help, dir, cls, exit, yamero, love";
+                else if (cmd === 'dir') response = "Directory of C:\\Users\\LightingMoon\n\n<DIR> . \n<DIR> .. \n<DIR> Documents \n<DIR> Secrets";
+                else if (cmd === 'cls') { output.innerHTML = ""; input.value = ""; return; }
+                else if (cmd === 'yamero') { this.triggerYameroEffect(255); response = "EXECUTING PROTOCOL YAMERO..."; }
+                else if (cmd === 'love') { this.triggerTypographyFlash("LOVE"); response = "♥ ♥ ♥"; }
+                else if (cmd === 'exit') { this.close('console'); return; }
+                else response = `'${cmd}' is not recognized as an internal or external command.`;
+                const line = document.createElement('div'); line.innerHTML = `C:\\Users\\LightingMoon> ${input.value}<br>${response}<br><br>`;
+                output.insertBefore(line, input.parentElement); input.value = ""; input.scrollIntoView();
+            },
+
+            clockLoop() { setInterval(() => { const now = new Date(); document.getElementById('clock').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); }, 1000); },
+            toggleStartMenu() { const menu = document.getElementById('menu-start'); const btn = document.getElementById('btn-start'); if (menu.style.display === 'block') { menu.style.display = 'none'; btn.classList.remove('active'); } else { menu.style.display = 'block'; btn.classList.add('active'); } },
+            bsod() { document.getElementById('desktop-layer').style.opacity = 0; setTimeout(() => { document.getElementById('screen-bsod').style.display = 'flex'; }, 1000); },
+
+            setupDragDrop() {
+                let isDragging = false; let currentWin = null; let offset = { x: 0, y: 0 };
+                document.addEventListener('mousedown', (e) => {
+                    if (e.target.closest('.win-titlebar')) {
+                        const win = e.target.closest('.win-frame');
+                        if (win.dataset.maximized === "true") return;
+                        isDragging = true; currentWin = win;
+                        const rect = currentWin.getBoundingClientRect();
+                        offset.x = e.clientX - rect.left; offset.y = e.clientY - rect.top;
+                        this.focus(currentWin.id); e.preventDefault();
+                    }
+                    if (!e.target.closest('#menu-start') && !e.target.closest('#btn-start')) { document.getElementById('menu-start').style.display = 'none'; document.getElementById('btn-start').classList.remove('active'); }
+                });
+                document.addEventListener('mousemove', (e) => { if (isDragging && currentWin) { e.preventDefault(); const x = e.clientX - offset.x; const y = e.clientY - offset.y; currentWin.style.left = (x + (currentWin.offsetWidth / 2)) + 'px'; currentWin.style.top = (y + (currentWin.offsetHeight / 2)) + 'px'; } });
+                document.addEventListener('mouseup', () => { isDragging = false; currentWin = null; });
+            },
+
+            setupMatrixRain() {
+                const canvas = document.getElementById('bg-matrix'); const ctx = canvas.getContext('2d');
+                const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+                window.addEventListener('resize', resize); resize();
+                const chars = "†♥N£€DYANG£L☠"; const fontSize = 14; const columns = canvas.width / fontSize; const drops = Array(Math.floor(columns)).fill(1);
+                const draw = () => {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.05)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#0F0'; ctx.font = fontSize + 'px monospace';
+                    for (let i = 0; i < drops.length; i++) {
+                        if (Math.random() > 0.98) ctx.fillStyle = '#FF00FF'; else if (Math.random() > 0.98) ctx.fillStyle = '#FFFFFF'; else ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
+                        const text = chars[Math.floor(Math.random() * chars.length)];
+                        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) { drops[i] = 0; }
+                        drops[i]++;
+                    }
+                    requestAnimationFrame(draw);
+                };
+                draw();
             }
-        });
+        };
 
-        // --- 7. HUD Value Updates ---
-        const cpuVal = document.getElementById('cpu-val');
-        const ramVal = document.getElementById('ram-val');
-
-        setInterval(() => {
-            if (cpuVal) cpuVal.innerText = Math.floor(Math.random() * 30) + 20;
-            if (ramVal) ramVal.innerText = Math.floor(Math.random() * 20) + 10;
-        }, 2000);
-
-        // Power Bar Logic
-        const powerFill = document.getElementById('power-fill');
-        setInterval(() => {
-            if (powerFill) {
-                const level = Math.random() * 80 + 20; // 20% to 100%
-                powerFill.style.width = level + '%';
-                // Color change based on level
-                if (level > 80) powerFill.style.background = 'linear-gradient(90deg, transparent, #ff0055, transparent)';
-                else powerFill.style.background = 'linear-gradient(90deg, transparent, #0ff, transparent)';
-            }
-        }, 300);
-
-        // System Warning Logic
-        const warningOverlay = document.getElementById('sys-warning');
-        const warningText = warningOverlay.querySelector('.warning-text');
-
-        function triggerSystemWarning() {
-            warningOverlay.style.opacity = '1';
-            warningText.style.opacity = '1';
-            warningText.classList.add('severe-glitch-anim');
-            document.body.classList.add('severe-glitch-anim');
-
-            // Audio effect simulation here if needed
-
-            setTimeout(() => {
-                warningOverlay.style.opacity = '0';
-                warningText.style.opacity = '0';
-                warningText.classList.remove('severe-glitch-anim');
-                document.body.classList.remove('severe-glitch-anim');
-            }, 800);
-        }
-
-        // Randomly trigger warning occasionally
-        setInterval(() => {
-            if (Math.random() > 0.98) { // rare
-                triggerSystemWarning();
-            }
-        }, 10000);
+        window.onload = () => OS.init();
 
     </script>
 </body>
-
 </html>
