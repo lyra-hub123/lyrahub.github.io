@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>404 // SECTOR NOT FOUND | Zynuke</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;900&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+TC:wght@400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <!-- GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://unpkg.com/split-type"></script>
+    
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        :root {
+            --bg-black: #050505;
+            --text-white: #ffffff;
+            --accent-red: #ff3333;
+            --accent-cyan: #00f3ff;
+            --accent-purple: #bd00ff;
+            --blob-color: rgba(255, 51, 51, 0.35);
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: var(--bg-black);
+            color: var(--text-white);
+            overflow: hidden; /* Lock scroll for 404 */
+            margin: 0;
+            width: 100vw;
+            height: 100vh;
+            cursor: default;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        
+        /* UI Layers */
+        .noise-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyBAMAAADsEZWCAAAAGFBMVEUAAAA5OTkAAABERERmZmYzMzMyMjJEREQN0eLFAAAACHRSTlMAwADw/cgF/45P4jwAAABcSURBVDjLY2AYBaNg2AJGJiBpC2QYgJQVSA4A0hYgOQJIGYFkP5A8ACRvA8m7QHIYkDwCJE8AyRNA8hKQPAskbwHJs0DyHJA8DySvAMkrQPIqkLwKJK8CyatA8igAANC3O1/q/K6AAAAAAElFTkSuQmCC");
+            opacity: 0.05; pointer-events: none; z-index: 9990;
+        }
+        
+        .vignette {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.95) 100%);
+            pointer-events: none; z-index: 9989;
+        }
+
+        .scanline {
+            position: fixed; left: 0; top: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.3) 3px);
+            z-index: 9991; pointer-events: none; opacity: 0.3;
+        }
+
+        /* WebGL Canvas */
+        #webgl-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; pointer-events: none;
+        }
+
+        /* Mouse Blob */
+        #mouse-blob {
+            position: fixed; top: 0; left: 0; width: 800px; height: 800px;
+            background: radial-gradient(circle, var(--blob-color) 0%, rgba(0,0,0,0) 65%);
+            border-radius: 50%; pointer-events: none; z-index: -1; opacity: 0.8;
+            transform: translate3d(-50%, -50%, 0); will-change: transform; mix-blend-mode: screen;
+        }
+
+        /* 404 Specific Styles */
+        .glitch-text {
+            position: relative;
+            color: var(--text-white);
+            mix-blend-mode: hard-light;
+        }
+        
+        .glitch-text::before,
+        .glitch-text::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.8;
+        }
+
+        .glitch-text::before {
+            color: var(--accent-cyan);
+            z-index: -1;
+            animation: glitch-anim-1 2.5s infinite linear alternate-reverse;
+        }
+
+        .glitch-text::after {
+            color: var(--accent-red);
+            z-index: -2;
+            animation: glitch-anim-2 3s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-anim-1 {
+            0% { clip-path: inset(20% 0 80% 0); transform: translate(-2px, 1px); }
+            20% { clip-path: inset(60% 0 10% 0); transform: translate(2px, -1px); }
+            40% { clip-path: inset(40% 0 50% 0); transform: translate(-2px, 2px); }
+            60% { clip-path: inset(80% 0 5% 0); transform: translate(2px, -2px); }
+            80% { clip-path: inset(10% 0 70% 0); transform: translate(-1px, 1px); }
+            100% { clip-path: inset(30% 0 50% 0); transform: translate(1px, -1px); }
+        }
+
+        @keyframes glitch-anim-2 {
+            0% { clip-path: inset(10% 0 60% 0); transform: translate(2px, -1px); }
+            20% { clip-path: inset(80% 0 5% 0); transform: translate(-2px, 2px); }
+            40% { clip-path: inset(30% 0 20% 0); transform: translate(2px, 1px); }
+            60% { clip-path: inset(15% 0 80% 0); transform: translate(-1px, -2px); }
+            80% { clip-path: inset(55% 0 10% 0); transform: translate(1px, 2px); }
+            100% { clip-path: inset(40% 0 30% 0); transform: translate(-2px, 1px); }
+        }
+
+        .terminal-box {
+            background: rgba(5, 5, 5, 0.85);
+            border: 1px solid rgba(255, 51, 51, 0.3);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 40px rgba(255, 51, 51, 0.1);
+        }
+
+        .btn-glitch {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        .btn-glitch:hover {
+            background-color: var(--accent-red);
+            color: black;
+            box-shadow: 0 0 20px var(--accent-red);
+        }
+        
+        .status-line {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            opacity: 0; /* Animated in */
+        }
+        .status-dot {
+            width: 8px; height: 8px; background-color: var(--accent-red);
+            border-radius: 50%; box-shadow: 0 0 5px var(--accent-red);
+            animation: pulse-fast 1s infinite;
+        }
+
+        @keyframes pulse-fast { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+        /* Mobile specific adjustments */
+        @media (max-width: 768px) {
+            .text-hero-404 { font-size: 6rem !important; }
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-red-500 selection:text-white">
+
+    <!-- Overlays -->
+    <div class="noise-overlay"></div>
+    <div class="vignette"></div>
+    <div class="scanline"></div>
+    <div id="mouse-blob"></div>
+    <div id="webgl-canvas"></div>
+
+    <main class="relative z-10 w-full max-w-4xl px-6 flex flex-col md:flex-row items-center gap-12">
+        
+        <!-- Left: Huge 404 -->
+        <div class="flex-1 text-center md:text-left">
+            <div class="font-orbitron font-black text-[8rem] md:text-[12rem] leading-none tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-600 glitch-text text-hero-404" data-text="404">
+                404
+            </div>
+            <h2 class="text-xl md:text-2xl font-bold text-red-500 tracking-[0.2em] mt-2 mb-6 uppercase font-mono split-text">
+                Sector Annihilated
+            </h2>
+            <p class="text-gray-400 max-w-md leading-relaxed mb-8 font-light">
+                您嘗試存取的座標位於數位廢墟之中。該目標已被歸零引擎抹除，或者從未存在過。
+            </p>
+            
+            <a href="index.html" class="inline-block border border-red-500/50 text-red-500 px-8 py-3 font-mono text-sm tracking-widest uppercase btn-glitch group">
+                <span class="mr-2 group-hover:animate-pulse">></span> Return to Base
+            </a>
+        </div>
+
+        <!-- Right: Terminal Output -->
+        <div class="flex-1 w-full max-w-md">
+            <div class="terminal-box rounded-lg overflow-hidden transform transition-all hover:scale-[1.02] duration-500 border-l-4 border-l-red-600">
+                <!-- Terminal Header -->
+                <div class="bg-black/50 border-b border-white/10 px-4 py-2 flex items-center justify-between">
+                    <div class="flex gap-2">
+                        <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                        <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                        <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+                    </div>
+                    <div class="text-[10px] font-mono text-gray-500 uppercase">sys_err_log.txt</div>
+                </div>
+                
+                <!-- Terminal Body -->
+                <div class="p-6 font-mono text-xs md:text-sm h-[300px] overflow-hidden flex flex-col justify-end" id="terminal-content">
+                    <!-- JS will populate this -->
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div class="fixed bottom-6 right-6 text-[10px] font-mono text-gray-600 tracking-widest hidden md:block">
+        ERR_CODE: ID_10T // ZYNUKE_PROTOCOL_V2
+    </div>
+
+    <script>
+        // --- THREE.JS BACKGROUND (Modified for 404 Red Alert) ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('webgl-canvas');
+            const scene = new THREE.Scene();
+            
+            // Fog color matched to bg-black but slightly reddish
+            scene.fog = new THREE.FogExp2(0x050505, 0.0005); 
+            
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera.position.z = 800;
+
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+            container.appendChild(renderer.domElement);
+
+            // Particles
+            const particleCount = 15000;
+            const posArray = new Float32Array(particleCount * 3);
+            const colorArray = new Float32Array(particleCount * 3);
+            
+            // Red-heavy palette for 404
+            const colors = [
+                new THREE.Color(0xff0000), // Pure Red
+                new THREE.Color(0xaa0000), // Dark Red
+                new THREE.Color(0xffffff), // White accents
+                new THREE.Color(0x330000)  // Almost black red
+            ];
+
+            for(let i = 0; i < particleCount; i++) {
+                // Spread them wider
+                posArray[i * 3] = (Math.random() - 0.5) * 4000;
+                posArray[i * 3 + 1] = (Math.random() - 0.5) * 4000;
+                posArray[i * 3 + 2] = (Math.random() - 0.5) * 4000;
+                
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                colorArray[i * 3] = color.r;
+                colorArray[i * 3 + 1] = color.g;
+                colorArray[i * 3 + 2] = color.b;
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 2,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+
+            const starMesh = new THREE.Points(geometry, material);
+            scene.add(starMesh);
+
+            // Animation Loop
+            let mouseX = 0;
+            let mouseY = 0;
+
+            document.addEventListener('mousemove', (event) => {
+                mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+                mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+            });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+                
+                // Slow rotation
+                starMesh.rotation.x += 0.0002;
+                starMesh.rotation.y += 0.0005;
+
+                // Subtle camera sway based on mouse
+                camera.rotation.x += (mouseY * 0.05 - camera.rotation.x) * 0.05;
+                camera.rotation.y += (-mouseX * 0.05 - camera.rotation.y) * 0.05;
+
+                renderer.render(scene, camera);
+            };
+            animate();
+
+            // --- MOUSE BLOB ---
+            const blob = document.getElementById('mouse-blob');
+            let blobX = 0, blobY = 0;
+            let cursorX = 0, cursorY = 0;
+
+            document.addEventListener('mousemove', (e) => {
+                cursorX = e.clientX;
+                cursorY = e.clientY;
+            });
+
+            function animateBlob() {
+                blobX += (cursorX - blobX) * 0.1;
+                blobY += (cursorY - blobY) * 0.1;
+                if(blob) blob.style.transform = `translate3d(${blobX}px, ${blobY}px, 0) translate(-50%, -50%)`;
+                requestAnimationFrame(animateBlob);
+            }
+            animateBlob();
+
+            // --- TERMINAL TYPING EFFECT ---
+            const terminalLines = [
+                { text: "> SYSTEM DIAGNOSTIC INITIATED...", color: "text-gray-400", delay: 0 },
+                { text: "> TRACING IP ADDRESS...", color: "text-gray-400", delay: 800 },
+                { text: "> ERROR: TARGET_COORDINATES_INVALID", color: "text-red-500", delay: 1500 },
+                { text: "> ATTEMPTING RECOVERY...", color: "text-gray-400", delay: 2200 },
+                { text: "> CRITICAL FAILURE. DATA CORRUPTED.", color: "text-red-500", delay: 3000 },
+                { text: "> STATUS: 404 NOT FOUND", color: "text-red-500 font-bold", delay: 3500 },
+                { text: "> WAITING FOR USER INPUT...", color: "text-accent-cyan animate-pulse", delay: 4200 }
+            ];
+
+            const terminalContent = document.getElementById('terminal-content');
+            
+            terminalLines.forEach((line, index) => {
+                setTimeout(() => {
+                    const div = document.createElement('div');
+                    div.className = `status-line ${line.color}`;
+                    
+                    // Add blinker dot for critical errors
+                    if(line.text.includes("ERROR") || line.text.includes("FAILURE")) {
+                        div.innerHTML = `<span class="status-dot"></span> <span>${line.text}</span>`;
+                    } else {
+                        div.innerText = line.text;
+                    }
+                    
+                    terminalContent.appendChild(div);
+                    
+                    // Simple fade in
+                    gsap.to(div, { opacity: 1, duration: 0.3 });
+                    
+                    // Auto scroll
+                    terminalContent.scrollTop = terminalContent.scrollHeight;
+                }, line.delay);
+            });
+
+            // GSAP Entrance
+            gsap.from(".text-hero-404", { y: 50, opacity: 0, duration: 1, ease: "power3.out", delay: 0.2 });
+            gsap.from(".split-text", { y: 20, opacity: 0, duration: 1, ease: "power3.out", delay: 0.4 });
+            gsap.from("p", { y: 20, opacity: 0, duration: 1, ease: "power3.out", delay: 0.6 });
+            gsap.from(".btn-glitch", { scale: 0.9, opacity: 0, duration: 0.5, ease: "back.out(1.7)", delay: 0.8 });
+            gsap.from(".terminal-box", { x: 50, opacity: 0, duration: 1, ease: "power3.out", delay: 1 });
+        });
+    </script>
+</body>
+</html>
