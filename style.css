@@ -1519,7 +1519,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     /* Luxury Mirror: Using Avatar Image as requested */
     background:
         linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.7)) padding-box,
-        url('https://zynuke.lol/side_panel_bg.jpg') center/cover no-repeat padding-box,
+        url('./side_panel_bg.jpg') center/cover no-repeat padding-box,
         linear-gradient(45deg, #d4af37, #b8860b) border-box !important;
 
     backdrop-filter: blur(15px);
@@ -2261,7 +2261,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 /* --- Premium Crown Mode --- */
 body.premium-mode {
     /* Change background to NEW uploaded marble image */
-    background: url('https://zynuke.lol/premium_bg_v2.png') no-repeat center center fixed !important;
+    background: url('./premium_bg_v2.png') no-repeat center center fixed !important;
     background-size: cover !important;
 }
 
