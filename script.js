@@ -1771,6 +1771,16 @@ window.cyberFunc = function (action) {
     }
 };
 
+let axesHelper;
+function toggleAxes() {
+    if (!axesHelper) {
+        axesHelper = new THREE.AxesHelper(10);
+        scene3D.add(axesHelper);
+    } else {
+        axesHelper.visible = !axesHelper.visible;
+    }
+}
+
 // Helper Functions
 function updateKbColors() {
     kbGlows.forEach(glow => {
