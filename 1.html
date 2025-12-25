@@ -1,1 +1,82 @@
 
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 使用 meta refresh 進行立即重新導向 (0秒) -->
+    <meta http-equiv="refresh" content="0; url=https://www.racknerd.com/BlackFriday/">
+    <title>正在重新導向...</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 90%;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #111;
+        }
+        p {
+            margin-bottom: 1.5rem;
+            color: #666;
+        }
+        a {
+            display: inline-block;
+            background-color: #0056b3;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+        a:hover {
+            background-color: #004494;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0056b3;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="loader"></div>
+        <h1>正在前往 RackNerd...</h1>
+        <p>如果頁面沒有自動跳轉，請點擊下方的按鈕。</p>
+        <a href="https://www.racknerd.com/BlackFriday/">點擊這裡前往</a>
+    </div>
+
+    <script>
+        // JavaScript 重新導向作為備用方案
+        window.onload = function() {
+            window.location.href = "https://www.racknerd.com/BlackFriday/";
+        }
+    </script>
+</body>
+</html>
