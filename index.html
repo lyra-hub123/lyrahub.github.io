@@ -1,636 +1,945 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW" class="antialiased">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zynuke - 數位毀滅軍火庫 | The Singularity (Merged)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zynuke | The Singularity</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;900&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+TC:wght@400;700;900&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-    
-    <!-- GSAP & Lenis -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-    <script src="https://unpkg.com/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
-    <script src="https://unpkg.com/split-type"></script>
-    
-    <!-- Three.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+TC:wght@400;700;900&display=swap"
+        rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'void': '#050505',
+                        'tech-gray': '#F5F5F7',
+                        'tech-dim': '#86868B',
+                        'accent-red': '#ff3333',
+                        'accent-dark': '#991b1b',
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'Noto Sans TC', 'sans-serif'],
+                        'mono': ['JetBrains Mono', 'monospace'],
+                    },
+                    backgroundImage: {
+                        'glass-gradient': 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)',
+                        'radial-glow': 'radial-gradient(circle at center, rgba(255, 51, 51, 0.15) 0%, transparent 70%)',
+                    }
+                }
+            }
+        }
+    </script>
 
     <style>
-        :root {
-            --bg-black: #050505;
-            --text-white: #ffffff;
-            --accent-red: #ff3333;
-            --accent-cyan: #00f3ff;
-            --accent-purple: #bd00ff;
-            --blob-color: rgba(255, 51, 51, 0.25);
-        }
-
         body {
+            background-color: #050505;
+            color: #F5F5F7;
+            overflow: hidden;
+            /* Initial lock */
             font-family: 'Inter', 'Noto Sans TC', sans-serif;
-            background-color: var(--bg-black);
-            color: var(--text-white);
-            overflow-x: hidden;
-            margin: 0;
-            width: 100vw;
-            cursor: default;
-        }
-
-        .font-mono { font-family: 'JetBrains Mono', monospace; }
-        
-        /* UI Layers */
-        .noise-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyBAMAAADsEZWCAAAAGFBMVEUAAAA5OTkAAABERERmZmYzMzMyMjJEREQN0eLFAAAACHRSTlMAwADw/cgF/45P4jwAAABcSURBVDjLY2AYBaNg2AJGJiBpC2QYgJQVSA4A0hYgOQJIGYFkP5A8ACRvA8m7QHIYkDwCJE8AyRNA8hKQPAskbwHJs0DyHJA8DySvAMkrQPIqkLwKJK8CyatA8igAANC3O1/q/K6AAAAAAElFTkSuQmCC");
-            opacity: 0.04; pointer-events: none; z-index: 9990;
-        }
-        
-        .vignette {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.95) 100%);
-            pointer-events: none; z-index: 9989;
-        }
-
-        .scanline {
-            position: fixed; left: 0; top: 0; width: 100%; height: 100%;
-            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.3) 3px);
-            z-index: 9991; pointer-events: none; opacity: 0.3;
-        }
-
-        /* WebGL Canvas */
-        #webgl-canvas {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: -1; pointer-events: none;
-            transform: translate3d(0, 0, 0); 
-        }
-
-        /* Mouse Blob */
-        #mouse-blob {
-            position: fixed; top: 0; left: 0; width: 800px; height: 800px;
-            background: radial-gradient(circle, var(--blob-color) 0%, rgba(0,0,0,0) 65%);
-            border-radius: 50%; pointer-events: none; z-index: -1; opacity: 0.6;
-            transform: translate3d(-50%, -50%, 0); will-change: transform; mix-blend-mode: screen;
-        }
-
-        /* HUD */
-        .hud-layer { position: fixed; inset: 0; z-index: 9900; pointer-events: none; padding: 20px; box-sizing: border-box; }
-        .hud-coords { position: absolute; bottom: 35px; right: 40px; font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent-red); opacity: 0.8; text-align: right; line-height: 1.6; }
-        .chapter-indicator { position: absolute; top: 30px; left: 30px; font-family: 'JetBrains Mono'; font-size: 12px; color: var(--text-white); opacity: 0.5; letter-spacing: 2px; }
-        @media (max-width: 768px) { .hud-coords { display: none; } }
-
-        /* Bento Card */
-        .bento-card {
-            background: rgba(10, 10, 15, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            position: relative; overflow: hidden;
-            backdrop-filter: blur(8px);
-            transform-style: preserve-3d;
-            will-change: transform;
-            transition: border-color 0.3s ease, background-color 0.3s ease;
-        }
-        .bento-card:hover { border-color: var(--accent-red); background: rgba(20, 15, 15, 0.8); }
-
-        .text-hero { 
-            font-size: clamp(2.5rem, 9vw, 7rem); line-height: 1.0; font-weight: 900; 
-            letter-spacing: -0.04em; text-transform: uppercase;
-        }
-        
-        .member-avatar { filter: grayscale(100%); transition: filter 0.3s ease; }
-        .member-card:hover .member-avatar { filter: grayscale(0%); }
-
-        @keyframes scan-vertical { 0% { top: -100%; } 100% { top: 200%; } }
-        .animate-scan-line {
-            position: absolute; left: 0; width: 100%; height: 20%;
-            background: linear-gradient(to bottom, transparent, rgba(255, 51, 51, 0.3), transparent);
-            animation: scan-vertical 2.5s linear infinite; pointer-events: none;
-        }
-
-        /* Marquee Lag Text */
-        .lag-marquee-container {
-            position: absolute; inset: 0; overflow: hidden; pointer-events: none;
-            display: flex; align-items: center; justify-content: center;
-            opacity: 1; z-index: 0;
-            mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
-        }
-        .lag-marquee-track {
-            display: flex; white-space: nowrap; will-change: transform;
-        }
-        .lag-text-item {
-            font-family: 'JetBrains Mono', monospace; font-size: 18px;
-            color: rgba(255, 50, 50, 0.8); 
-            text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
-            margin-right: 4rem; font-weight: 700; letter-spacing: 2px;
+            selection-background-color: #ff3333;
+            selection-color: white;
         }
 
         /* Start Screen */
         #start-screen {
-            position: fixed; inset: 0; background: #000; z-index: 100000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            cursor: pointer; transition: opacity 1s ease-out;
+            position: fixed;
+            inset: 0;
+            background: #050505;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: opacity 0.8s ease-out;
+            overflow: hidden;
         }
-        .start-btn {
-            border: 1px solid var(--accent-red); padding: 1rem 3rem;
-            font-family: 'JetBrains Mono'; color: white;
-            transition: all 0.3s; text-transform: uppercase; letter-spacing: 2px;
-        }
-        .start-btn:hover { background: var(--accent-red); color: black; box-shadow: 0 0 30px var(--accent-red); }
 
-        .nav-item { display: none; }
-        @media (min-width: 768px) { .nav-item { display: block; } }
-        #viewport { width: 100%; overflow-x: hidden; }
-        
-        /* Spacer */
-        .warp-transit {
-            height: 40vh; 
-            display: flex; align-items: center; justify-content: center;
-            position: relative; z-index: 10; pointer-events: none; 
+        .start-btn {
+            border: 1px solid rgba(255, 51, 51, 0.3);
+            padding: 1rem 3rem;
+            font-family: 'JetBrains Mono';
+            color: white;
+            background: rgba(255, 51, 51, 0.05);
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-radius: 99px;
         }
-        .warp-message {
-            font-family: 'Orbitron'; color: rgba(255, 255, 255, 0.3);
-            font-size: 1.5rem; letter-spacing: 0.5em;
-            text-transform: uppercase; animation: pulse-slow 3s infinite;
+
+        .start-btn:hover {
+            background: rgba(255, 51, 51, 0.2);
+            border-color: #ff3333;
+            box-shadow: 0 0 30px rgba(255, 51, 51, 0.4);
         }
-        
-        @keyframes pulse-slow { 0%,100%{opacity:0.1;} 50%{opacity:0.5;} }
-        
-        .text-h2-legacy { font-size: clamp(2rem, 5vw, 4rem); font-weight: 800; letter-spacing: -0.02em; margin-bottom: 1rem; }
-        .glitch-wrapper { position: relative; display: inline-block; }
+
+        /* Floating Nav Glass */
+        .nav-glass {
+            background: rgba(5, 5, 5, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Tech Card */
+        .tech-card {
+            background: #0A0A0A;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+            position: relative;
+        }
+
+        .tech-card:hover {
+            border-color: rgba(255, 51, 51, 0.4);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px -10px rgba(255, 51, 51, 0.1);
+        }
+
+        .tech-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #ff3333, transparent);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .tech-card:hover::before {
+            opacity: 1;
+        }
+
+        /* Glass Button */
+        .btn-glass {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .btn-glass:hover {
+            background: rgba(255, 51, 51, 0.1);
+            border-color: #ff3333;
+            color: white;
+            transform: scale(1.02);
+        }
+
+        /* Code Block */
+        .code-window {
+            background: #0D0D0D;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+            box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .glow-text {
+            text-shadow: 0 0 20px rgba(255, 51, 51, 0.5);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #050505;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ff3333;
+        }
     </style>
 </head>
-<body class="antialiased">
 
-    <!-- BGM Audio -->
+<body>
+
     <audio id="bg-music" loop>
         <source src="https://audio.jukehost.co.uk/TRoppfRscqjnGzjovKLTf3FCvxDDgAFL" type="audio/mpeg">
     </audio>
 
-    <!-- Start Screen Overlay -->
     <div id="start-screen">
-        <div class="text-4xl font-black tracking-tighter mb-4 text-white">Zynuke</div>
-        <div class="text-red-500 font-mono mb-8 text-sm animate-pulse tracking-widest">SYSTEM SECURE // CLICK TO ENTER HYPERSPACE</div>
-        <div class="start-btn">INITIALIZE FUSION</div>
-        <div class="mt-4 text-xs text-gray-600 font-mono">Loading Core Modules...</div>
-    </div>
-
-    <div class="noise-overlay"></div>
-    <div class="vignette"></div>
-    <div class="scanline"></div>
-    
-    <div id="mouse-blob"></div>
-    <div id="webgl-canvas"></div>
-    
-    <div class="hud-layer">
-        <div class="chapter-indicator" id="chapter-display">PART I: THE ARSENAL</div>
-        <div class="hud-coords">
-            WARP DRIVE: <span id="warp-status">STANDBY</span><br>
-            STARS: 50,000<br>
-            SPEED: <span id="speed-indicator">1X</span>
+        <div class="mb-8 relative">
+            <div class="w-4 h-4 bg-red-500 rounded-full animate-ping absolute -top-2 -right-2"></div>
+            <h1 class="text-4xl md:text-6xl font-black tracking-tighter text-white">Zynuke</h1>
         </div>
+        <div class="start-btn">INITIALIZE SYSTEM</div>
+        <div class="mt-4 text-xs text-gray-600 font-mono">點擊任意處進入 | Click to Enter</div>
     </div>
 
-    <div id="viewport">
-
-    <!-- Header -->
-    <header class="fixed top-0 left-0 right-0 z-50 mix-blend-difference px-6 py-6 md:px-12 opacity-0" id="navbar">
-        <div class="flex justify-between items-center max-w-[1800px] mx-auto">
-            <a href="#" class="text-xl md:text-2xl font-bold tracking-tighter hover:text-red-500 transition-colors">Zynuke</a>
-            <nav class="hidden md:flex gap-8 text-sm font-medium">
-                <a href="#philosophy" class="hover:text-red-500 transition-colors nav-item">毀滅宣言</a>
-                <a href="#problem" class="hover:text-cyan-400 transition-colors nav-item">現狀與解法</a>
-                <a href="#hyper-warp" class="hover:text-red-500 transition-colors nav-item">Hyper Warp</a>
-                <a href="#nuke" class="hover:text-red-500 transition-colors nav-item">歸零引擎</a>
-                <a href="#services" class="hover:text-red-500 transition-colors nav-item">服務報價</a>
-            </nav>
-            <a href="" target="_blank" class="font-medium text-xs md:text-sm border border-white px-4 py-2 hover:bg-white hover:text-black transition-colors">
-                獲取權限
+    <nav class="fixed top-6 left-1/2 -translate-x-1/2 w-[95%] md:w-[90%] max-w-5xl z-50 nav-glass rounded-full px-6 py-4 flex justify-between items-center transition-all duration-500 opacity-0"
+        id="navbar">
+        <div class="flex items-center gap-8">
+            <a href="#" class="text-white text-xl font-bold tracking-tight flex items-center gap-2">
+                <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                Zynuke
+            </a>
+            <div class="hidden md:flex space-x-6 text-sm text-gray-400 font-medium">
+                <a href="#overview" class="hover:text-white transition-colors">概覽</a>
+                <a href="#comparison" class="hover:text-red-500 transition-colors">實力對比</a>
+                <a href="#tech" class="hover:text-white transition-colors">技術</a>
+                <a href="#services" class="hover:text-red-500 transition-colors">價目表</a>
+                <a href="#commands" class="hover:text-white transition-colors">終端機</a>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <a href="https://discord.gg/FDq7Tu7UCf" target="_blank"
+                class="bg-white text-black px-5 py-2 rounded-full text-xs font-bold hover:bg-red-600 hover:text-white transition-colors">
+                加入 Discord
             </a>
         </div>
-    </header>
+    </nav>
 
-    <main>
-        
-        <!-- ========================================= -->
-        <!-- CHAPTER 1: GENESIS (Combined Hero) -->
-        <!-- ========================================= -->
+    <section class="min-h-screen flex flex-col items-center justify-center pt-32 relative overflow-hidden px-6"
+        id="overview">
+        <div
+            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-red-600 opacity-[0.08] blur-[120px] rounded-full pointer-events-none">
+        </div>
 
-        <section class="relative min-h-screen flex flex-col justify-center border-b border-white/10 overflow-hidden" id="hero" data-chapter="CH.01 GENESIS">
-            <div class="absolute inset-0 z-0 opacity-10">
-                <img src="https://i.pinimg.com/1200x/13/41/45/13414519583c03a8576b45d6171c11c9.jpg" alt="Background" class="w-full h-full object-cover brightness-[0.4] parallax-bg">
+        <div class="text-center z-10 max-w-4xl mx-auto">
+            <div
+                class="inline-flex items-center gap-2 border border-red-500/20 bg-red-500/5 rounded-full px-4 py-1 mb-8 opacity-0 hero-elem backdrop-blur-md">
+                <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                <span class="text-[10px] font-mono text-red-400 tracking-wider">SYSTEM SECURE // ARSENAL ONLINE</span>
             </div>
 
-            <div class="relative z-10 px-6 md:px-12 max-w-[1800px] mx-auto w-full pt-20 pointer-events-none">
-                <h1 class="text-hero mb-8 text-white split-text mix-blend-difference">
-                    我們是<br>
-                    數位廢墟的<br>
-                    建築師。
-                </h1>
-                <p class="text-base md:text-xl max-w-3xl text-gray-300 mb-12 opacity-0 hero-sub mix-blend-difference leading-relaxed">
-                    Zynuke 不僅是一個工具庫，它是對於網際網路絕對秩序的宣戰。<br>
-                    <span class="text-white font-bold">瞬間刪除。全域封鎖。無情洗版。</span><br>
-                    當秩序崩塌，Zynuke 便是唯一的法則。
+            <h1 class="text-5xl md:text-8xl font-black tracking-tight mb-8 opacity-0 hero-elem leading-tight">
+                我們是<br>
+                數位廢墟的<br>
+                <span class="text-transparent bg-clip-text bg-gradient-to-b from-white to-red-800 glow-text">建築師。</span>
+            </h1>
+
+            <p
+                class="text-gray-400 text-lg md:text-xl max-w-xl mx-auto font-normal opacity-0 hero-elem mb-10 leading-relaxed">
+                Zynuke 不僅是一個工具庫，它是對於網際網路絕對秩序的宣戰。<br>
+                當秩序崩塌，Zynuke 便是唯一的法則。
+            </p>
+
+            <div class="flex flex-col sm:flex-row gap-4 justify-center opacity-0 hero-elem">
+                <a href="#services"
+                    class="btn-glass px-8 py-4 rounded-full text-sm font-semibold flex items-center justify-center gap-2 group hover:border-red-500/50 hover:bg-red-500/10 transition-all">
+                    查看軍火庫
+                    <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                </a>
+                <a href="#comparison"
+                    class="px-8 py-4 rounded-full text-sm font-semibold text-gray-500 hover:text-white transition-colors">
+                    性能實測
+                </a>
+            </div>
+        </div>
+
+        <div
+            class="mt-24 relative w-full max-w-3xl aspect-[16/9] border border-white/10 bg-black/40 backdrop-blur-xl rounded-2xl mx-auto overflow-hidden opacity-0 hero-visual shadow-2xl group">
+            <div class="h-10 border-b border-white/10 flex items-center px-4 gap-4 bg-white/5">
+                <div class="flex gap-2">
+                    <div class="w-2.5 h-2.5 rounded-full bg-red-500/20 group-hover:bg-red-500/80 transition-colors">
+                    </div>
+                    <div class="w-2.5 h-2.5 rounded-full bg-red-500/20"></div>
+                </div>
+                <div class="flex-1 text-center text-[10px] font-mono text-gray-600">TARGET_LOCK.EXE</div>
+            </div>
+            <div class="p-8 grid grid-cols-2 gap-8 h-full relative">
+                <div
+                    class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDIw,MjAsMC4wNSkiLz48L3N2Zz4=')] opacity-50">
+                </div>
+                <div class="space-y-4 font-mono text-xs z-10">
+                    <div class="flex justify-between border-b border-white/5 pb-2">
+                        <span class="text-gray-500">MODE</span>
+                        <span class="text-red-500 animate-pulse">DESTRUCTION</span>
+                    </div>
+                    <div class="flex justify-between border-b border-white/5 pb-2">
+                        <span class="text-gray-500">LATENCY</span>
+                        <span class="text-white">12ms</span>
+                    </div>
+                    <div class="flex justify-between border-b border-white/5 pb-2">
+                        <span class="text-gray-500">STATUS</span>
+                        <span class="text-white">WAITING FOR ORDER</span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-center z-10">
+                    <div
+                        class="w-32 h-32 rounded-full border border-red-500/20 flex items-center justify-center relative">
+                        <div
+                            class="absolute inset-0 border border-red-500/30 rounded-full animate-ping opacity-20 duration-1000">
+                        </div>
+                        <i class="fa-solid fa-crosshairs text-4xl text-red-500/80"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-32 px-6 bg-[#080808]" id="philosophy">
+        <div class="max-w-4xl mx-auto space-y-32">
+            <div class="reveal-text opacity-20 transform translate-y-12 pl-6 border-l-2 border-red-500/50">
+                <h3 class="text-3xl md:text-5xl font-bold leading-tight mb-6">
+                    為何我們<br>
+                    要摧毀<br>
+                    <span class="text-red-600">一切？</span>
+                </h3>
+                <p class="text-gray-400 text-xl leading-relaxed max-w-xl">
+                    「AI 可以取代創作，但無法取代毀滅的快感。」<br>
+                    建立一個伺服器需要數月，累積信任、培養文化。但 Zynuke 讓它歸零只需要 <span class="text-red-500 font-bold">3 秒鐘</span>。
                 </p>
             </div>
-        </section>
 
-        <!-- WARP TRANSIT -->
-        <div class="warp-transit"><div class="warp-message">ENTERING THE VOID</div></div>
-
-        <!-- ========================================= -->
-        <!-- CHAPTER 2: THE VOID (Philosophy) -->
-        <!-- ========================================= -->
-
-        <section id="philosophy" class="min-h-screen flex items-center px-6 md:px-12 border-y border-white/10 bg-black/60 relative z-10 py-20 backdrop-blur-sm" data-chapter="CH.02 THE VOID">
-            <div class="max-w-[1800px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
-                <div class="flex items-center">
-                    <h2 class="text-4xl md:text-7xl font-bold tracking-tighter mb-8 split-text leading-tight">
-                        為何我們<br>
-                        要摧毀<br>
-                        <span class="text-red-600">一切？</span>
-                    </h2>
-                </div>
-                <div class="space-y-8 md:space-y-12">
-                    <div class="anim-fade opacity-0 translate-y-4">
-                        <p class="text-lg md:text-2xl leading-relaxed text-gray-300 font-light border-l-2 border-red-500 pl-6">
-                            「AI 可以取代創作，但無法取代毀滅的快感。」
-                        </p>
-                    </div>
-                    <div class="anim-fade opacity-0 translate-y-4">
-                        <p class="text-lg md:text-2xl leading-relaxed text-gray-400 font-light">
-                            建立一個伺服器需要數月，累積信任、培養文化。<br>
-                            但 Zynuke 讓它歸零只需要 <span class="text-red-500 font-bold">3 秒鐘</span>。
-                        </p>
-                    </div>
-                </div>
+            <div class="reveal-text opacity-20 transform translate-y-12 pl-6 border-l-2 border-white/10">
+                <h3 class="text-3xl md:text-5xl font-bold leading-tight mb-6">
+                    現有方案，<br>
+                    <span class="text-gray-600">太慢了。</span>
+                </h3>
+                <p class="text-gray-400 text-xl leading-relaxed max-w-xl">
+                    傳統機器人受限於 Discord API 速率限制。我們重寫了底層邏輯，利用 <span class="text-white">Asyncio 非阻塞架構</span>，實現真正的並發攻擊。
+                </p>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <!-- ========================================= -->
-        <!-- CHAPTER 3: PROBLEM & SOLUTION (From 123 copy) -->
-        <!-- ========================================= -->
-
-        <section id="problem" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-y border-white/10 bg-[#020202]/80 py-20 backdrop-blur-md" data-chapter="CH.03 PROBLEM">
-            <div class="max-w-[1200px] mx-auto w-full">
-                <h2 class="text-h2-legacy text-left mb-12 split-text text-white">現有的解決方案<br><span class="text-gray-600">太慢了。</span></h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bento-card anim-card"><h3 class="text-xl font-bold text-white mb-2">API 限制</h3><p class="text-sm text-gray-400">傳統機器人受限於 Discord 每秒請求數 (Rate Limits)。</p></div>
-                    <div class="bento-card anim-card" style="transition-delay:0.1s"><h3 class="text-xl font-bold text-white mb-2">單線程瓶頸</h3><p class="text-sm text-gray-400">無法同時處理大量的封鎖請求，效率低落。</p></div>
-                    <div class="bento-card anim-card" style="transition-delay:0.2s"><h3 class="text-xl font-bold text-white mb-2">容易被偵測</h3><p class="text-sm text-gray-400">簡單的 Python 腳本很快就會被 Discord 安全系統封鎖。</p></div>
-                </div>
+    <section class="py-32 bg-[#050505] relative px-6 border-y border-white/5" id="comparison">
+        <div class="absolute inset-0 opacity-20 pointer-events-none">
+            <div class="w-full h-full"
+                style="background-image: linear-gradient(#1a1a1a 1px, transparent 1px), linear-gradient(90deg, #1a1a1a 1px, transparent 1px); background-size: 40px 40px;">
             </div>
-        </section>
+        </div>
 
-        <section id="solution" class="min-h-screen flex items-center justify-center px-6 md:px-12 border-y border-white/10 bg-black" data-chapter="CH.04 PROTOCOL">
-            <div class="max-w-[1200px] mx-auto w-full text-center">
-                <div class="text-cyan-400 font-mono mb-4 animate-pulse">SYSTEM OVERRIDE</div>
-                <h2 class="text-hero text-white split-text">LYRA PROTOCOL</h2>
-                <p class="text-xl text-gray-400 mx-auto mt-8 anim-fade max-w-2xl">我們重寫了底層邏輯，利用 <span class="text-white">Asyncio 非阻塞架構</span>，繞過限制，實現真正的並發攻擊。</p>
+        <div class="max-w-6xl mx-auto relative z-10">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-5xl font-bold mb-4">實力懸殊</h2>
+                <p class="text-gray-500 font-mono text-sm uppercase tracking-widest">Benchmarking Data</p>
             </div>
-        </section>
 
-        <!-- WARP TRANSIT -->
-        <div class="warp-transit"><div class="warp-message">ENGAGING HYPERWARP</div></div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
 
-        <!-- ========================================= -->
-        <!-- CHAPTER 4: HYPER WARP (The Weapon) -->
-        <!-- ========================================= -->
+                <div
+                    class="tech-card p-8 bg-[#111] border border-white/10 opacity-90 hover:opacity-100 transition-all grayscale-[0.5] hover:grayscale-0 relative group">
+                    <div
+                        class="absolute top-4 right-4 text-xs font-mono text-gray-500 border border-gray-600 px-2 py-1 rounded">
+                        LEGACY TECH</div>
 
-        <section id="hyper-warp" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-y border-white/10 relative bg-[#020202]/80 py-20 backdrop-blur-md" data-chapter="CH.05 HYPER WARP">
-            <div class="max-w-[1800px] mx-auto w-full relative z-10">
-                <div class="mb-12 md:mb-20 flex flex-col md:flex-row justify-between items-end">
-                    <div>
-                        <div class="text-xs md:text-sm font-mono text-purple-400 mb-4 anim-fade">MODULE ALPHA: SWARM</div>
-                        <h2 class="text-4xl md:text-8xl font-bold tracking-tighter text-white split-text">Hyper Warp<br>通訊癱瘓協議</h2>
-                    </div>
-                    <div class="text-right hidden md:block">
-                         <div class="text-5xl font-bold text-purple-500 count-up" data-target="50">0</div>
-                         <div class="text-sm font-mono text-gray-400">SYNC BOTS ACTIVE</div>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bento-card p-6 md:p-8 min-h-[300px] flex flex-col justify-between anim-card" data-tilt>
-                        <div class="font-mono text-sm text-gray-500">蜂群意識 (HIVE MIND)</div>
+                    <h3 class="text-2xl font-bold text-gray-300 mb-8 flex items-center gap-3">
+                        <i class="fa-solid fa-robot"></i> 其他市售 Bot
+                    </h3>
+
+                    <div class="space-y-8">
                         <div>
-                            <p class="text-gray-300 text-lg mb-4">這不只是發送訊息。50 個 Token 同時運作，瞬間淹沒任何人類的對話嘗試。</p>
-                            <p class="text-gray-500 text-sm font-mono">> 2,400 MESSAGES / SEC</p>
+                            <div class="flex justify-between text-sm text-gray-400 mb-2 font-mono">
+                                <span>架構 (ARCHITECTURE)</span>
+                                <span>DISCORD.PY WRAPPER</span>
+                            </div>
+                            <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                                <div class="h-full bg-gray-500 w-[20%]"></div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2 leading-relaxed">
+                                使用標準函式庫封裝。每個請求都包含大量不必要的 Headers 與驗證過程，導致網路封包臃腫，反應遲鈍。
+                            </p>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-sm text-gray-400 mb-2 font-mono">
+                                <span>執行邏輯 (EXECUTION)</span>
+                                <span>LINEAR LOOP (單線程)</span>
+                            </div>
+                            <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                                <div class="h-full bg-gray-500 w-[10%]"></div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2 leading-relaxed">
+                                採用 <code>for member in members</code> 線性迴圈。必須等待上一個 Ban 成功回傳後，才會執行下一個，速度極慢 (~5 req/s)。
+                            </p>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-sm text-gray-400 mb-2 font-mono">
+                                <span>反制能力 (BYPASS)</span>
+                                <span>無防護 (RAW)</span>
+                            </div>
+                            <div class="flex gap-2 mt-2 items-center">
+                                <span class="w-1.5 h-1.5 rounded-full bg-red-900"></span>
+                                <span class="text-xs text-red-900 uppercase font-bold">Failed</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2 leading-relaxed">
+                                缺乏優先級判斷。一但觸發伺服器的 Anti-Nuke 機器人，會立即被踢出或封鎖，導致破壞中止。
+                            </p>
                         </div>
                     </div>
-                    <!-- Code Card from 2.html -->
-                    <div class="bento-card p-6 md:p-8 min-h-[300px] flex flex-col justify-between col-span-1 md:col-span-2 anim-card" data-tilt style="transition-delay: 0.1s">
-                        <div class="flex justify-between items-center">
-                            <div class="font-mono text-sm text-gray-500">CORE KERNEL</div>
-                            <div class="text-xs text-red-500 font-mono animate-pulse">LIVE EXECUTION</div>
+                </div>
+
+                <div
+                    class="tech-card p-8 border-red-500/30 bg-gradient-to-br from-red-900/10 to-black relative overflow-hidden group">
+                    <div class="absolute -top-20 -right-20 w-64 h-64 bg-red-600/20 blur-[100px] rounded-full"></div>
+
+                    <div
+                        class="absolute top-4 right-4 text-xs font-mono text-red-500 border border-red-500/30 bg-red-500/10 px-2 py-1 rounded animate-pulse">
+                        V9 HYPER-ENGINE</div>
+
+                    <h3 class="text-2xl font-bold text-white mb-8 flex items-center gap-3">
+                        <i class="fa-solid fa-dragon text-red-500"></i> Zynuke
+                    </h3>
+
+                    <div class="space-y-8 relative z-10">
+                        <div>
+                            <div class="flex justify-between text-sm text-red-200 mb-2 font-mono">
+                                <span>架構 (ARCHITECTURE)</span>
+                                <span class="text-red-500 font-bold">AIOHTTP TCP RAW</span>
+                            </div>
+                            <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                                <div
+                                    class="h-full bg-gradient-to-r from-red-600 to-orange-500 w-[100%] shadow-[0_0_15px_rgba(220,38,38,0.8)]">
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-2 leading-relaxed">
+                                繞過函式庫，直接建立 TCP 連接 (<code>limit=0</code>)。精簡封包大小，只發送破壞所需的最小字節，最大化頻寬利用率。
+                            </p>
                         </div>
-                        <pre class="text-xs md:text-sm text-gray-400 font-mono overflow-x-auto whitespace-pre-wrap break-all md:whitespace-pre">
-<span class="text-purple-400">async def</span> <span class="text-cyan-400">z0</span>(tid, atkr):
-    ts = [asyncio.create_task(w0(tk[i], i+1, tid, a1a)) 
-          <span class="text-purple-400">for</span> i <span class="text-purple-400">in</span> <span class="text-cyan-400">range</span>(<span class="text-cyan-400">len</span>(tk))]
-    <span class="text-purple-400">await</span> asyncio.gather(*ts)
-    <span class="text-purple-400">return</span> <span class="text-cyan-400">True</span>, f<span class="text-green-400">"Target annihilated in 0.02s."</span>
-                        </pre>
+
+                        <div>
+                            <div class="flex justify-between text-sm text-red-200 mb-2 font-mono">
+                                <span>執行邏輯 (EXECUTION)</span>
+                                <span class="text-red-500 font-bold">ASYNC SEMAPHORE (並發)</span>
+                            </div>
+                            <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                                <div
+                                    class="h-full bg-gradient-to-r from-red-600 to-orange-500 w-[98%] shadow-[0_0_15px_rgba(220,38,38,0.8)]">
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-2 leading-relaxed">
+                                使用 <code>asyncio.gather</code> 與信號量控制。同時發起數千個異步請求，不等待回應直接轟炸，速度突破 500+ req/s。
+                            </p>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-sm text-red-200 mb-2 font-mono">
+                                <span>反制能力 (BYPASS)</span>
+                                <span class="text-red-500 font-bold">DECAPITATION MODE (斬首)</span>
+                            </div>
+                            <div class="flex gap-2 mt-2 items-center">
+                                <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                                <span class="text-xs text-green-500 uppercase font-bold">Active</span>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-2 leading-relaxed">
+                                優先掃描並封禁具有管理權限的用戶與防護機器人 (Anti-Nuke Bots)。在防禦系統反應過來之前，先行癱瘓其大腦。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div
+                class="hidden lg:flex absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-[#050505] border border-white/10 rounded-full items-center justify-center z-20 shadow-xl group hover:border-red-500/50 transition-colors">
+                <span
+                    class="font-bold text-xl italic text-gray-500 group-hover:text-red-500 transition-colors">VS</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-32 bg-black relative px-6" id="tech">
+        <div class="max-w-[1200px] mx-auto">
+            <div class="text-center mb-20">
+                <h2 class="text-3xl md:text-5xl font-bold mb-4">技術核心</h2>
+                <p class="text-gray-500 font-mono">HyperEngine V10 Architecture</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="tech-card p-8 group">
+                    <i class="fa-solid fa-microchip text-3xl mb-6 text-red-500"></i>
+                    <h3 class="text-xl font-bold text-white mb-3">非同步並發核心</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        突破單線程瓶頸。同時處理成千上萬的請求，讓封鎖、刪除與訊息發送在毫秒間同步完成。
+                    </p>
+                </div>
+                <div class="tech-card p-8 group">
+                    <i class="fa-solid fa-shield-halved text-3xl mb-6 text-white"></i>
+                    <h3 class="text-xl font-bold text-white mb-3">反偵測護盾</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        動態指紋切換與智慧 IP 輪詢技術，確保您的帳號與 Bot 在執行大規模操作時保持隱匿。
+                    </p>
+                </div>
+                <div class="tech-card p-8 group">
+                    <i class="fa-solid fa-network-wired text-3xl mb-6 text-purple-500"></i>
+                    <h3 class="text-xl font-bold text-white mb-3">全球攻擊節點</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        基礎設施遍布全球主要網路交換中心，確保無論目標伺服器位於何處，破壞指令都能零延遲送達。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="services" class="py-32 bg-[#050505] relative px-4 md:px-6 overflow-hidden">
+        <div class="absolute inset-0 opacity-20 pointer-events-none">
+            <div class="w-full h-full"
+                style="background-image: radial-gradient(#333 1px, transparent 1px); background-size: 30px 30px;"></div>
+        </div>
+        <div
+            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-red-900/10 blur-[120px] rounded-full pointer-events-none">
+        </div>
+
+        <div class="max-w-7xl mx-auto relative z-10">
+            <div class="text-center mb-20">
+                <h2 class="text-3xl md:text-5xl font-bold mb-4">服務方案</h2>
+                <p class="text-gray-500 font-mono">Service Pricing // Choose Your Weapon</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-0 items-start">
+
+                <div
+                    class="flex flex-col p-8 bg-[#0a0a0a] border border-white/10 rounded-2xl md:rounded-r-none md:border-r-0 relative z-0 hover:bg-[#0f0f0f] transition-colors">
+                    <div class="mb-6">
+                        <div class="text-red-500 font-mono text-xs mb-2 tracking-widest">LICENSE</div>
+                        <h3 class="text-2xl font-bold text-white">炸群 Pro 權限</h3>
+                        <p class="text-gray-500 text-sm mt-2">解鎖 Zynuke 的核心破壞功能，適合單兵作戰。</p>
+                    </div>
+
+                    <div class="mb-8">
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-4xl font-bold text-white">NT$ 350</span>
+                            <span class="text-gray-500 text-sm">/ 永久</span>
+                        </div>
+                        <p class="text-xs text-red-400 mt-2 font-mono">⚡ 即時開通</p>
+                    </div>
+
+                    <a href="https://discord.gg/FDq7Tu7UCf"
+                        class="w-full py-3 border border-white/20 rounded-full text-center text-sm font-bold text-white hover:bg-white hover:text-black transition-all mb-8">
+                        獲取權限
+                    </a>
+
+                    <div class="space-y-4">
+                        <p
+                            class="text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-white/5 pb-2">
+                            功能清單</p>
+
+                        <div class="flex items-start gap-3 text-sm text-gray-300">
+                            <i class="fa-solid fa-check text-red-500 mt-1"></i>
+                            <span>解鎖 Nuke 指令</span>
+                        </div>
+                        <div class="flex items-start gap-3 text-sm text-gray-300">
+                            <i class="fa-solid fa-check text-red-500 mt-1"></i>
+                            <span>解鎖 Ban All 指令</span>
+                        </div>
+                        <div class="flex items-start gap-3 text-sm text-gray-300">
+                            <i class="fa-solid fa-check text-red-500 mt-1"></i>
+                            <span>Mass DM (限量)</span>
+                        </div>
+                        <div class="flex items-start gap-3 text-sm text-gray-300">
+                            <i class="fa-solid fa-check text-red-500 mt-1"></i>
+                            <span>基本防護繞過</span>
+                        </div>
+                        <div class="flex items-start gap-3 text-sm text-gray-500 line-through">
+                            <i class="fa-solid fa-xmark text-gray-600 mt-1"></i>
+                            <span>客製化 Bot 名稱</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="flex flex-col p-8 bg-[#0c0c0c] border border-red-500/50 rounded-2xl relative z-10 shadow-[0_0_50px_rgba(220,38,38,0.1)] transform md:-translate-y-4">
+                    <div
+                        class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-red-600 text-white text-[10px] font-bold px-4 py-1 rounded-full tracking-wider uppercase shadow-lg">
+                        Most Popular
+                    </div>
+
+                    <div class="mb-6">
+                        <div class="text-red-400 font-mono text-xs mb-2 tracking-widest">BOT DEV</div>
+                        <h3 class="text-2xl font-bold text-white">客製化機器人</h3>
+                        <p class="text-gray-400 text-sm mt-2">專屬您的私人助理或武器，全天候託管。</p>
+                    </div>
+
+                    <div class="mb-8">
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-5xl font-bold text-red-500">NT$ 400</span>
+                            <span class="text-gray-400 text-sm">/ 起</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2 font-mono">依需求複雜度報價</p>
+                    </div>
+
+                    <a href="https://discord.gg/FDq7Tu7UCf"
+                        class="w-full py-4 bg-red-600 rounded-full text-center text-sm font-bold text-white hover:bg-red-700 hover:shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all mb-8">
+                        開始訂製
+                    </a>
+
+                    <div class="space-y-4">
+                        <p
+                            class="text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-white/5 pb-2">
+                            完整服務</p>
+
+                        <div class="flex items-start gap-3 text-sm text-white font-medium">
+                            <i class="fa-solid fa-check text-red-500 mt-1"></i>
+                            <span>24/7 全天候託管</span>
+                        </div>
+                        <div class="flex items-start gap-3 text-sm text-white font-medium">
+                            <i class="fa-solid fa-check text-red-500 mt-1"></i>
+                            <span>客製化名稱與頭像</span>
+                        </div>
+                        <div class="flex items-start gap-3 text-sm text-white font-medium">
+                            <i class="fa-solid fa-check text-red-500 mt-1"></i>
+                            <span>專屬指令集 (功能任選)</span>
+                        </div>
+                        <div class="flex items-start gap-3 text-sm text-white font-medium">
+                            <i class="fa-solid fa-check text-red-500 mt-1"></i>
+                            <span>票務 / 音樂 / 管理系統</span>
+                        </div>
+                        <div class="flex items-start gap-3 text-sm text-white font-medium">
+                            <i class="fa-solid fa-check text-red-500 mt-1"></i>
+                            <span>資料庫串接</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="flex flex-col p-8 bg-[#0a0a0a] border border-white/10 rounded-2xl md:rounded-l-none md:border-l-0 relative z-0 hover:bg-[#0f0f0f] transition-colors">
+                    <div class="mb-6">
+                        <div class="text-blue-400 font-mono text-xs mb-2 tracking-widest">WEB DEV</div>
+                        <h3 class="text-2xl font-bold text-white">全端官網製作</h3>
+                        <p class="text-gray-500 text-sm mt-2">建立專業的品牌形象，RWD 響應式設計。</p>
+                    </div>
+
+                    <div class="mb-8">
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-4xl font-bold text-white">NT$ 500</span>
+                            <span class="text-gray-500 text-sm">/ 起</span>
+                        </div>
+                        <p class="text-xs text-blue-400 mt-2 font-mono">🛠️ 專案開發</p>
+                    </div>
+
+                    <a href="https://discord.gg/FDq7Tu7UCf"
+                        class="w-full py-3 border border-white/20 rounded-full text-center text-sm font-bold text-white hover:bg-white hover:text-black transition-all mb-8">
+                        專案諮詢
+                    </a>
+
+                    <div class="space-y-4">
+                        <p
+                            class="text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-white/5 pb-2">
+                            開發細節</p>
+
+                        <div class="flex items-start gap-3 text-sm text-gray-300">
+                            <i class="fa-solid fa-check text-blue-500 mt-1"></i>
+                            <span>RWD 響應式設計 (手機/電腦)</span>
+                        </div>
+                        <div class="flex items-start gap-3 text-sm text-gray-300">
+                            <i class="fa-solid fa-check text-blue-500 mt-1"></i>
+                            <span>SEO 基礎優化</span>
+                        </div>
+                        <div class="flex items-start gap-3 text-sm text-gray-300">
+                            <i class="fa-solid fa-check text-blue-500 mt-1"></i>
+                            <span>後端 API 串接</span>
+                        </div>
+                        <div class="flex items-start gap-3 text-sm text-gray-300">
+                            <i class="fa-solid fa-check text-blue-500 mt-1"></i>
+                            <span>現代化 UI/UX 動畫</span>
+                        </div>
+                        <div class="flex items-start gap-3 text-sm text-gray-300">
+                            <i class="fa-solid fa-check text-blue-500 mt-1"></i>
+                            <span>網域設定協助</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div
+                class="mt-12 rounded-2xl bg-gradient-to-r from-red-900/10 to-black border border-red-500/20 p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8 group">
+                <div class="text-center md:text-left">
+                    <div
+                        class="inline-flex items-center gap-2 text-xs font-mono text-red-500 border border-red-500/30 px-3 py-1 rounded bg-red-500/5 mb-4">
+                        <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping"></span>
+                        BLACK OPS
+                    </div>
+                    <h3 class="text-2xl md:text-3xl font-bold text-white mb-2">需要更大規模的破壞？</h3>
+                    <p class="text-gray-400 text-sm max-w-xl">
+                        針對萬人以上伺服器的「自定義炸群服務」。我們提供 100% 匿名的傭兵服務，包含滲透、權限獲取與最終執行。
+                    </p>
+                </div>
+                <div>
+                    <a href="https://discord.gg/FDq7Tu7UCf"
+                        class="inline-flex items-center gap-2 px-8 py-4 bg-white text-black font-bold rounded-full hover:bg-red-600 hover:text-white transition-all group-hover:scale-105">
+                        <i class="fa-solid fa-user-secret"></i>
+                        聯繫專員
+                    </a>
+                </div>
+            </div>
+
+            <div class="mt-12 text-center">
+                <div class="inline-block border border-white/10 rounded-full px-6 py-2 bg-white/5">
+                    <p class="text-xs text-gray-500">
+                        <i class="fa-solid fa-graduation-cap text-gray-400 mr-2"></i>
+                        另有提供 <span class="text-white font-bold">帳號取得</span> 與 <span
+                            class="text-white font-bold">技術教學</span> 服務，詳情請開單。
+                    </p>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <section id="commands" class="py-32 bg-[#080808] px-6">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-5xl font-bold mb-4">執行日誌</h2>
+                <p class="text-gray-500">Execution Logs</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                <div class="space-y-4">
+                    <div class="cmd-tab p-6 rounded-2xl bg-white/5 border border-white/5 hover:border-white/20 cursor-pointer transition-all active-tab"
+                        onclick="switchTab(0)">
+                        <div class="flex items-center gap-4 mb-2">
+                            <i class="fa-solid fa-satellite-dish text-white"></i>
+                            <h3 class="text-xl font-bold">Mass DM</h3>
+                        </div>
+                        <p class="text-gray-400 text-sm">全域訊息轟炸。無視阻擋，強制推送。</p>
+                    </div>
+
+                    <div class="cmd-tab p-6 rounded-2xl bg-white/5 border border-white/5 hover:border-white/20 cursor-pointer transition-all"
+                        onclick="switchTab(1)">
+                        <div class="flex items-center gap-4 mb-2">
+                            <i class="fa-solid fa-radiation text-red-500"></i>
+                            <h3 class="text-xl font-bold text-red-500">Nuke</h3>
+                        </div>
+                        <p class="text-gray-400 text-sm">伺服器焦土化。刪除並重置一切存在痕跡。</p>
+                    </div>
+
+                    <div class="cmd-tab p-6 rounded-2xl bg-white/5 border border-white/5 hover:border-white/20 cursor-pointer transition-all"
+                        onclick="switchTab(2)">
+                        <div class="flex items-center gap-4 mb-2">
+                            <i class="fa-solid fa-user-slash text-blue-400"></i>
+                            <h3 class="text-xl font-bold text-blue-400">Ban All</h3>
+                        </div>
+                        <p class="text-gray-400 text-sm">成員大清洗。瞬間清空人員名單。</p>
+                    </div>
+                </div>
+
+                <div class="code-window h-[400px] relative">
+                    <div class="flex items-center px-4 py-3 border-b border-white/10 bg-white/5 gap-2">
+                        <div class="w-3 h-3 rounded-full bg-red-500/50"></div>
+                        <div class="w-3 h-3 rounded-full bg-yellow-500/50"></div>
+                        <div class="w-3 h-3 rounded-full bg-green-500/50"></div>
+                        <div class="ml-auto text-xs text-gray-600">TERMINAL_OUTPUT</div>
+                    </div>
+                    <div class="p-6 text-sm text-green-500/80 font-mono leading-relaxed overflow-y-auto"
+                        id="code-display">
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <!-- ========================================= -->
-        <!-- CHAPTER 5: SHIELD (VIP & Defense) -->
-        <!-- ========================================= -->
+    <div class="w-full bg-[#0a0a0a] border-y border-white/5 overflow-hidden py-3">
+        <div
+            class="flex justify-center items-center gap-8 md:gap-20 opacity-50 font-mono text-xs md:text-sm text-red-500">
+            <span><i class="fa-solid fa-circle text-[6px] align-middle mr-2 animate-pulse"></i>SYSTEM: ONLINE</span>
+            <span><i class="fa-solid fa-circle text-[6px] align-middle mr-2 animate-pulse"></i>TARGETS: LOCKED</span>
+            <span class="hidden md:inline"><i
+                    class="fa-solid fa-circle text-[6px] align-middle mr-2 animate-pulse"></i>PROTOCOL:
+                HYPER_WARP</span>
+            <span><i class="fa-solid fa-circle text-[6px] align-middle mr-2 animate-pulse"></i>ENCRYPTION:
+                256-BIT</span>
+        </div>
+    </div>
 
-        <section class="min-h-screen flex items-center px-6 md:px-12 border-y border-white/10 bg-black/70 py-20 backdrop-blur-sm" data-chapter="CH.06 SHIELD">
-            <div class="max-w-[1800px] mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                <div class="order-2 lg:order-1">
-                    <h2 class="text-4xl md:text-5xl font-bold mb-6 split-text text-white">絕對霸權<br>防禦機制</h2>
-                    <p class="text-gray-400 mb-8">這不只是矛，也是盾。我們保護付費者。</p>
-                    <ul class="space-y-6 font-mono text-sm text-gray-300 border-l border-white/20 pl-6 anim-stagger-list">
-                        <li class="flex items-center justify-between border-b border-white/10 pb-2">
-                            <span>VIP PROTECTION (絕對豁免權)</span>
-                            <span class="text-green-400">ACTIVE</span>
-                        </li>
-                        <li class="flex items-center justify-between border-b border-white/10 pb-2">
-                            <span>AUTO LOCK (自動鎖定敵對用戶)</span>
-                            <span class="text-green-400">ACTIVE</span>
-                        </li>
-                        <li class="flex items-center justify-between border-b border-white/10 pb-2">
-                            <span>COUNTER ATTACK (自動反擊)</span>
-                            <span class="text-red-500 animate-pulse">STANDBY</span>
-                        </li>
-                    </ul>
-                </div>
-                <div class="order-1 lg:order-2 flex justify-center">
-                    <div class="bento-card w-full max-w-xs md:max-w-md aspect-square flex items-center justify-center relative rounded-full border-2 border-red-500/30 anim-scale" data-tilt>
-                        <div class="text-center z-10">
-                            <div class="text-6xl md:text-9xl font-bold mb-2 tracking-tighter text-red-500 count-up" data-target="100">0</div>
-                            <div class="text-lg md:text-xl text-gray-400 font-mono tracking-widest">% CLEANSED</div>
-                        </div>
-                    </div>
-                </div>
+    <section id="team" class="py-40 bg-black relative">
+        <div class="max-w-[1100px] mx-auto px-6">
+            <div class="text-center mb-20">
+                <h2 class="text-3xl md:text-5xl font-bold mb-4">核心團隊</h2>
+                <p class="text-gray-500 font-mono">The Architects</p>
             </div>
-        </section>
 
-        <!-- WARP TRANSIT -->
-        <div class="warp-transit"><div class="warp-message">SYSTEM CRITICAL</div></div>
-
-        <!-- ========================================= -->
-        <!-- CHAPTER 6: NUKE ENGINE (NeverForget) -->
-        <!-- ========================================= -->
-
-        <section id="nuke" class="min-h-screen flex flex-col justify-center px-6 md:px-12 border-y border-white/10 bg-red-950/10 relative py-20 backdrop-blur-md" data-chapter="CH.07 ZERO POINT">
-            <div class="max-w-[1800px] mx-auto w-full relative z-10">
-                <div class="flex flex-col md:flex-row justify-between items-end mb-12 md:mb-20">
-                    <div>
-                        <div class="text-xs md:text-sm font-mono text-red-500 mb-4 anim-fade">MODULE BETA: SCORCHED EARTH</div>
-                        <h2 class="text-4xl md:text-8xl font-bold tracking-tighter text-white split-text">NeverForget<br>歸零引擎</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <a href="https://zynuke.lol/moon_light1014" target="_blank"
+                    class="tech-card p-6 flex flex-col items-center text-center group cursor-pointer hover:bg-white/5">
+                    <div
+                        class="w-24 h-24 rounded-full overflow-hidden mb-6 border-2 border-white/10 group-hover:border-red-500 transition-colors duration-300">
+                        <img src="https://cdn.discordapp.com/avatars/1402475195360481320/cdaa229a6a0a54e4d8ed26229273b5a4.webp?size=1024"
+                            onerror="this.src='https://ui-avatars.com/api/?name=L&background=333&color=fff'"
+                            alt="Lighting"
+                            class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500">
                     </div>
-                    <div class="text-right hidden md:block anim-fade">
-                        <div class="text-red-500 font-bold text-xl">v2.0</div>
-                        <div class="text-gray-500 font-mono">ULTRAFAST PROTOCOL</div>
+                    <h3 class="text-xl font-bold text-white mb-2">light</h3>
+                    <p class="text-xs text-gray-500 font-mono italic">
+                        「這裡曾經有個人，後來他連『曾經』都不配有了。」
+                    </p>
+                    <div class="mt-4 text-xs text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                        VIEW PROFILE ->
                     </div>
-                </div>
+                </a>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="bento-card p-6 border-red-500/30 anim-card group min-h-[150px]" data-tilt>
-                        <div class="text-red-500 text-lg font-bold mb-2">抹除 (ERASE)</div>
-                        <p class="text-sm text-gray-400">非同步並行刪除所有頻道與身分組。</p>
-                        <div class="absolute bottom-0 left-0 w-full h-1 bg-red-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                <div class="tech-card p-6 flex flex-col items-center text-center group">
+                    <div
+                        class="w-24 h-24 rounded-full overflow-hidden mb-6 border-2 border-white/10 group-hover:border-red-500 transition-colors duration-300">
+                        <img src="https://cdn.discordapp.com/avatars/1076741973253304351/5d1a194dc77721c2655fffaca34eaa14.webp?size=1024"
+                            onerror="this.src='https://ui-avatars.com/api/?name=CO&background=333&color=fff'" alt="CO"
+                            class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500">
                     </div>
-                    <div class="bento-card p-6 border-red-500/30 anim-card group min-h-[150px]" style="transition-delay: 0.1s" data-tilt>
-                        <div class="text-red-500 text-lg font-bold mb-2">污染 (POLLUTE)</div>
-                        <p class="text-sm text-gray-400">瞬間生成 200+ 個垃圾頻道。</p>
-                        <div class="absolute bottom-0 left-0 w-full h-1 bg-red-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
-                    </div>
-                    <div class="bento-card p-6 border-red-500/30 anim-card group min-h-[150px]" style="transition-delay: 0.2s" data-tilt>
-                        <div class="text-red-500 text-lg font-bold mb-2">清洗 (PURGE)</div>
-                        <p class="text-sm text-gray-400">以 100 人為單位的批量封鎖。</p>
-                        <div class="absolute bottom-0 left-0 w-full h-1 bg-red-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
-                    </div>
-                    <div class="bento-card p-6 border-red-500/30 anim-card group min-h-[150px]" style="transition-delay: 0.3s" data-tilt>
-                        <div class="text-red-500 text-lg font-bold mb-2">佔領 (CONQUER)</div>
-                        <p class="text-sm text-gray-400">強制更名為 "nuke by NeverForget"。</p>
-                        <div class="absolute bottom-0 left-0 w-full h-1 bg-red-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ========================================= -->
-        <!-- CHAPTER 7: ENTROPY (Lag + Marquee) -->
-        <!-- ========================================= -->
-
-        <section class="min-h-screen flex items-center justify-center px-6 md:px-12 border-y border-white/10 overflow-hidden relative bg-black/95" data-chapter="CH.08 ENTROPY">
-            <!-- Animated Marquee Background -->
-            <div class="lag-marquee-container">
-                <div class="lag-marquee-track" id="lag-track-1">
-                    <!-- JS populated -->
-                </div>
-            </div>
-            
-            <div class="relative z-10 text-center">
-                <h2 class="text-4xl md:text-9xl font-black mb-4 tracking-tighter text-white mix-blend-difference split-text glitch-wrapper">
-                    UNICODE<br>OVERLOAD
-                </h2>
-                <p class="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto anim-fade">
-                    不僅是炸群，更是對硬體的攻擊。<br>
-                    <span class="text-white font-mono">lag.txt</span> 載荷包含特殊編碼，旨在凍結受害者的 Discord 客戶端。
-                </p>
-            </div>
-        </section>
-
-        <!-- ========================================= -->
-        <!-- CHAPTER 8: TERMINAL (Interactive) -->
-        <!-- ========================================= -->
-
-        <section class="min-h-screen flex items-center px-6 md:px-12 border-y border-white/10 bg-[#050505]/90 relative py-20 backdrop-blur-md" data-chapter="CH.09 TERMINAL">
-            <div class="max-w-[1200px] mx-auto w-full relative z-10">
-                <div class="mb-12 text-center">
-                    <h2 class="text-4xl font-bold mb-4 split-text text-white">戰術控制台</h2>
-                    <p class="text-gray-400 anim-fade">直接體驗控制混亂的快感。輸入指令，發動災難。</p>
-                </div>
-
-                <div class="w-full bg-black border border-white/20 rounded-lg overflow-hidden shadow-2xl anim-scale" data-tilt>
-                    <div class="flex items-center px-4 py-2 border-b border-white/10 bg-[#111]">
-                        <div class="flex gap-2">
-                            <div class="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
-                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
-                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
-                        </div>
-                        <div class="ml-4 text-xs font-mono text-gray-500">admin@lyrahub:~/weapons</div>
-                    </div>
-                    <div class="p-6 h-[300px] md:h-[400px] font-mono text-sm overflow-y-auto relative" id="terminal-output">
-                        <div class="text-gray-500 mb-2"># Initializing Weapon Systems...</div>
-                        <div class="text-gray-500 mb-2"># Loading Payloads: [HyperWarp.py] [main.py] [1145.py]</div>
-                        <div class="text-red-500 mb-4">⚠ 系統已解除保險 (SYSTEM ARMED).</div>
-                        <div class="flex">
-                            <span class="text-red-500 mr-2">➜</span>
-                            <span class="text-white mr-2">~</span>
-                            <span class="text-white" id="terminal-input-display"></span>
-                            <span class="w-2 h-5 bg-white animate-pulse ml-1"></span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 anim-stagger-list">
-                    <button onclick="runCmd('!spam_dm target')" class="border border-white/20 py-4 text-sm font-mono text-white hover:bg-red-900/30 transition-colors">!spam_dm</button>
-                    <button onclick="runCmd('!nuke_cmd')" class="border border-white/20 py-4 text-sm font-mono text-white hover:bg-red-900/30 transition-colors">!nuke_cmd</button>
-                    <button onclick="runCmd('/spam lag')" class="border border-white/20 py-4 text-sm font-mono text-white hover:bg-red-900/30 transition-colors">/spam lag</button>
-                    <button onclick="runCmd('sys_status')" class="border border-white/20 py-4 text-sm font-mono text-white hover:bg-red-900/30 transition-colors">sys_status</button>
-                </div>
-            </div>
-        </section>
-
-        <!-- ========================================= -->
-        <!-- CHAPTER 9: TEAM (Architects) -->
-        <!-- ========================================= -->
-
-        <section id="team" class="min-h-screen flex items-center justify-center px-6 md:px-12 border-y border-white/10 relative py-20 bg-black/80 backdrop-blur-sm" data-chapter="CH.10 ARCHITECTS">
-            <div class="max-w-[1800px] mx-auto w-full">
-                <div class="mb-20 text-center">
-                    <div class="text-sm font-mono text-gray-500 mb-4 anim-fade">THE ARCHITECTS</div>
-                    <h2 class="text-5xl md:text-7xl font-bold tracking-tighter mb-8 split-text text-white">核心團隊</h2>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    <!-- Members -->
-                    <div class="bento-card member-card p-8 flex flex-col items-center text-center anim-card" data-tilt>
-                        <div class="w-32 h-32 rounded-full overflow-hidden mb-6 border-2 border-white/10 relative">
-                            <img src="https://cdn.discordapp.com/avatars/1402475195360481320/fdb4c522cc0006af784afb0dbf7cd291.webp?size=1024" alt="Light" class="member-avatar w-full h-full object-cover">
-                        </div>
-                        <h3 class="text-2xl font-bold mb-2 text-white">light</h3>
-                        <p class="text-sm text-gray-400 font-mono italic">「這裡曾經有個人，後來他連『曾經』都不配有了。」</p>
-                    </div>
-                    <div class="bento-card member-card p-8 flex flex-col items-center text-center anim-card" style="transition-delay: 0.1s" data-tilt>
-                        <div class="w-32 h-32 rounded-full overflow-hidden mb-6 border-2 border-white/10 relative">
-                            <img src="https://cdn.discordapp.com/attachments/1443927726208712776/1443933484589777047/hidden-face-pfp-39.jpg?ex=692cd999&is=692b8819&hm=69b740f88e3fd2610c040a642477136be18d0a5bf63cfe38a9485aa8c4f38b69&" onerror="this.src='https://ui-avatars.com/api/?name=FALED&background=random&color=fff'" alt="FALED" class="member-avatar w-full h-full object-cover">
-                        </div>
-                        <h3 class="text-2xl font-bold mb-2 text-white">FALED</h3>
-                        <p class="text-sm text-gray-500 font-mono italic opacity-50">(這個人非常懶惰完全不想寫個性簽名)</p>
-                    </div>
-                    <div class="bento-card member-card p-8 flex flex-col items-center text-center anim-card" style="transition-delay: 0.2s" data-tilt>
-                        <div class="w-32 h-32 rounded-full overflow-hidden mb-6 border-2 border-white/10 relative">
-                            <img src="https://cdn.discordapp.com/avatars/1111921558114553876/b0e629b96159b03fcc3391f7354972d4.webp?size=1024" alt="勞氏萊斯" class="member-avatar w-full h-full object-cover">
-                        </div>
-                        <h3 class="text-2xl font-bold mb-2 text-white">勞氏萊斯</h3>
-                        <p class="text-sm text-gray-400 font-mono italic">Jim</p>
-                    </div>
-                    <div class="bento-card member-card p-8 flex flex-col items-center text-center anim-card" style="transition-delay: 0.3s" data-tilt>
-                        <div class="w-32 h-32 rounded-full overflow-hidden mb-6 border-2 border-white/10 relative">
-                            <img src="https://cdn.discordapp.com/avatars/1108004585349599273/ab87ad49effe6e4931d24f74fb023b2a.webp?size=1024" alt="IE" class="member-avatar w-full h-full object-cover">
-                        </div>
-                        <h3 class="text-2xl font-bold mb-2 text-white">IE</h3>
-                        <p class="text-sm text-gray-400 font-mono italic">Light是gay</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- WARP TRANSIT -->
-        <div class="warp-transit"><div class="warp-message">ENDGAME</div></div>
-
-        <!-- ========================================= -->
-        <!-- CHAPTER 10: CONTRACTS (Services) -->
-        <!-- ========================================= -->
-
-        <section id="services" class="min-h-screen flex items-center justify-center px-6 md:px-12 border-y border-white/10 relative bg-[#050505]/80 py-20 backdrop-blur-md" data-chapter="CH.11 CONTRACTS">
-            <div class="max-w-[1800px] mx-auto w-full">
-                <div class="mb-20 text-center">
-                    <div class="text-sm font-mono text-gray-500 mb-4 anim-fade">MERCENARY CONTRACTS</div>
-                    <h2 class="text-5xl md:text-7xl font-bold tracking-tighter mb-8 split-text text-white">服務與報價</h2>
-                    <p class="text-gray-400 max-w-2xl mx-auto anim-fade">
-                        提供專業客製化開發與自架託管服務。所有交易均透過 Ticket 私訊進行。
+                    <h3 class="text-xl font-bold text-white mb-2">CO</h3>
+                    <p class="text-xs text-gray-500 font-mono italic opacity-50">
+                        (這個人非常懶惰完全不想寫個性簽名)
                     </p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div class="bento-card p-8 border-l-4 border-l-purple-500 anim-card min-h-[300px] flex flex-col" data-tilt>
-                        <div class="flex justify-between items-start mb-6">
-                            <h3 class="text-2xl font-bold text-white">一般官網製作</h3>
-                            <span class="bg-purple-900/50 text-purple-300 text-xs font-mono px-2 py-1 rounded">WEB DEV</span>
-                        </div>
-                        <p class="text-gray-400 text-sm mb-6 flex-1">完全客製化設計、RWD 響應式版面、品牌形象統一。</p>
-                        <div class="mt-auto">
-                            <div class="text-3xl font-bold text-white mb-1">TWD 500 <span class="text-sm font-normal text-gray-500">起</span></div>
-                            <div class="text-xs text-gray-600 font-mono">依內容複雜度報價</div>
+                <a href="https://zynuke.lol/Ala_jim" target="_blank"
+                    class="tech-card p-6 flex flex-col items-center text-center group cursor-pointer hover:bg-white/5">
+                    <div
+                        class="w-24 h-24 rounded-full overflow-hidden mb-6 border-2 border-white/10 group-hover:border-red-500 transition-colors duration-300">
+                        <img src="https://cdn.discordapp.com/avatars/1111921558114553876/b0e629b96159b03fcc3391f7354972d4.webp?size=1024"
+                            onerror="this.src='https://ui-avatars.com/api/?name=J&background=333&color=fff'" alt="Jim"
+                            class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500">
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">勞氏萊斯</h3>
+                    <p class="text-xs text-gray-500 font-mono italic">
+                        Jim
+                    </p>
+                    <div class="mt-4 text-xs text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                        VIEW PROFILE ->
+                    </div>
+                </a>
+
+                <a href="https://zynuke.lol/$" target="_blank"
+                    class="tech-card p-6 flex flex-col items-center text-center group cursor-pointer hover:bg-white/5">
+                    <div
+                        class="w-24 h-24 rounded-full overflow-hidden mb-6 border-2 border-white/10 group-hover:border-red-500 transition-colors duration-300">
+                        <img src="https://cdn.discordapp.com/avatars/1108004585349599273/2ffa68de755fd6ace02bb22224aa2dda.webp?size=1024"
+                            onerror="this.src='https://ui-avatars.com/api/?name=IE&background=333&color=fff'" alt="IE"
+                            class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500">
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">IEXun</h3>
+                    <p class="text-xs text-gray-500 font-mono italic">
+                        我不會寫炸群uwu
+                    </p>
+                    <div class="mt-4 text-xs text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                        VIEW PROFILE ->
+                    </div>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-32 bg-[#050505] px-6 border-t border-white/5">
+        <div class="max-w-3xl mx-auto">
+            <h2 class="text-3xl font-bold mb-12 text-center">常見問題</h2>
+
+            <div class="space-y-4">
+                <div
+                    class="border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-colors bg-white/5">
+                    <button class="w-full text-left p-6 flex justify-between items-center focus:outline-none"
+                        onclick="toggleFaq(this)">
+                        <span class="font-medium text-lg">如何取得Zynuke武器權限？</span>
+                        <i class="fa-solid fa-plus text-gray-500 transition-transform duration-300"></i>
+                    </button>
+                    <div class="h-0 overflow-hidden transition-all duration-300 ease-out p-0 px-6 text-gray-400">
+                        <div class="pb-6">
+                            請點擊「加入 Discord」按鈕進行身分驗證。通過審核後，您將獲得相應的購買與破壞權限。
                         </div>
                     </div>
-                    <div class="bento-card p-8 border-l-4 border-l-purple-500 anim-card min-h-[300px] flex flex-col" style="transition-delay: 0.1s" data-tilt>
-                        <div class="flex justify-between items-start mb-6">
-                            <h3 class="text-2xl font-bold text-white">客製機器人</h3>
-                            <span class="bg-purple-900/50 text-purple-300 text-xs font-mono px-2 py-1 rounded">BOT DEV</span>
-                        </div>
-                        <p class="text-gray-400 text-sm mb-6 flex-1">24/7 不下線自架託管。指令、等級、票務皆可客製。</p>
-                        <div class="mt-auto">
-                            <div class="text-3xl font-bold text-white mb-1">NT$300 <span class="text-sm font-normal text-gray-500">Steam Card 起</span></div>
-                            <div class="text-xs text-gray-600 font-mono">依功能複雜度報價</div>
-                        </div>
-                    </div>
-                    <!-- Combined "Targeted Strike" card from 123 copy -->
-                    <div class="bento-card p-8 border-l-4 border-l-red-500 lg:col-span-1 anim-card min-h-[300px] flex flex-col" style="transition-delay: 0.2s" data-tilt>
-                         <div class="flex justify-between items-start mb-6">
-                            <h3 class="text-2xl font-bold text-white">自定義炸群</h3>
-                            <span class="bg-red-900/50 text-red-300 text-xs font-mono px-2 py-1 rounded">TARGETED</span>
-                        </div>
-                        <p class="text-gray-400 text-sm mb-6 flex-1">
-                             價格到位，萬人伺服器亦可毀滅。<br>
-                            <span class="text-red-400 italic">「有感筆電只能看著他的群被炸，就像那無能的丈夫一樣。」</span>
-                        </p>
-                        <div class="mt-auto">
-                            <div class="text-3xl font-bold text-red-500 mb-1">私訊報價</div>
-                            <div class="text-xs text-gray-600 font-mono">100% 匿名保障</div>
+                </div>
+
+                <div
+                    class="border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-colors bg-white/5">
+                    <button class="w-full text-left p-6 flex justify-between items-center focus:outline-none"
+                        onclick="toggleFaq(this)">
+                        <span class="font-medium text-lg">使用這款 Bot 會被追蹤嗎？</span>
+                        <i class="fa-solid fa-plus text-gray-500 transition-transform duration-300"></i>
+                    </button>
+                    <div class="h-0 overflow-hidden transition-all duration-300 ease-out p-0 px-6 text-gray-400">
+                        <div class="pb-6">
+                            我們的系統採用匿名路由技術。日誌僅在本地短暫緩存後即銷毀，確保您的操作隱匿無蹤。
                         </div>
                     </div>
-                    <div class="bento-card p-8 border-l-4 border-l-red-500 lg:col-span-3 anim-card min-h-[200px] flex flex-col items-center justify-center text-center" style="transition-delay: 0.4s" data-tilt>
-                        <h3 class="text-3xl font-bold text-white mb-4">帳號取得與教學</h3>
-                         <p class="text-gray-400 text-sm mb-6">提供專業帳號取得服務，或購買完整的技術教學課程 (BLACK OPS)。</p>
-                         <a href="https://discord.gg/zVntvpcJ" target="_blank" class="px-8 py-3 bg-red-600 text-white font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-colors">Open Ticket</a>
+                </div>
+
+                <div
+                    class="border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-colors bg-white/5">
+                    <button class="w-full text-left p-6 flex justify-between items-center focus:outline-none"
+                        onclick="toggleFaq(this)">
+                        <span class="font-medium text-lg">支援哪些付款方式？</span>
+                        <i class="fa-solid fa-plus text-gray-500 transition-transform duration-300"></i>
+                    </button>
+                    <div class="h-0 overflow-hidden transition-all duration-300 ease-out p-0 px-6 text-gray-400">
+                        <div class="pb-6">
+                            我們目前支援PayPal、信用卡、轉帳以及部分加密貨幣支付，詳情請開單詢問。
+                        </div>
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <!-- CTA Footer -->
-        <section class="min-h-screen flex items-center justify-center px-6 md:px-12 bg-black relative overflow-hidden">
-            <div class="text-center relative z-10">
-                <h2 class="text-hero mb-8 split-text text-white">
-                    加入軍團。<br>
-                    Join the Legion.
-                </h2>
-                <div class="flex flex-col md:flex-row gap-6 justify-center items-center mt-12 anim-fade">
-                    <a href="https://discord.gg/zVntvpcJ" target="_blank" class="px-12 py-5 bg-white text-black text-xl font-bold tracking-tight hover:bg-red-600 hover:text-white transition-colors w-full md:w-auto">
-                        加入 Discord
-                    </a>
-                </div>
-                <p class="mt-12 text-gray-500 text-sm font-mono anim-fade">
-                    &copy; 2025 Zynuke. All systems armed.<br>
-                    Powered by Hyper Warp Protocol & NeverForget Engine.
+    <footer class="pt-24 pb-12 bg-black border-t border-white/5">
+        <div class="max-w-6xl mx-auto px-6">
+            <div class="flex flex-col items-center mb-16 text-center">
+                <span class="text-3xl font-bold tracking-tight text-white mb-6 block">Zynuke</span>
+                <p class="text-gray-500 text-sm max-w-md">
+                    重新定義破壞的極限。<br>效率、速度、支配。
                 </p>
+                <a href="https://discord.gg/FDq7Tu7UCf"
+                    class="mt-8 px-8 py-3 bg-white text-black font-bold rounded-full hover:bg-red-600 hover:text-white transition-colors">
+                    加入軍團
+                </a>
             </div>
-        </section>
 
-    </main>
-
-    </div> <!-- End Viewport -->
+            <div
+                class="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-600">
+                <p>&copy; 2025 Zynuke Development Group. All rights reserved.</p>
+                <div class="flex gap-4 mt-4 md:mt-0">
+                    <a href="https://discord.gg/FDq7Tu7UCf" class="hover:text-white transition-colors"><i
+                            class="fa-brands fa-discord text-xl"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <script>
-        // Start Screen Logic
+        // --- 修正問題的關鍵代碼區域 ---
         document.addEventListener('DOMContentLoaded', () => {
+
+            // 1. 強制重整後回到頁面最上方
+            if (history.scrollRestoration) {
+                history.scrollRestoration = 'manual';
+            }
+            window.scrollTo(0, 0);
+
             const startScreen = document.getElementById('start-screen');
             const bgm = document.getElementById('bg-music');
-            
-            // Set volume to 45%
+            const nav = document.getElementById('navbar');
+
+            // Volume
             bgm.volume = 0.20;
 
             const initSite = () => {
                 // Play Audio
                 bgm.play().catch(e => console.log("Audio play failed:", e));
-                
+
                 // Fade out start screen
                 startScreen.style.opacity = '0';
+
+                // 2. 解鎖頁面滾動
+                document.body.style.overflow = 'auto';
+
                 setTimeout(() => {
                     startScreen.style.display = 'none';
-                    gsap.to('#navbar', { opacity: 1, duration: 1 });
-                }, 1000);
+                    nav.style.opacity = '1';
+
+                    // Trigger Hero Animations
+                    runHeroAnimations();
+                }, 800);
             };
 
             startScreen.addEventListener('click', initSite);
@@ -638,286 +947,129 @@
 
         gsap.registerPlugin(ScrollTrigger);
 
-        // Optimized Lenis Setup
-        const lenis = new Lenis({
-            duration: 1.5,
-            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-            direction: 'vertical',
-            gestureDirection: 'vertical',
-            smooth: true,
-            mouseMultiplier: 1,
-            smoothTouch: false, 
-            touchMultiplier: 2,
-        });
-
-        function raf(time) {
-            lenis.raf(time);
-            requestAnimationFrame(raf);
+        // --- Animations ---
+        function runHeroAnimations() {
+            const tl = gsap.timeline();
+            tl.to(".hero-elem", { y: 0, opacity: 1, duration: 1, stagger: 0.1, ease: "power3.out" })
+                .to(".hero-visual", { opacity: 1, duration: 1.5, ease: "power2.out" }, "-=0.5");
         }
-        requestAnimationFrame(raf);
 
-        document.addEventListener('DOMContentLoaded', () => {
-            
-            // --- THREE.JS HYBRID ENGINE (Starfield + Warp Effect + Mouse Blob) ---
-            const container = document.getElementById('webgl-canvas');
-            const scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x050505, 0.0003); 
-            
-            // Camera
-            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
-            camera.position.z = 1000;
-
-            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "high-performance" });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-            container.appendChild(renderer.domElement);
-
-            // 50,000 Particles (From 2.html)
-            const particleCount = 50000;
-            const posArray = new Float32Array(particleCount * 3);
-            const colorArray = new Float32Array(particleCount * 3);
-            
-            const colors = [
-                new THREE.Color(0x9d00ff), // Purple
-                new THREE.Color(0xff3333), // Red
-                new THREE.Color(0xffffff), // White
-                new THREE.Color(0x00f3ff), // Cyan
-                new THREE.Color(0xffcc00)  // Yellow
-            ];
-
-            for(let i = 0; i < particleCount; i++) {
-                const x = (Math.random() - 0.5) * 10000;
-                const y = (Math.random() - 0.5) * 10000;
-                const z = (Math.random() - 0.5) * 10000;
-                
-                posArray[i * 3] = x;
-                posArray[i * 3 + 1] = y;
-                posArray[i * 3 + 2] = z;
-                
-                const color = colors[Math.floor(Math.random() * colors.length)];
-                colorArray[i * 3] = color.r;
-                colorArray[i * 3 + 1] = color.g;
-                colorArray[i * 3 + 2] = color.b;
-            }
-
-            const geometry = new THREE.BufferGeometry();
-            geometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-            geometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
-
-            const material = new THREE.PointsMaterial({
-                size: 2,
-                vertexColors: true,
-                transparent: true,
-                opacity: 0.9,
-                sizeAttenuation: true,
-                blending: THREE.AdditiveBlending
+        gsap.utils.toArray('.reveal-text').forEach((elem) => {
+            gsap.to(elem, {
+                scrollTrigger: { trigger: elem, start: "top 80%", end: "top 50%", scrub: true },
+                y: 0, opacity: 1, duration: 1
             });
+        });
 
-            const starsMesh = new THREE.Points(geometry, material);
-            scene.add(starsMesh);
-
-            let mouseX = 0;
-            let mouseY = 0;
-            let targetX = 0;
-            let targetY = 0;
-            let scrollSpeed = 0;
-            let mouseDown = false;
-            let baseFov = 75;
-
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
+        gsap.utils.toArray('.tech-card').forEach((card, i) => {
+            gsap.from(card, {
+                scrollTrigger: { trigger: card, start: "top 90%" },
+                y: 30, opacity: 0, duration: 0.6, delay: 0.05, ease: "power2.out"
             });
+        });
 
-            document.addEventListener('mousemove', (event) => {
-                mouseX = event.clientX;
-                mouseY = event.clientY;
-                targetX = (mouseX / window.innerWidth) * 2 - 1;
-                targetY = -(mouseY / window.innerHeight) * 2 + 1;
-            });
-            
-            document.addEventListener('mousedown', () => mouseDown = true);
-            document.addEventListener('mouseup', () => mouseDown = false);
-
-            lenis.on('scroll', (e) => {
-                scrollSpeed += Math.abs(e.velocity) * 0.5; // Acceleration logic
-                
-                // Update HUD Chapter
-                const sections = document.querySelectorAll('section');
-                sections.forEach(sec => {
-                    const rect = sec.getBoundingClientRect();
-                    if(rect.top < window.innerHeight/2 && rect.bottom > window.innerHeight/2) {
-                        const chapter = sec.getAttribute('data-chapter');
-                        if(chapter) document.getElementById('chapter-display').innerText = chapter;
-                    }
-                });
-            });
-
-            const animate = () => {
-                // WARP LOGIC (Merging effect from 123 copy)
-                let speed = 2; // Base speed
-                let fovTarget = baseFov;
-                
-                // Add scroll momentum to speed
-                speed += scrollSpeed;
-                
-                // Warp Drive Effect (Visual Stretch)
-                if (mouseDown) {
-                    speed += 150; 
-                    fovTarget = 120;
-                    material.size = 1; 
-                } else if (scrollSpeed > 5) {
-                    // This creates the "stars streaming" effect from 123 copy
-                    fovTarget = 90 + Math.min(scrollSpeed, 30); // Dynamic FOV
-                    material.size = 2;
-                } else {
-                    fovTarget = 75;
-                    material.size = 2;
-                }
-                
-                // Smooth Camera FOV
-                camera.fov += (fovTarget - camera.fov) * 0.05;
-                camera.updateProjectionMatrix();
-                
-                scrollSpeed *= 0.95; // Decay
-
-                // Move Stars
-                const positions = starsMesh.geometry.attributes.position.array;
-                for(let i = 2; i < particleCount * 3; i += 3) {
-                    positions[i] += speed;
-                    if (positions[i] > 1000) {
-                        positions[i] = -8000; 
-                        positions[i-1] = (Math.random() - 0.5) * 10000;
-                        positions[i-2] = (Math.random() - 0.5) * 10000;
-                    }
-                }
-                starsMesh.geometry.attributes.position.needsUpdate = true;
-                starsMesh.rotation.z += 0.0002 + (scrollSpeed * 0.0001); // Twist on warp
-
-                // Camera Tilt
-                camera.rotation.x += (targetY * 0.15 - camera.rotation.x) * 0.05;
-                camera.rotation.y += (-targetX * 0.15 - camera.rotation.y) * 0.05;
-                
-                // Update HUD
-                const indicator = document.getElementById('speed-indicator');
-                const warpStatus = document.getElementById('warp-status');
-                if(indicator) indicator.innerText = Math.floor(speed) + "X";
-                if(warpStatus) {
-                    warpStatus.innerText = speed > 50 ? "ENGAGED" : "STANDBY";
-                    warpStatus.style.color = speed > 50 ? "#00f3ff" : "#ff3333";
-                }
-
-                renderer.render(scene, camera);
-                requestAnimationFrame(animate);
-            }
-            animate();
-
-            // --- MOUSE BLOB (From 2.html) ---
-            const blob = document.getElementById('mouse-blob');
-            let blobX = 0, blobY = 0;
-            function animateBlob() {
-                blobX += (mouseX - blobX) * 0.1;
-                blobY += (mouseY - blobY) * 0.1;
-                if(blob) blob.style.transform = `translate3d(${blobX}px, ${blobY}px, 0) translate(-50%, -50%)`;
-                requestAnimationFrame(animateBlob);
-            }
-            animateBlob();
-
-            // --- DOM ANIMATIONS (Shared) ---
-            // Parallax
-            gsap.to('.parallax-bg', {
-                y: '20%', ease: 'none',
-                scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true }
-            });
-
-            // Fade In
-            gsap.utils.toArray('.anim-fade').forEach(el => {
-                gsap.from(el, {
-                    scrollTrigger: { trigger: el, start: 'top 85%' },
-                    y: 20, opacity: 0, duration: 0.8, ease: 'power2.out'
-                });
-            });
-
-            // Card Stagger
-            const cards = document.querySelectorAll('.anim-card');
-            cards.forEach((el, i) => {
-                gsap.from(el, {
-                    scrollTrigger: { trigger: el, start: 'top 90%' },
-                    y: 30, opacity: 0, duration: 0.6, delay: 0.1, ease: 'back.out(1.5)'
-                });
-            });
-
-            // Text Split
-            if (window.innerWidth > 768) {
-                const splitTypes = document.querySelectorAll('.split-text');
-                splitTypes.forEach((char) => {
-                    const text = new SplitType(char, { types: 'chars' });
-                    gsap.from(text.chars, {
-                        scrollTrigger: { trigger: char, start: 'top 85%' },
-                        y: 50, opacity: 0, stagger: 0.02, duration: 0.8, ease: 'power2.out'
-                    });
-                });
-            }
-
-            // 3D Tilt Effect
-            const tiltCards = document.querySelectorAll('[data-tilt]');
-            tiltCards.forEach(card => {
-                let rect = card.getBoundingClientRect();
-                card.addEventListener('mouseenter', () => { rect = card.getBoundingClientRect(); });
-                card.addEventListener('mousemove', (e) => {
-                    if (window.innerWidth < 768) return; 
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    const rotateX = ((y - rect.height/2) / rect.height) * -5;
-                    const rotateY = ((x - rect.width/2) / rect.width) * 5;
-                    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-                });
-                card.addEventListener('mouseleave', () => {
-                    card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0)';
-                });
-            });
-
-            // Count Up
-            gsap.utils.toArray('.count-up').forEach(el => {
-                let target = parseInt(el.getAttribute('data-target'));
-                gsap.to(el, {
-                    scrollTrigger: { trigger: el, start: 'top 80%' },
-                    innerHTML: target, duration: 2, snap: { innerHTML: 1 }, ease: 'power1.out'
-                });
-            });
-
-            // Terminal
-            window.runCmd = function(cmd) {
-                const output = document.getElementById('terminal-output');
-                const newCmd = document.createElement('div');
-                newCmd.className = "mb-2";
-                newCmd.innerHTML = `<span class="text-red-500 mr-2">➜</span><span class="text-white">~ ${cmd}</span>`;
-                output.insertBefore(newCmd, output.lastElementChild);
-                const respEl = document.createElement('div');
-                respEl.innerHTML = `<div class="text-gray-400 pl-6 mb-2">Executing ${cmd}... [SUCCESS]</div>`;
-                output.insertBefore(respEl, output.lastElementChild);
-                output.scrollTop = output.scrollHeight;
-            }
-
-            // Lag Marquee (From 2.html & 123)
-            const lagTextContent = " @everyone 틓탑컏쳍쫋죉웇쓅싃상뺿벽못뢹뚷뒵늳낱꺯겭ꪫꢩꚧ꒥ꊣꂡ麟鲝骛颙隗钕銓邑躏貍誋袉蚇蒅芃肁繿籽穻硹癷瑵牳灱湯汭橫桩晧摥扣恡幟屝婛塙噗呕剓偑乏䱍䩋䡉䙇䑅䉃䁁㸿㰽㨻㠹㘷㐵㈳〱ⸯⰭ⨫⠩☧␥∣‡ḟᰝᨛ᠙ᘗᐕሓထฏ఍਋ࠉ؇Ѕȃ";
-            const lagContainer = document.getElementById('lag-track-1');
-            if (lagContainer) {
-                const item1 = document.createElement('div');
-                item1.className = 'lag-text-item';
-                item1.innerText = lagTextContent.repeat(10);
-                const item2 = document.createElement('div');
-                item2.className = 'lag-text-item';
-                item2.innerText = lagTextContent.repeat(10);
-                lagContainer.appendChild(item1);
-                lagContainer.appendChild(item2);
-                
-                gsap.to(lagContainer, {
-                    xPercent: -50, ease: "none", duration: 30, repeat: -1
-                });
+        // --- Navbar Logic ---
+        window.addEventListener('scroll', () => {
+            const nav = document.getElementById('navbar');
+            if (window.scrollY > 50) {
+                nav.classList.add('w-[95%]', 'md:w-[60%]', 'py-3');
+                nav.classList.remove('w-[95%]', 'md:w-[90%]', 'py-4');
+            } else {
+                nav.classList.remove('w-[95%]', 'md:w-[60%]', 'py-3');
+                nav.classList.add('w-[95%]', 'md:w-[90%]', 'py-4');
             }
         });
+
+        // --- Command Tabs Logic ---
+        const commands = [
+            {
+                code: `[SYSTEM] INITIATING_MASS_PROTOCOL...
+[AUTH] USER_ID_VERIFIED. PERMISSION: ADMIN
+[NET] SCANNING_GUILD_MEMBERS...
+[OK] TARGETS_ACQUIRED: 1,420 USERS
+[EXEC] BROADCASTING_PAYLOAD...
+> SENT_PACKET_001 [200 OK]
+> SENT_PACKET_002 [200 OK]
+> SENT_PACKET_003 [200 OK]
+...
+[SUCCESS] OPERATION_COMPLETE. COVERAGE: 99.8%`,
+                desc: "全域訊息轟炸"
+            },
+            {
+                code: `[SYSTEM] ALERT: NUKE_PROTOCOL_ENGAGED
+[WARN] THIS ACTION IS IRREVERSIBLE
+[AUTH] BIOMETRIC_SCAN... CONFIRMED.
+[EXEC] DELETING_CHANNELS...
+> #general [DELETED]
+> #announcements [DELETED]
+> #voice-chat [DELETED]
+[EXEC] BANNING_MEMBERS...
+[EXEC] DEPLOYING_CHAOS_TEMPLATE...
+[SUCCESS] SERVER_RECONSTRUCTED. HAVE_A_NICE_DAY.`,
+                desc: "伺服器焦土化"
+            },
+            {
+                code: `[SYSTEM] LOADING_BAN_HAMMER_V10...
+[SCAN] IDENTIFYING_NON_WHITELISTED_USERS...
+[LOCK] GATEWAY_FROZEN.
+[EXEC] EXECUTING_ORDER_66...
+> BANNED_USER_88291 [REASON: PURGE]
+> BANNED_USER_11234 [REASON: PURGE]
+> BANNED_USER_99123 [REASON: PURGE]
+...
+[INFO] PURGE_COMPLETE. 0 SURVIVORS.`,
+                desc: "成員大清洗"
+            }
+        ];
+
+        let typeInterval;
+
+        function switchTab(index) {
+            // UI Update
+            document.querySelectorAll('.cmd-tab').forEach((el, i) => {
+                if (i === index) el.classList.add('border-white/20', 'bg-white/10');
+                else el.classList.remove('border-white/20', 'bg-white/10');
+            });
+
+            // Typewriter Effect
+            const codeEl = document.getElementById('code-display');
+            const codeText = commands[index].code;
+            codeEl.innerHTML = ''; // clear
+
+            clearInterval(typeInterval);
+            let cursor = 0;
+
+            typeInterval = setInterval(() => {
+                if (cursor < codeText.length) {
+                    let char = codeText[cursor];
+                    if (char === '\n') char = '<br>';
+                    codeEl.innerHTML += char;
+                    codeEl.scrollTop = codeEl.scrollHeight;
+                    cursor++;
+                } else {
+                    clearInterval(typeInterval);
+                }
+            }, 5); // Typing speed
+        }
+
+        // Init first tab
+        switchTab(0);
+
+        // --- FAQ Logic ---
+        function toggleFaq(btn) {
+            const content = btn.nextElementSibling;
+            const icon = btn.querySelector('i');
+
+            if (content.style.height && content.style.height !== '0px') {
+                content.style.height = '0px';
+                icon.style.transform = 'rotate(0deg)';
+            } else {
+                content.style.height = content.scrollHeight + 'px';
+                icon.style.transform = 'rotate(45deg)';
+            }
+        }
+
     </script>
 </body>
+
 </html>
