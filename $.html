@@ -44,59 +44,7 @@
             transition: filter 1s ease;
         }
 
-        /* --- 魔法陣特效 (Chūnibyō) --- */
-        .magic-circle {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 500px;
-            height: 500px;
-            transform: translate(-50%, -50%) translateZ(-50px);
-            border-radius: 50%;
-            border: 2px solid rgba(88, 101, 242, 0.4);
-            box-shadow: 0 0 30px rgba(88, 101, 242, 0.3), inset 0 0 20px rgba(88, 101, 242, 0.2);
-            z-index: -2;
-            pointer-events: none;
-            opacity: 0.8;
-            animation: rotateCircle 20s linear infinite;
-        }
 
-        /* Second inner circle for complexity */
-        .magic-circle::before {
-            content: '';
-            position: absolute;
-            top: 15%;
-            left: 15%;
-            right: 15%;
-            bottom: 15%;
-            border-radius: 50%;
-            border: 1px dashed rgba(255, 0, 85, 0.5);
-            /* Crimson red */
-            box-shadow: 0 0 10px rgba(255, 0, 85, 0.3);
-            animation: rotateCircle 15s linear infinite reverse;
-        }
-
-        .magic-circle::after {
-            content: '';
-            position: absolute;
-            top: 30%;
-            left: 30%;
-            right: 30%;
-            bottom: 30%;
-            border-radius: 50%;
-            border: 2px dotted rgba(88, 101, 242, 0.8);
-            animation: rotateCircle 10s linear infinite;
-        }
-
-        @keyframes rotateCircle {
-            from {
-                transform: translate(-50%, -50%) translateZ(-50px) rotate(0deg);
-            }
-
-            to {
-                transform: translate(-50%, -50%) translateZ(-50px) rotate(360deg);
-            }
-        }
 
         /* --- 音樂播放器 (iPod 風格) --- */
         #music-widget {
@@ -774,7 +722,7 @@
         <div id="profile-card">
 
             <div class="magic-glow"></div> <!-- 原本的發光 -->
-            <div class="magic-circle"></div> <!-- 新增：魔法陣 -->
+
 
             <!-- 恢復頭像 -->
             <div class="avatar-container">
@@ -789,7 +737,7 @@
 
             <div class="badges-wrapper">
 
-                <div class="badge" data-tooltip="Developer">
+                <div class="badge" data-tooltip="Co-founder">
                     <img src="https://cdn.discordapp.com/emojis/1446726487163142204.webp?size=128">
                     <path
                         d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z" />
@@ -995,7 +943,7 @@
     <script>
         // --- 設定 (保持原本內容) ---
         const pageTitle = " !E Xun | Welcome | ";
-        const bioText = ["Developer", "FromTaiwan", "❤", "love you", "✡"];
+        const bioText = ["ZY Developer", "From Taiwan", "GMT+8", "BOY", "✡"];
         const discordInviteCode = "FDq7Tu7UCf";
 
         // --- 變數 ---
