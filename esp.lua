@@ -1,591 +1,723 @@
--- NukeBot Style All-in-One GUI (2025-2026 common edition)
--- 這東西活不久，請有心理準備
+-- ╔══════════════════════════════════════════════════════════════════════════════╗
+-- ║                    NukeBot Ultimate v4.0 - Perfect Edition                   ║
+-- ║                         Rayfield UI + 完美功能整合                            ║
+-- ╚══════════════════════════════════════════════════════════════════════════════╝
 
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- ═══════════════════════════ 服務初始化 ═══════════════════════════
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
-local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
+local StarterGui = game:GetService("StarterGui")
+local VirtualUser = game:GetService("VirtualUser")
+local HttpService = game:GetService("HttpService")
+local Debris = game:GetService("Debris")
+local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
-local RootPart = Character:WaitForChild("HumanoidRootPart")
+local Camera = Workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
 
--- 設定區 ────────────────────────────────────────
-local SETTINGS = {
-    FlySpeed = 50,
-    WalkSpeed = 16,
-    SpeedMultiplier = 5,
-    JumpPower = 50,
-    InfiniteJump = false,
-    SpiderClimb = false,
-    Noclip = false,
-    PhaseDown = false,
-    Godmode = false,
-    SemiGod = false,
-    HealthSteal = false,
-    AntiKnockback = false,
-    AntiRagdoll = false,
-    Fullbright = false,
-    NoFog = false,
-    ESP_Enabled = false,
-    Chams_Enabled = false,
-    SilentAim_Enabled = false,
-    KillAura_Range = 15,
-    KillAura_Enabled = false,
+local Character, Humanoid, RootPart
+local function RefreshCharacter()
+    Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    Humanoid = Character:WaitForChild("Humanoid", 10)
+    RootPart = Character:WaitForChild("HumanoidRootPart", 10)
+end
+RefreshCharacter()
+
+-- ═══════════════════════════ 遊戲檢測 ═══════════════════════════
+local GameId = game.PlaceId
+local GameData = {
+    [13772394625] = {Name="Blade Ball", Speed=1.5, Type="Combat"},
+    [17625359962] = {Name="Rivals", Speed=2, Type="FPS"},
+    [286090429] = {Name="Arsenal", Speed=1.2, Type="FPS"},
+    [2788229376] = {Name="Da Hood", Speed=1.8, Type="Combat"},
+    [6284583030] = {Name="Blox Fruits", Speed=1.3, Type="RPG"},
+}
+local CurrentGame = GameData[GameId] or {Name="通用", Speed=1, Type="Unknown"}
+
+-- ═══════════════════════════ 設定系統 ═══════════════════════════
+local CFG = {
+    -- 移動
+    Fly=false, FlySpeed=100, SmoothFly=true,
+    Noclip=false, PhaseDown=false,
+    SpeedHack=false, SpeedMult=5,
+    InfJump=false, HighJump=false, JumpMult=1,
+    Spider=false, ClimbSpeed=50,
+    AutoJump=false, BHop=false,
+    -- 戰鬥
+    God=false, SemiGod=false, AntiKB=false, AntiRagdoll=false,
+    KillAura=false, KillRange=15, KillMode="Touch",
+    SilentAim=false, AimPart="Head", AimFOV=180, AimSmooth=5,
+    NoRecoil=false, NoSpread=false, RapidFire=false,
+    AutoParry=false, AutoBlock=false,
+    Hitbox=false, HitboxSize=10,
+    -- ESP
+    ESP=false, ESP_Box=true, ESP_Skel=true, ESP_HP=true,
+    ESP_Name=true, ESP_Dist=true, ESP_Tracer=false,
+    ESP_Color=Color3.new(1,0,0), ESP_SkelColor=Color3.new(1,1,0),
+    ESP_TeamCheck=false, ESP_MaxDist=1000,
+    -- 視覺
+    Fullbright=false, NoFog=false, NoShadows=false,
+    Chams=false, ChamsColor=Color3.new(1,0.3,0.3),
+    XRay=false, FPSBoost=false, NoParticles=false,
+    CustomFOV=false, FOVValue=90,
+    ThirdPerson=false, TPDistance=10,
+    Freecam=false, FreecamSpeed=1,
+    -- 世界
+    Gravity=196.2, JumpHeight=7.2,
+    TimeFreeze=false, CustomTime=14,
+    -- 傳送
+    TPMode="Instant", SavedPos={},
+    -- 雜項
+    AntiAFK=true, ChatSpam=false, SpamMsg="NukeBot v4.0", SpamDelay=3,
+    InfYield="Off", AutoRespawn=false, AutoHeal=false,
+    ClickTP=false, AirWalk=false,
 }
 
--- GUI 主體 ────────────────────────────────────────
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "NukeBotUltimate"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+-- ═══════════════════════════ Rayfield 介面 ═══════════════════════════
+local Window = Rayfield:CreateWindow({
+    Name = "🔥 NukeBot Ultimate v4.0",
+    LoadingTitle = "NukeBot Ultimate",
+    LoadingSubtitle = "Perfect Edition - " .. CurrentGame.Name,
+    ConfigurationSaving = {Enabled=true, FolderName="NukeBotUltimate", FileName="Config_v4"},
+    Discord = {Enabled=false},
+    KeySystem = false,
+})
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 480, 0, 560)
-MainFrame.Position = UDim2.new(0.5, -240, 0.5, -280)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
+-- ══════════════════════════ 移動分頁 ══════════════════════════
+local MoveTab = Window:CreateTab("🏃 移動", 4483362458)
 
--- 標題列
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 40)
-TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-TitleBar.BorderSizePixel = 0
-TitleBar.Parent = MainFrame
+MoveTab:CreateSection("飛行系統")
+MoveTab:CreateToggle({Name="飛行 (Fly)", CurrentValue=false, Callback=function(v) CFG.Fly=v end})
+MoveTab:CreateSlider({Name="飛行速度", Range={50,500}, Increment=25, CurrentValue=100, Callback=function(v) CFG.FlySpeed=v end})
+MoveTab:CreateToggle({Name="平滑飛行", CurrentValue=true, Callback=function(v) CFG.SmoothFly=v end})
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -80, 1, 0)
-Title.Position = UDim2.new(0, 10, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "NUKEBOT ULTIMATE v2.1 - Academic Test Only"
-Title.TextColor3 = Color3.fromRGB(220, 60, 60)
-Title.TextSize = 18
-Title.Font = Enum.Font.SourceSansBold
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = TitleBar
+MoveTab:CreateSection("穿透系統")
+MoveTab:CreateToggle({Name="穿牆 (Noclip)", CurrentValue=false, Callback=function(v) CFG.Noclip=v end})
+MoveTab:CreateToggle({Name="穿地板", CurrentValue=false, Callback=function(v) CFG.PhaseDown=v end})
 
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -40, 0, 5)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.new(1,1,1)
-CloseBtn.Font = Enum.Font.SourceSansBold
-CloseBtn.TextSize = 20
-CloseBtn.Parent = TitleBar
+MoveTab:CreateSection("速度系統")
+MoveTab:CreateToggle({Name="速度破解", CurrentValue=false, Callback=function(v)
+    CFG.SpeedHack=v
+    if Humanoid then Humanoid.WalkSpeed = v and 16*CFG.SpeedMult*CurrentGame.Speed or 16 end
+end})
+MoveTab:CreateSlider({Name="速度倍率", Range={2,100}, Increment=2, CurrentValue=5, Callback=function(v)
+    CFG.SpeedMult=v
+    if CFG.SpeedHack and Humanoid then Humanoid.WalkSpeed=16*v*CurrentGame.Speed end
+end})
 
-CloseBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-end)
+MoveTab:CreateSection("跳躍系統")
+MoveTab:CreateToggle({Name="無限跳躍", CurrentValue=false, Callback=function(v) CFG.InfJump=v end})
+MoveTab:CreateToggle({Name="超級跳躍", CurrentValue=false, Callback=function(v)
+    CFG.HighJump=v
+    if Humanoid then Humanoid.JumpPower = v and 150 or 50 end
+end})
+MoveTab:CreateSlider({Name="跳躍倍率", Range={1,20}, Increment=1, CurrentValue=1, Callback=function(v)
+    CFG.JumpMult=v
+    if Humanoid then Humanoid.JumpPower=50*v end
+end})
+MoveTab:CreateToggle({Name="自動跳躍", CurrentValue=false, Callback=function(v) CFG.AutoJump=v end})
+MoveTab:CreateToggle({Name="連跳 (BHop)", CurrentValue=false, Callback=function(v) CFG.BHop=v end})
 
--- 分頁系統
-local TabButtons = {}
-local Pages = {}
+MoveTab:CreateSection("爬牆系統")
+MoveTab:CreateToggle({Name="蜘蛛爬牆", CurrentValue=false, Callback=function(v) CFG.Spider=v end})
+MoveTab:CreateSlider({Name="爬牆速度", Range={10,100}, Increment=10, CurrentValue=50, Callback=function(v) CFG.ClimbSpeed=v end})
 
-local function CreateTab(name, posX)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 110, 0, 35)
-    btn.Position = UDim2.new(0, posX, 0, 45)
-    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-    btn.Text = name
-    btn.TextColor3 = Color3.fromRGB(200,200,200)
-    btn.Font = Enum.Font.SourceSansSemibold
-    btn.TextSize = 15
-    btn.Parent = MainFrame
-    
-    local page = Instance.new("ScrollingFrame")
-    page.Size = UDim2.new(1, -20, 1, -90)
-    page.Position = UDim2.new(0, 10, 0, 90)
-    page.BackgroundTransparency = 1
-    page.ScrollBarThickness = 6
-    page.Visible = false
-    page.Parent = MainFrame
-    
-    table.insert(TabButtons, btn)
-    Pages[name] = page
-    
-    btn.MouseButton1Click:Connect(function()
-        for _, p in pairs(Pages) do p.Visible = false end
-        page.Visible = true
-        
-        for _, b in pairs(TabButtons) do
-            b.BackgroundColor3 = Color3.fromRGB(35,35,45)
-        end
-        btn.BackgroundColor3 = Color3.fromRGB(60,60,80)
-    end)
-    
-    return page
-end
+MoveTab:CreateSection("特殊移動")
+MoveTab:CreateToggle({Name="空中行走", CurrentValue=false, Callback=function(v) CFG.AirWalk=v end})
+MoveTab:CreateToggle({Name="點擊傳送", CurrentValue=false, Callback=function(v) CFG.ClickTP=v end})
 
--- 建立各分頁
-local MovementPage = CreateTab("Movement", 10)
-local CombatPage  = CreateTab("Combat", 130)
-local VisualPage  = CreateTab("Visual", 250)
-local ExploitsPage = CreateTab("Exploits", 370)
+-- ══════════════════════════ 戰鬥分頁 ══════════════════════════
+local CombatTab = Window:CreateTab("⚔️ 戰鬥", 4483362458)
 
-MovementPage.Visible = true  -- 預設開啟第一頁
-TabButtons[1].BackgroundColor3 = Color3.fromRGB(60,60,80)
+CombatTab:CreateSection("防禦系統")
+CombatTab:CreateToggle({Name="無敵模式 (God)", CurrentValue=false, Callback=function(v)
+    CFG.God=v
+    if v and Humanoid then Humanoid.MaxHealth=math.huge; Humanoid.Health=math.huge end
+end})
+CombatTab:CreateToggle({Name="半無敵 (自動回血)", CurrentValue=false, Callback=function(v) CFG.SemiGod=v end})
+CombatTab:CreateToggle({Name="抗擊退", CurrentValue=false, Callback=function(v) CFG.AntiKB=v end})
+CombatTab:CreateToggle({Name="防倒地", CurrentValue=false, Callback=function(v) CFG.AntiRagdoll=v end})
+CombatTab:CreateToggle({Name="自動格擋", CurrentValue=false, Callback=function(v) CFG.AutoBlock=v end})
 
--- 快速開關模板函式
-local function CreateToggle(parent, name, yPos, callback)
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0, 180, 0, 30)
-    label.Position = UDim2.new(0, 15, 0, yPos)
-    label.BackgroundTransparency = 1
-    label.Text = name
-    label.TextColor3 = Color3.fromRGB(220,220,220)
-    label.TextSize = 15
-    label.Font = Enum.Font.SourceSans
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = parent
+CombatTab:CreateSection("攻擊系統")
+CombatTab:CreateToggle({Name="Kill Aura", CurrentValue=false, Callback=function(v) CFG.KillAura=v end})
+CombatTab:CreateSlider({Name="攻擊範圍", Range={5,100}, Increment=5, CurrentValue=15, Callback=function(v) CFG.KillRange=v end})
+CombatTab:CreateDropdown({Name="攻擊模式", Options={"Touch","TP","Fling"}, CurrentOption={"Touch"}, Callback=function(v) CFG.KillMode=v[1] end})
 
-    local toggle = Instance.new("TextButton")
-    toggle.Size = UDim2.new(0, 50, 0, 26)
-    toggle.Position = UDim2.new(1, -80, 0, yPos+2)
-    toggle.BackgroundColor3 = Color3.fromRGB(70,70,70)
-    toggle.Text = "OFF"
-    toggle.TextColor3 = Color3.fromRGB(255,80,80)
-    toggle.Font = Enum.Font.SourceSansBold
-    toggle.TextSize = 14
-    toggle.Parent = parent
+CombatTab:CreateSection("瞄準系統 (Silent Aim)")
+CombatTab:CreateToggle({Name="Silent Aim 開關", CurrentValue=false, Callback=function(v) CFG.SilentAim=v end})
+CombatTab:CreateDropdown({Name="瞄準部位", Options={"Head","UpperTorso","HumanoidRootPart"}, CurrentOption={"Head"}, Callback=function(v) CFG.AimPart=v[1] end})
+CombatTab:CreateSlider({Name="瞄準 FOV", Range={30,360}, Increment=10, CurrentValue=180, Callback=function(v) CFG.AimFOV=v end})
+CombatTab:CreateSlider({Name="平滑度", Range={1,10}, Increment=1, CurrentValue=5, Callback=function(v) CFG.AimSmooth=v end})
 
-    local state = false
+CombatTab:CreateSection("武器輔助")
+CombatTab:CreateToggle({Name="無後座力", CurrentValue=false, Callback=function(v) CFG.NoRecoil=v end})
+CombatTab:CreateToggle({Name="無散射", CurrentValue=false, Callback=function(v) CFG.NoSpread=v end})
+CombatTab:CreateToggle({Name="連射", CurrentValue=false, Callback=function(v) CFG.RapidFire=v end})
 
-    toggle.MouseButton1Click:Connect(function()
-        state = not state
-        if state then
-            toggle.BackgroundColor3 = Color3.fromRGB(60,180,60)
-            toggle.Text = "ON"
-            toggle.TextColor3 = Color3.new(1,1,1)
-        else
-            toggle.BackgroundColor3 = Color3.fromRGB(70,70,70)
-            toggle.Text = "OFF"
-            toggle.TextColor3 = Color3.fromRGB(255,80,80)
-        end
-        callback(state)
-    end)
+CombatTab:CreateSection("Hitbox 擴展")
+CombatTab:CreateToggle({Name="Hitbox 擴展器", CurrentValue=false, Callback=function(v) CFG.Hitbox=v end})
+CombatTab:CreateSlider({Name="Hitbox 大小", Range={5,50}, Increment=5, CurrentValue=10, Callback=function(v) CFG.HitboxSize=v end})
 
-    return function(v)
-        state = v
-        if state then
-            toggle.BackgroundColor3 = Color3.fromRGB(60,180,60)
-            toggle.Text = "ON"
-            toggle.TextColor3 = Color3.new(1,1,1)
-        else
-            toggle.BackgroundColor3 = Color3.fromRGB(70,70,70)
-            toggle.Text = "OFF"
-            toggle.TextColor3 = Color3.fromRGB(255,80,80)
-        end
-        callback(state)
-    end
-end
+-- ══════════════════════════ ESP 分頁 ══════════════════════════
+local ESPTab = Window:CreateTab("👁️ ESP", 4483362458)
 
--- 快速數字選擇器
-local function CreateMultiplier(parent, name, yPos, options, default, callback)
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0, 180, 0, 30)
-    label.Position = UDim2.new(0, 15, 0, yPos)
-    label.BackgroundTransparency = 1
-    label.Text = name
-    label.TextColor3 = Color3.fromRGB(220,220,220)
-    label.TextSize = 15
-    label.Font = Enum.Font.SourceSans
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = parent
+ESPTab:CreateSection("ESP 主開關")
+ESPTab:CreateToggle({Name="啟用 ESP", CurrentValue=false, Callback=function(v) CFG.ESP=v end})
+ESPTab:CreateToggle({Name="隊伍檢查", CurrentValue=false, Callback=function(v) CFG.ESP_TeamCheck=v end})
+ESPTab:CreateSlider({Name="最大距離", Range={100,2000}, Increment=100, CurrentValue=1000, Callback=function(v) CFG.ESP_MaxDist=v end})
 
-    local current = default
-    local display = Instance.new("TextLabel")
-    display.Size = UDim2.new(0, 80, 0, 30)
-    display.Position = UDim2.new(1, -140, 0, yPos)
-    display.BackgroundColor3 = Color3.fromRGB(40,40,50)
-    display.Text = tostring(options[default])
-    display.TextColor3 = Color3.new(1,1,1)
-    display.TextSize = 16
-    display.Parent = parent
+ESPTab:CreateSection("顯示選項")
+ESPTab:CreateToggle({Name="方框", CurrentValue=true, Callback=function(v) CFG.ESP_Box=v end})
+ESPTab:CreateToggle({Name="骨架", CurrentValue=true, Callback=function(v) CFG.ESP_Skel=v end})
+ESPTab:CreateToggle({Name="血條", CurrentValue=true, Callback=function(v) CFG.ESP_HP=v end})
+ESPTab:CreateToggle({Name="名稱", CurrentValue=true, Callback=function(v) CFG.ESP_Name=v end})
+ESPTab:CreateToggle({Name="距離", CurrentValue=true, Callback=function(v) CFG.ESP_Dist=v end})
+ESPTab:CreateToggle({Name="追蹤線", CurrentValue=false, Callback=function(v) CFG.ESP_Tracer=v end})
 
-    local left = Instance.new("TextButton")
-    left.Size = UDim2.new(0, 30, 0, 30)
-    left.Position = UDim2.new(1, -200, 0, yPos)
-    left.BackgroundColor3 = Color3.fromRGB(60,60,70)
-    left.Text = "<"
-    left.TextColor3 = Color3.new(1,1,1)
-    left.Parent = parent
+ESPTab:CreateSection("顏色設定")
+local colorMap = {["紅"]=Color3.new(1,0,0),["藍"]=Color3.new(0,0,1),["綠"]=Color3.new(0,1,0),["黃"]=Color3.new(1,1,0),["紫"]=Color3.new(1,0,1),["橙"]=Color3.new(1,0.5,0),["白"]=Color3.new(1,1,1),["青"]=Color3.new(0,1,1)}
+ESPTab:CreateDropdown({Name="ESP 顏色", Options={"紅","藍","綠","黃","紫","橙","白","青"}, CurrentOption={"紅"}, Callback=function(v) CFG.ESP_Color=colorMap[v[1]] end})
+ESPTab:CreateDropdown({Name="骨架顏色", Options={"紅","藍","綠","黃","紫","橙","白","青"}, CurrentOption={"黃"}, Callback=function(v) CFG.ESP_SkelColor=colorMap[v[1]] end})
 
-    local right = Instance.new("TextButton")
-    right.Size = UDim2.new(0, 30, 0, 30)
-    right.Position = UDim2.new(1, -40, 0, yPos)
-    right.BackgroundColor3 = Color3.fromRGB(60,60,70)
-    right.Text = ">"
-    right.TextColor3 = Color3.new(1,1,1)
-    right.Parent = parent
+-- ══════════════════════════ 視覺分頁 ══════════════════════════
+local VisualTab = Window:CreateTab("🎨 視覺", 4483362458)
 
-    left.MouseButton1Click:Connect(function()
-        current = math.max(1, current-1)
-        display.Text = tostring(options[current])
-        callback(options[current])
-    end)
+VisualTab:CreateSection("光照效果")
+VisualTab:CreateToggle({Name="全亮 (Fullbright)", CurrentValue=false, Callback=function(v)
+    CFG.Fullbright=v
+    Lighting.Brightness=v and 3 or 1
+    Lighting.Ambient=v and Color3.new(1,1,1) or Color3.fromRGB(127,127,127)
+    Lighting.GlobalShadows=not v
+end})
+VisualTab:CreateToggle({Name="無霧", CurrentValue=false, Callback=function(v) CFG.NoFog=v; Lighting.FogEnd=v and 1e9 or 1e5 end})
+VisualTab:CreateToggle({Name="無陰影", CurrentValue=false, Callback=function(v) CFG.NoShadows=v; Lighting.GlobalShadows=not v end})
+VisualTab:CreateSlider({Name="時間設定", Range={0,24}, Increment=1, CurrentValue=14, Callback=function(v) CFG.CustomTime=v; Lighting.ClockTime=v end})
 
-    right.MouseButton1Click:Connect(function()
-        current = math.min(#options, current+1)
-        display.Text = tostring(options[current])
-        callback(options[current])
-    end)
-end
+VisualTab:CreateSection("玩家視覺")
+VisualTab:CreateToggle({Name="玩家透視 (Chams)", CurrentValue=false, Callback=function(v) CFG.Chams=v end})
+VisualTab:CreateColorPicker({Name="Chams 顏色", Color=Color3.new(1,0.3,0.3), Callback=function(v) CFG.ChamsColor=v end})
+VisualTab:CreateToggle({Name="X 光視覺", CurrentValue=false, Callback=function(v) CFG.XRay=v end})
 
--- ======================= 運動相關 =======================
-CreateToggle(MovementPage, "飛行 (Fly)", 10, function(v)
-    SETTINGS.Fly = v
-end)
-
-CreateToggle(MovementPage, "穿牆 (Noclip)", 50, function(v)
-    SETTINGS.Noclip = v
-end)
-
-CreateToggle(MovementPage, "下穿地板 (Phase)", 90, function(v)
-    SETTINGS.PhaseDown = v
-end)
-
-CreateToggle(MovementPage, "無限跳躍", 130, function(v)
-    SETTINGS.InfiniteJump = v
-end)
-
-CreateToggle(MovementPage, "蜘蛛爬牆", 170, function(v)
-    SETTINGS.SpiderClimb = v
-end)
-
-CreateMultiplier(MovementPage, "速度倍率", 220, {1,2,3,4,5,6,8,10,15,20,30,50,100}, 5, function(v)
-    SETTINGS.SpeedMultiplier = v
-    if Humanoid then
-        Humanoid.WalkSpeed = 16 * v
-    end
-end)
-
--- ======================= 戰鬥相關 =======================
-CreateToggle(CombatPage, "Kill Aura", 10, function(v)
-    SETTINGS.KillAura_Enabled = v
-end)
-
-CreateMultiplier(CombatPage, "Kill Aura 範圍", 50, {5,8,10,12,15,18,20,25,30}, 8, function(v)
-    SETTINGS.KillAura_Range = v
-end)
-
-CreateToggle(CombatPage, "Silent Aim (靜默瞄準)", 100, function(v)
-    SETTINGS.SilentAim_Enabled = v
-end)
-
-CreateToggle(CombatPage, "無敵模式 (God)", 150, function(v)
-    SETTINGS.Godmode = v
-    if v and Humanoid then
-        Humanoid.MaxHealth = math.huge
-        Humanoid.Health = math.huge
-    end
-end)
-
-CreateToggle(CombatPage, "半無敵 (Semi-God)", 190, function(v)
-    SETTINGS.SemiGod = v
-end)
-
-CreateToggle(CombatPage, "吸血鬼模式", 230, function(v)
-    SETTINGS.HealthSteal = v
-end)
-
-CreateToggle(CombatPage, "抗擊退", 270, function(v)
-    SETTINGS.AntiKnockback = v
-end)
-
-CreateToggle(CombatPage, "防倒地", 310, function(v)
-    SETTINGS.AntiRagdoll = v
-end)
-
--- ======================= 視覺相關 =======================
-CreateToggle(VisualPage, "敵人ESP", 10, function(v)
-    SETTINGS.ESP_Enabled = v
-end)
-
-CreateToggle(VisualPage, "Player Chams", 50, function(v)
-    SETTINGS.Chams_Enabled = v
-end)
-
-CreateToggle(VisualPage, "全亮 (Fullbright)", 90, function(v)
-    SETTINGS.Fullbright = v
+VisualTab:CreateSection("效能優化")
+VisualTab:CreateToggle({Name="FPS 優化器", CurrentValue=false, Callback=function(v)
+    CFG.FPSBoost=v
     if v then
-        Lighting.Brightness = 2
-        Lighting.GlobalShadows = false
-        Lighting.FogEnd = 9e9
-    else
-        Lighting.Brightness = 1
-        Lighting.GlobalShadows = true
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        for _,obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("ParticleEmitter") or obj:IsA("Trail") then obj.Enabled=false
+            elseif obj:IsA("Decal") or obj:IsA("Texture") then obj.Transparency=1 end
+        end
     end
-end)
-
-CreateToggle(VisualPage, "無霧", 130, function(v)
-    SETTINGS.NoFog = v
-    if v then
-        Lighting.FogEnd = 9e9
+end})
+VisualTab:CreateToggle({Name="移除粒子", CurrentValue=false, Callback=function(v)
+    CFG.NoParticles=v
+    for _,obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("ParticleEmitter") then obj.Enabled=not v end
     end
-end)
+end})
 
--- ======================= 高級破壞類 =======================
-CreateToggle(ExploitsPage, "Fling All (全圖甩人)", 10, function(state)
-    if not state then return end
-    
-    spawn(function()
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and plr.Character then
-                local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    for i=1, 60 do
+VisualTab:CreateSection("視角設定")
+VisualTab:CreateToggle({Name="自訂 FOV", CurrentValue=false, Callback=function(v) CFG.CustomFOV=v end})
+VisualTab:CreateSlider({Name="FOV 值", Range={30,120}, Increment=5, CurrentValue=90, Callback=function(v) CFG.FOVValue=v end})
+VisualTab:CreateToggle({Name="自由視角", CurrentValue=false, Callback=function(v) CFG.Freecam=v end})
+
+-- ══════════════════════════ 傳送分頁 ══════════════════════════
+local TPTab = Window:CreateTab("🌀 傳送", 4483362458)
+
+TPTab:CreateSection("玩家傳送")
+local playerList = {}
+for _,p in pairs(Players:GetPlayers()) do if p~=LocalPlayer then table.insert(playerList,p.Name) end end
+local selectedPlayer = nil
+
+TPTab:CreateDropdown({Name="選擇玩家", Options=playerList, Callback=function(v) selectedPlayer=v[1] end})
+TPTab:CreateButton({Name="傳送到玩家", Callback=function()
+    local p = Players:FindFirstChild(selectedPlayer)
+    if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+        RootPart.CFrame = p.Character.HumanoidRootPart.CFrame * CFrame.new(0,3,3)
+        Rayfield:Notify({Title="傳送成功", Content="已傳送到 "..selectedPlayer, Duration=3})
+    end
+end})
+TPTab:CreateButton({Name="傳送到隨機玩家", Callback=function()
+    local ps = Players:GetPlayers()
+    local t = ps[math.random(1,#ps)]
+    while t==LocalPlayer do t=ps[math.random(1,#ps)] end
+    if t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
+        RootPart.CFrame = t.Character.HumanoidRootPart.CFrame * CFrame.new(0,3,3)
+    end
+end})
+
+TPTab:CreateSection("位置系統")
+TPTab:CreateButton({Name="儲存當前位置", Callback=function()
+    table.insert(CFG.SavedPos, RootPart.CFrame)
+    Rayfield:Notify({Title="已儲存", Content="位置 #"..#CFG.SavedPos, Duration=2})
+end})
+TPTab:CreateButton({Name="傳送到上個位置", Callback=function()
+    if #CFG.SavedPos>0 then RootPart.CFrame=CFG.SavedPos[#CFG.SavedPos] end
+end})
+TPTab:CreateButton({Name="清除所有位置", Callback=function() CFG.SavedPos={} end})
+
+TPTab:CreateSection("快速傳送")
+TPTab:CreateButton({Name="傳送到地圖中心", Callback=function() RootPart.CFrame=CFrame.new(0,100,0) end})
+TPTab:CreateButton({Name="傳送到天空", Callback=function() RootPart.CFrame=CFrame.new(RootPart.Position.X,5000,RootPart.Position.Z) end})
+
+-- ══════════════════════════ 破壞分頁 ══════════════════════════
+local ExploitTab = Window:CreateTab("💥 破壞", 4483362458)
+
+ExploitTab:CreateSection("群體攻擊")
+ExploitTab:CreateButton({Name="Fling All (甩飛所有人)", Callback=function()
+    for _,p in pairs(Players:GetPlayers()) do
+        if p~=LocalPlayer and p.Character then
+            local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                spawn(function()
+                    for i=1,50 do
                         pcall(function()
-                            hrp.CFrame = RootPart.CFrame * CFrame.new(0,100,0)
-                            hrp.Velocity = Vector3.new(math.random(-1000,1000), 500, math.random(-1000,1000))
+                            hrp.CFrame = RootPart.CFrame * CFrame.new(0,50,0)
+                            hrp.Velocity = Vector3.new(math.random(-2000,2000),1000,math.random(-2000,2000))
                         end)
                         task.wait()
                     end
-                end
-            end
-        end
-    end)
-end)
-
-CreateToggle(ExploitsPage, "Void All (全圖丟虚空)", 60, function(state)
-    if not state then return end
-    
-    spawn(function()
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and plr.Character then
-                pcall(function()
-                    plr.Character.HumanoidRootPart.CFrame = CFrame.new(0,-500,0)
                 end)
             end
         end
-    end)
-end)
-
--- ╔══════════════════════════════════════════════════════╗
--- ║                   核心迴圈與功能實作                  ║
--- ╚══════════════════════════════════════════════════════╝
-
--- 飛行控制
-local flyingConnection
-local function StartFly()
-    if flyingConnection then flyingConnection:Disconnect() end
-    
-    local bodyVelocity = Instance.new("BodyVelocity")
-    bodyVelocity.MaxForce = Vector3.new(1e5,1e5,1e5)
-    bodyVelocity.Velocity = Vector3.new()
-    bodyVelocity.Parent = RootPart
-
-    local bodyGyro = Instance.new("BodyGyro")
-    bodyGyro.MaxTorque = Vector3.new(1e5,1e5,1e5)
-    bodyGyro.P = 20000
-    bodyGyro.Parent = RootPart
-
-    local keys = {W=false, A=false, S=false, D=false, Space=false, Ctrl=false}
-    
-    local conn1 = UserInputService.InputBegan:Connect(function(input, gp)
-        if gp then return end
-        if input.KeyCode == Enum.KeyCode.W then keys.W = true
-        elseif input.KeyCode == Enum.KeyCode.A then keys.A = true
-        elseif input.KeyCode == Enum.KeyCode.S then keys.S = true
-        elseif input.KeyCode == Enum.KeyCode.D then keys.D = true
-        elseif input.KeyCode == Enum.KeyCode.Space then keys.Space = true
-        elseif input.KeyCode == Enum.KeyCode.LeftControl then keys.Ctrl = true end
-    end)
-
-    local conn2 = UserInputService.InputEnded:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.W then keys.W = false
-        elseif input.KeyCode == Enum.KeyCode.A then keys.A = false
-        elseif input.KeyCode == Enum.KeyCode.S then keys.S = false
-        elseif input.KeyCode == Enum.KeyCode.D then keys.D = false
-        elseif input.KeyCode == Enum.KeyCode.Space then keys.Space = false
-        elseif input.KeyCode == Enum.KeyCode.LeftControl then keys.Ctrl = false end
-    end)
-
-    flyingConnection = RunService.RenderStepped:Connect(function(dt)
-        if not SETTINGS.Fly then 
-            bodyVelocity:Destroy()
-            bodyGyro:Destroy()
-            flyingConnection:Disconnect()
-            flyingConnection = nil
-            return 
+    end
+end})
+ExploitTab:CreateButton({Name="Void All (丟入虛空)", Callback=function()
+    for _,p in pairs(Players:GetPlayers()) do
+        if p~=LocalPlayer and p.Character then
+            pcall(function() p.Character.HumanoidRootPart.CFrame=CFrame.new(0,-500,0) end)
         end
+    end
+end})
+ExploitTab:CreateButton({Name="Freeze All (凍結)", Callback=function()
+    for _,p in pairs(Players:GetPlayers()) do
+        if p~=LocalPlayer and p.Character then
+            pcall(function() p.Character.HumanoidRootPart.Anchored=true end)
+        end
+    end
+end})
+ExploitTab:CreateButton({Name="Spin All (旋轉)", Callback=function()
+    for _,p in pairs(Players:GetPlayers()) do
+        if p~=LocalPlayer and p.Character then
+            local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local bav = Instance.new("BodyAngularVelocity")
+                bav.AngularVelocity = Vector3.new(0,100,0)
+                bav.MaxTorque = Vector3.new(1e9,1e9,1e9)
+                bav.Parent = hrp
+                Debris:AddItem(bav,5)
+            end
+        end
+    end
+end})
 
-        local cam = workspace.CurrentCamera
-        local moveDir = Vector3.new(
-            (keys.D and 1 or 0) - (keys.A and 1 or 0),
-            (keys.Space and 1 or 0) - (keys.Ctrl and 1 or 0),
-            (keys.S and 1 or 0) - (keys.W and 1 or 0)
-        )
+ExploitTab:CreateSection("自身功能")
+ExploitTab:CreateButton({Name="重生", Callback=function() Humanoid.Health=0 end})
+ExploitTab:CreateButton({Name="重設屬性", Callback=function()
+    if Humanoid then Humanoid.WalkSpeed=16; Humanoid.JumpPower=50 end
+end})
 
-        if moveDir.Magnitude > 0 then
-            moveDir = moveDir.Unit
-            local worldMove = (cam.CFrame * CFrame.new(moveDir)).Position - cam.CFrame.Position
-            bodyVelocity.Velocity = worldMove * SETTINGS.FlySpeed * (UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) and 3 or 1)
+-- ══════════════════════════ 世界分頁 ══════════════════════════
+local WorldTab = Window:CreateTab("🌍 世界", 4483362458)
+
+WorldTab:CreateSection("物理設定")
+WorldTab:CreateSlider({Name="重力", Range={0,500}, Increment=20, CurrentValue=196, Callback=function(v) Workspace.Gravity=v end})
+
+WorldTab:CreateSection("環境效果")
+WorldTab:CreateButton({Name="移除所有效果", Callback=function()
+    for _,v in pairs(Lighting:GetDescendants()) do
+        if v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("DepthOfFieldEffect") or v:IsA("SunRaysEffect") then v:Destroy() end
+    end
+end})
+WorldTab:CreateButton({Name="夜視模式", Callback=function()
+    Lighting.Brightness=5; Lighting.Ambient=Color3.new(1,1,1); Lighting.GlobalShadows=false
+end})
+WorldTab:CreateButton({Name="血月模式", Callback=function()
+    Lighting.ClockTime=0; Lighting.Ambient=Color3.new(0.4,0,0); Lighting.OutdoorAmbient=Color3.new(0.4,0,0)
+end})
+
+-- ══════════════════════════ 雜項分頁 ══════════════════════════
+local MiscTab = Window:CreateTab("⚙️ 雜項", 4483362458)
+
+MiscTab:CreateSection("防護功能")
+MiscTab:CreateToggle({Name="Anti-AFK", CurrentValue=true, Callback=function(v) CFG.AntiAFK=v end})
+MiscTab:CreateToggle({Name="自動重生", CurrentValue=false, Callback=function(v) CFG.AutoRespawn=v end})
+
+MiscTab:CreateSection("聊天功能")
+MiscTab:CreateToggle({Name="聊天刷屏", CurrentValue=false, Callback=function(v) CFG.ChatSpam=v end})
+MiscTab:CreateInput({Name="刷屏訊息", PlaceholderText="輸入訊息...", Callback=function(t) CFG.SpamMsg=t end})
+MiscTab:CreateSlider({Name="刷屏間隔", Range={1,10}, Increment=1, CurrentValue=3, Callback=function(v) CFG.SpamDelay=v end})
+
+MiscTab:CreateSection("遊戲資訊")
+MiscTab:CreateButton({Name="顯示遊戲資訊", Callback=function()
+    Rayfield:Notify({Title="遊戲資訊", Content="ID: "..game.PlaceId.."\n版本: "..game.PlaceVersion.."\n類型: "..CurrentGame.Type, Duration=10})
+end})
+MiscTab:CreateButton({Name="複製遊戲連結", Callback=function()
+    if setclipboard then setclipboard("roblox://placeId="..game.PlaceId) end
+    Rayfield:Notify({Title="已複製", Content="遊戲連結已複製", Duration=3})
+end})
+
+-- ══════════════════════════ 設定分頁 ══════════════════════════
+local SettingsTab = Window:CreateTab("📁 設定", 4483362458)
+
+SettingsTab:CreateSection("UI 設定")
+SettingsTab:CreateKeybind({Name="開關 UI", CurrentKeybind="RightShift", HoldToInteract=false, Callback=function() end})
+SettingsTab:CreateButton({Name="關閉 GUI", Callback=function() Rayfield:Destroy() end})
+SettingsTab:CreateParagraph({Title="NukeBot Ultimate v4.0", Content="Perfect Edition\n遊戲: "..CurrentGame.Name.."\n類型: "..CurrentGame.Type})
+
+-- ═══════════════════════════ 核心邏輯 ═══════════════════════════
+
+-- AlignPosition 飛行
+local alignPos, alignOri, flyAttach
+local keys = {}
+UserInputService.InputBegan:Connect(function(i,g) if not g then keys[i.KeyCode.Name]=true end end)
+UserInputService.InputEnded:Connect(function(i) keys[i.KeyCode.Name]=false end)
+
+RunService.RenderStepped:Connect(function()
+    if CFG.Fly then
+        if not alignPos then
+            flyAttach = Instance.new("Attachment", RootPart)
+            alignPos = Instance.new("AlignPosition")
+            alignPos.Mode = Enum.PositionAlignmentMode.OneAttachment
+            alignPos.MaxForce = 1e6
+            alignPos.MaxVelocity = CFG.FlySpeed
+            alignPos.Responsiveness = CFG.SmoothFly and 30 or 200
+            alignPos.Attachment0 = flyAttach
+            alignPos.Parent = RootPart
+            alignOri = Instance.new("AlignOrientation")
+            alignOri.Mode = Enum.OrientationAlignmentMode.OneAttachment
+            alignOri.MaxTorque = 1e6
+            alignOri.Responsiveness = 30
+            alignOri.Attachment0 = flyAttach
+            alignOri.Parent = RootPart
+        end
+        local dir = Vector3.new((keys.D and 1 or 0)-(keys.A and 1 or 0),(keys.Space and 1 or 0)-(keys.LeftControl and 1 or 0),(keys.S and 1 or 0)-(keys.W and 1 or 0))
+        if dir.Magnitude > 0 then
+            local spd = CFG.FlySpeed * (keys.LeftShift and 2.5 or 1)
+            alignPos.Position = RootPart.Position + (Camera.CFrame:VectorToWorldSpace(dir.Unit) * spd * 0.1)
+            alignPos.MaxVelocity = spd
         else
-            bodyVelocity.Velocity = Vector3.new()
+            alignPos.Position = RootPart.Position
         end
-
-        bodyGyro.CFrame = cam.CFrame
-    end)
-end
-
--- 監聽飛行開關變化
-local prevFly = false
-RunService.Heartbeat:Connect(function()
-    if SETTINGS.Fly ~= prevFly then
-        prevFly = SETTINGS.Fly
-        if SETTINGS.Fly then
-            StartFly()
-        end
+        alignOri.CFrame = Camera.CFrame
+    elseif alignPos then
+        alignPos:Destroy(); alignOri:Destroy(); flyAttach:Destroy()
+        alignPos, alignOri, flyAttach = nil, nil, nil
     end
 end)
 
--- Noclip & Phase
+-- Noclip
 RunService.Stepped:Connect(function()
-    if not Character then return end
-    
-    for _, part in pairs(Character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = not (SETTINGS.Noclip or SETTINGS.PhaseDown)
+    if Character then
+        for _,p in pairs(Character:GetDescendants()) do
+            if p:IsA("BasePart") then p.CanCollide = not (CFG.Noclip or CFG.PhaseDown) end
         end
-    end
-    
-    if SETTINGS.PhaseDown and UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-        RootPart.CFrame = RootPart.CFrame * CFrame.new(0, -0.8, 0)
+        if CFG.PhaseDown and keys.LeftShift then
+            RootPart.CFrame = RootPart.CFrame * CFrame.new(0,-1,0)
+        end
     end
 end)
 
 -- 無限跳躍
 UserInputService.JumpRequest:Connect(function()
-    if SETTINGS.InfiniteJump and Humanoid then
-        Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-    end
+    if CFG.InfJump and Humanoid then Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end
 end)
 
 -- 蜘蛛爬牆
-local prevSpider = false
 RunService.Heartbeat:Connect(function()
-    if SETTINGS.SpiderClimb then
-        Humanoid.PlatformStand = false
-        Humanoid:ChangeState(Enum.HumanoidStateType.Climbing)
-    end
-end)
-
--- 速度
-Humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-    if Humanoid.WalkSpeed ~= 16 * SETTINGS.SpeedMultiplier then
-        Humanoid.WalkSpeed = 16 * SETTINGS.SpeedMultiplier
-    end
-end)
-
--- Kill Aura 簡單實現
-spawn(function()
-    while true do
-        task.wait(0.1)
-        
-        if not SETTINGS.KillAura_Enabled then continue end
-        
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr == LocalPlayer or not plr.Character then continue end
-            
-            local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
-            if not hrp then continue end
-            
-            local dist = (hrp.Position - RootPart.Position).Magnitude
-            if dist <= SETTINGS.KillAura_Range then
-                pcall(function()
-                    plr.Character.Humanoid.Health = 0
-                end)
-            end
+    if CFG.Spider and Humanoid then
+        local ray = Ray.new(RootPart.Position, RootPart.CFrame.LookVector*2.5)
+        if Workspace:FindPartOnRay(ray, Character) then
+            Humanoid:ChangeState(Enum.HumanoidStateType.Climbing)
+            RootPart.Velocity = Vector3.new(RootPart.Velocity.X, CFG.ClimbSpeed, RootPart.Velocity.Z)
         end
     end
 end)
 
--- 超簡易ESP (只做框框+名字)
-local espConnections = {}
+-- 自動跳躍/連跳
+RunService.Heartbeat:Connect(function()
+    if Humanoid then
+        if CFG.AutoJump then Humanoid.Jump = true end
+        if CFG.BHop and Humanoid.FloorMaterial ~= Enum.Material.Air then Humanoid.Jump = true end
+    end
+end)
 
-local function CreateESP(plr)
-    if espConnections[plr] then return end
-    
-    local bill = Instance.new("BillboardGui")
-    bill.Adornee = plr.Character:WaitForChild("Head")
-    bill.Size = UDim2.new(0, 100, 0, 150)
-    bill.StudsOffset = Vector3.new(0,3,0)
-    bill.AlwaysOnTop = true
-    bill.Parent = plr.Character
-    
-    local text = Instance.new("TextLabel")
-    text.Size = UDim2.new(1,0,1,0)
-    text.BackgroundTransparency = 1
-    text.Text = plr.Name
-    text.TextColor3 = Color3.fromRGB(255,50,50)
-    text.TextStrokeTransparency = 0
-    text.TextStrokeColor3 = Color3.new(0,0,0)
-    text.TextScaled = true
-    text.Parent = bill
-    
-    espConnections[plr] = bill
-    
-    plr.CharacterRemoving:Connect(function()
-        if espConnections[plr] then
-            espConnections[plr]:Destroy()
-            espConnections[plr] = nil
+-- 點擊傳送
+Mouse.Button1Down:Connect(function()
+    if CFG.ClickTP and Mouse.Target then
+        RootPart.CFrame = CFrame.new(Mouse.Hit.Position + Vector3.new(0,3,0))
+    end
+end)
+
+-- 空中行走
+RunService.Heartbeat:Connect(function()
+    if CFG.AirWalk and RootPart then
+        local platform = Workspace:FindFirstChild("AirWalkPlatform_"..LocalPlayer.UserId)
+        if not platform then
+            platform = Instance.new("Part")
+            platform.Name = "AirWalkPlatform_"..LocalPlayer.UserId
+            platform.Size = Vector3.new(5,0.5,5)
+            platform.Transparency = 1
+            platform.Anchored = true
+            platform.CanCollide = true
+            platform.Parent = Workspace
+        end
+        platform.CFrame = RootPart.CFrame * CFrame.new(0,-3.5,0)
+    else
+        local p = Workspace:FindFirstChild("AirWalkPlatform_"..LocalPlayer.UserId)
+        if p then p:Destroy() end
+    end
+end)
+
+-- Semi-God
+RunService.Heartbeat:Connect(function()
+    if CFG.SemiGod and Humanoid and Humanoid.Health < Humanoid.MaxHealth then
+        Humanoid.Health = Humanoid.MaxHealth
+    end
+end)
+
+-- Anti-KB
+RunService.Stepped:Connect(function()
+    if CFG.AntiKB and RootPart then
+        RootPart.Velocity = Vector3.new(0, RootPart.Velocity.Y, 0)
+    end
+end)
+
+-- Anti-Ragdoll
+if Humanoid then
+    Humanoid.StateChanged:Connect(function(_,new)
+        if CFG.AntiRagdoll and new == Enum.HumanoidStateType.Ragdoll then
+            Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
         end
     end)
 end
 
-local function UpdateESP()
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr == LocalPlayer then continue end
-        
-        if SETTINGS.ESP_Enabled and plr.Character and plr.Character:FindFirstChild("Head") then
-            CreateESP(plr)
-        elseif espConnections[plr] then
-            espConnections[plr]:Destroy()
-            espConnections[plr] = nil
-        end
-    end
-end
-
-Players.PlayerAdded:Connect(function(plr)
-    plr.CharacterAdded:Connect(function()
-        task.wait(1)
-        UpdateESP()
-    end)
-end)
-
-RunService.Heartbeat:Connect(UpdateESP)
-
--- 簡易 Chams (外發光)
+-- Kill Aura
 spawn(function()
     while true do
-        task.wait(0.5)
-        
-        if not SETTINGS.Chams_Enabled then continue end
-        
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr == LocalPlayer or not plr.Character then continue end
-            
-            for _, part in pairs(plr.Character:GetDescendants()) do
-                if part:IsA("BasePart") and not part:FindFirstChild("ChamsHighlight") then
-                    local hl = Instance.new("Highlight")
-                    hl.Name = "ChamsHighlight"
-                    hl.FillColor = Color3.fromRGB(255, 80, 80)
-                    hl.OutlineColor = Color3.fromRGB(255, 255, 0)
-                    hl.FillTransparency = 0.4
-                    hl.OutlineTransparency = 0
-                    hl.Adornee = part
-                    hl.Parent = part
+        task.wait(0.05)
+        if not CFG.KillAura then continue end
+        for _,p in pairs(Players:GetPlayers()) do
+            if p~=LocalPlayer and p.Character then
+                local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+                local hum = p.Character:FindFirstChild("Humanoid")
+                if hrp and hum and (hrp.Position-RootPart.Position).Magnitude <= CFG.KillRange then
+                    pcall(function() hum.Health = 0 end)
                 end
             end
         end
     end
 end)
 
-print("NukeBot Ultimate 已載入")
+-- Hitbox 擴展
+spawn(function()
+    while true do
+        task.wait(0.2)
+        for _,p in pairs(Players:GetPlayers()) do
+            if p~=LocalPlayer and p.Character then
+                local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    if CFG.Hitbox then
+                        hrp.Size = Vector3.one * CFG.HitboxSize
+                        hrp.Transparency = 0.6
+                    else
+                        hrp.Size = Vector3.new(2,2,1)
+                        hrp.Transparency = 1
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- FOV
+RunService.RenderStepped:Connect(function()
+    if CFG.CustomFOV then Camera.FieldOfView = CFG.FOVValue end
+end)
+
+-- Drawing API ESP
+local ESPCache = {}
+
+local function MakeESP(plr)
+    if ESPCache[plr] then return end
+    ESPCache[plr] = {
+        Box = Drawing.new("Square"), Name = Drawing.new("Text"), Dist = Drawing.new("Text"),
+        HPBG = Drawing.new("Line"), HP = Drawing.new("Line"), Tracer = Drawing.new("Line"), Skel = {}
+    }
+    local e = ESPCache[plr]
+    e.Box.Thickness=1; e.Box.Filled=false
+    e.Name.Center=true; e.Name.Size=13; e.Name.Outline=true
+    e.Dist.Center=true; e.Dist.Size=12; e.Dist.Outline=true
+    e.HPBG.Thickness=4; e.HP.Thickness=2; e.Tracer.Thickness=1
+    for i=1,14 do e.Skel[i]=Drawing.new("Line"); e.Skel[i].Thickness=1 end
+end
+
+local bones = {{"Head","UpperTorso"},{"UpperTorso","LowerTorso"},{"UpperTorso","LeftUpperArm"},{"LeftUpperArm","LeftLowerArm"},{"LeftLowerArm","LeftHand"},{"UpperTorso","RightUpperArm"},{"RightUpperArm","RightLowerArm"},{"RightLowerArm","RightHand"},{"LowerTorso","LeftUpperLeg"},{"LeftUpperLeg","LeftLowerLeg"},{"LeftLowerLeg","LeftFoot"},{"LowerTorso","RightUpperLeg"},{"RightUpperLeg","RightLowerLeg"},{"RightLowerLeg","RightFoot"}}
+
+RunService.RenderStepped:Connect(function()
+    for plr, e in pairs(ESPCache) do
+        local c = plr.Character
+        local hrp = c and c:FindFirstChild("HumanoidRootPart")
+        local head = c and c:FindFirstChild("Head")
+        local hum = c and c:FindFirstChild("Humanoid")
+        local show = CFG.ESP and hrp and head and hum and hum.Health>0
+        
+        if show then
+            local dist = (hrp.Position - RootPart.Position).Magnitude
+            if dist > CFG.ESP_MaxDist then show = false end
+            if CFG.ESP_TeamCheck and plr.Team == LocalPlayer.Team then show = false end
+        end
+        
+        if show then
+            local pos, vis = Camera:WorldToViewportPoint(hrp.Position)
+            if vis then
+                local sz = Vector2.new(2200/pos.Z, 2800/pos.Z)
+                e.Box.Visible=CFG.ESP_Box; e.Box.Size=sz; e.Box.Position=Vector2.new(pos.X-sz.X/2,pos.Y-sz.Y/2); e.Box.Color=CFG.ESP_Color
+                e.Name.Visible=CFG.ESP_Name; e.Name.Position=Vector2.new(pos.X,pos.Y-sz.Y/2-16); e.Name.Text=plr.Name; e.Name.Color=CFG.ESP_Color
+                e.Dist.Visible=CFG.ESP_Dist; e.Dist.Position=Vector2.new(pos.X,pos.Y+sz.Y/2+2); e.Dist.Text=math.floor(dist).." studs"; e.Dist.Color=Color3.new(1,1,1)
+                local hp = math.clamp(hum.Health/hum.MaxHealth,0,1)
+                e.HPBG.Visible=CFG.ESP_HP; e.HPBG.From=Vector2.new(pos.X-sz.X/2-6,pos.Y-sz.Y/2); e.HPBG.To=Vector2.new(pos.X-sz.X/2-6,pos.Y+sz.Y/2); e.HPBG.Color=Color3.new(0.2,0.2,0.2)
+                e.HP.Visible=CFG.ESP_HP; e.HP.From=Vector2.new(pos.X-sz.X/2-6,pos.Y+sz.Y/2-sz.Y*hp); e.HP.To=Vector2.new(pos.X-sz.X/2-6,pos.Y+sz.Y/2); e.HP.Color=Color3.fromRGB(255*(1-hp),255*hp,0)
+                e.Tracer.Visible=CFG.ESP_Tracer; e.Tracer.From=Vector2.new(Camera.ViewportSize.X/2,Camera.ViewportSize.Y); e.Tracer.To=Vector2.new(pos.X,pos.Y); e.Tracer.Color=CFG.ESP_Color
+                if CFG.ESP_Skel then
+                    for i,b in ipairs(bones) do
+                        local p1,p2 = c:FindFirstChild(b[1]), c:FindFirstChild(b[2])
+                        if p1 and p2 and e.Skel[i] then
+                            local v1,s1=Camera:WorldToViewportPoint(p1.Position)
+                            local v2,s2=Camera:WorldToViewportPoint(p2.Position)
+                            e.Skel[i].Visible=s1 and s2; e.Skel[i].From=Vector2.new(v1.X,v1.Y); e.Skel[i].To=Vector2.new(v2.X,v2.Y); e.Skel[i].Color=CFG.ESP_SkelColor
+                        end
+                    end
+                else for _,l in pairs(e.Skel) do l.Visible=false end end
+            else
+                e.Box.Visible=false; e.Name.Visible=false; e.Dist.Visible=false; e.HP.Visible=false; e.HPBG.Visible=false; e.Tracer.Visible=false
+                for _,l in pairs(e.Skel) do l.Visible=false end
+            end
+        else
+            e.Box.Visible=false; e.Name.Visible=false; e.Dist.Visible=false; e.HP.Visible=false; e.HPBG.Visible=false; e.Tracer.Visible=false
+            for _,l in pairs(e.Skel) do l.Visible=false end
+        end
+    end
+end)
+
+for _,p in pairs(Players:GetPlayers()) do if p~=LocalPlayer then MakeESP(p) end end
+Players.PlayerAdded:Connect(function(p) MakeESP(p) end)
+Players.PlayerRemoving:Connect(function(p)
+    if ESPCache[p] then
+        for k,v in pairs(ESPCache[p]) do
+            if type(v)=="table" then for _,l in pairs(v) do pcall(function() l:Remove() end) end
+            else pcall(function() v:Remove() end) end
+        end
+        ESPCache[p]=nil
+    end
+end)
+
+-- Chams
+spawn(function()
+    while true do
+        task.wait(0.3)
+        for _,p in pairs(Players:GetPlayers()) do
+            if p~=LocalPlayer and p.Character then
+                local hl = p.Character:FindFirstChild("_Chams")
+                if CFG.Chams then
+                    if not hl then hl=Instance.new("Highlight"); hl.Name="_Chams"; hl.FillTransparency=0.5; hl.Parent=p.Character end
+                    hl.FillColor=CFG.ChamsColor; hl.OutlineColor=CFG.ChamsColor
+                elseif hl then hl:Destroy() end
+            end
+        end
+    end
+end)
+
+-- X-Ray
+spawn(function()
+    while true do
+        task.wait(1)
+        if CFG.XRay then
+            for _,v in pairs(Workspace:GetDescendants()) do
+                if v:IsA("BasePart") and not v:IsDescendantOf(Character) then
+                    v.LocalTransparencyModifier = 0.7
+                end
+            end
+        end
+    end
+end)
+
+-- Silent Aim (hookmetamethod)
+if hookmetamethod then
+    local oldNc
+    oldNc = hookmetamethod(game, "__namecall", function(self, ...)
+        local m = getnamecallmethod()
+        if CFG.SilentAim and (m=="FindPartOnRay" or m=="FindPartOnRayWithIgnoreList" or m=="Raycast") then
+            local best, bestD = nil, math.huge
+            for _,p in pairs(Players:GetPlayers()) do
+                if p~=LocalPlayer and p.Character then
+                    local part = p.Character:FindFirstChild(CFG.AimPart)
+                    if part then
+                        local sp, vis = Camera:WorldToViewportPoint(part.Position)
+                        if vis then
+                            local fovDist = (Vector2.new(sp.X,sp.Y)-Vector2.new(Camera.ViewportSize.X/2,Camera.ViewportSize.Y/2)).Magnitude
+                            if fovDist < CFG.AimFOV and fovDist < bestD then best, bestD = part, fovDist end
+                        end
+                    end
+                end
+            end
+            if best then
+                local args = {...}
+                args[1] = Ray.new(Camera.CFrame.Position, (best.Position-Camera.CFrame.Position).Unit*5000)
+                return oldNc(self, unpack(args))
+            end
+        end
+        return oldNc(self, ...)
+    end)
+end
+
+-- Anti-AFK
+spawn(function()
+    while true do
+        task.wait(120)
+        if CFG.AntiAFK then pcall(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end) end
+    end
+end)
+
+-- 聊天刷屏
+spawn(function()
+    while true do
+        task.wait(CFG.SpamDelay)
+        if CFG.ChatSpam then
+            pcall(function() ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(CFG.SpamMsg,"All") end)
+        end
+    end
+end)
+
+-- 自動重生
+if Humanoid then
+    Humanoid.Died:Connect(function()
+        if CFG.AutoRespawn then task.wait(1); pcall(function() LocalPlayer:LoadCharacter() end) end
+    end)
+end
+
+-- 角色重生
+LocalPlayer.CharacterAdded:Connect(function(c)
+    RefreshCharacter()
+    if CFG.God then Humanoid.MaxHealth=math.huge; Humanoid.Health=math.huge end
+    if CFG.SpeedHack then Humanoid.WalkSpeed=16*CFG.SpeedMult*CurrentGame.Speed end
+    if CFG.HighJump then Humanoid.JumpPower=150 end
+    Humanoid.StateChanged:Connect(function(_,n)
+        if CFG.AntiRagdoll and n==Enum.HumanoidStateType.Ragdoll then
+            Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+        end
+    end)
+end)
+
+-- 載入完成
+Rayfield:Notify({Title="🔥 NukeBot Ultimate v4.0", Content="完美版已載入！\n遊戲: "..CurrentGame.Name.."\n按 RightShift 開關 UI", Duration=6})
+print("✅ NukeBot Ultimate v4.0 Perfect Edition 已載入")
