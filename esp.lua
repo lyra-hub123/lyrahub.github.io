@@ -194,6 +194,18 @@ local Settings = {
         MeleeAura = false,
     },
     
+    -- Rivals 專用
+    Rivals = {
+        SilentAim = false,
+        NoRecoil = false,
+        NoSpread = false,
+        RapidFire = false,
+        InfiniteAmmo = false,
+        AutoShoot = false,
+        HitboxExpander = false, HitboxSize = 5,
+        ESP = false,
+    },
+    
     -- 防禦功能
     AntiDetect = false,
     SafeTP = false,
@@ -529,7 +541,22 @@ local Settings = {
     KillEffectType = "Confetti", -- Confetti, Explosion, Fade
     KillCamera = false,
     KillReplay = false,
+    
+    -- 第一人稱角色隱藏 (Arsenal/Rivals 專用)
+    FirstPersonInvisible = false,
+    HideHead = true,
+    HideTorso = true,
+    HideArms = false,  -- 保留手臂以便看到武器
+    HideLegs = true,
+    HideAccessories = true,
+    AutoHideInFPS = true,  -- 自動偵測第一人稱
+    
+    -- 角色透明度
+    CharacterTransparency = false,
+    TransparencyAmount = 0.5,
+    GhostMode = false,  -- 完全隱形
 }
+
 
 
 
@@ -2164,6 +2191,90 @@ VisualTab:CreateToggle({
     end,
 })
 
+VisualTab:CreateSection("👻 第一人稱角色隱藏 (Arsenal/Rivals)")
+
+VisualTab:CreateToggle({
+    Name = "第一人稱隱藏",
+    CurrentValue = false,
+    Flag = "FirstPersonInvisibleToggle",
+    Callback = function(v)
+        Settings.FirstPersonInvisible = v
+        if v then
+            Rayfield:Notify({Title = "角色隱藏", Content = "第一人稱角色隱藏已開啟", Duration = 2})
+        end
+    end,
+})
+
+VisualTab:CreateToggle({
+    Name = "自動偵測第一人稱",
+    CurrentValue = true,
+    Flag = "AutoHideInFPSToggle",
+    Callback = function(v) Settings.AutoHideInFPS = v end,
+})
+
+VisualTab:CreateToggle({
+    Name = "隱藏頭部",
+    CurrentValue = true,
+    Flag = "HideHeadToggle",
+    Callback = function(v) Settings.HideHead = v end,
+})
+
+VisualTab:CreateToggle({
+    Name = "隱藏身體",
+    CurrentValue = true,
+    Flag = "HideTorsoToggle",
+    Callback = function(v) Settings.HideTorso = v end,
+})
+
+VisualTab:CreateToggle({
+    Name = "隱藏手臂",
+    CurrentValue = false,
+    Flag = "HideArmsToggle",
+    Callback = function(v) Settings.HideArms = v end,
+})
+
+VisualTab:CreateToggle({
+    Name = "隱藏腿部",
+    CurrentValue = true,
+    Flag = "HideLegsToggle",
+    Callback = function(v) Settings.HideLegs = v end,
+})
+
+VisualTab:CreateToggle({
+    Name = "隱藏飾品",
+    CurrentValue = true,
+    Flag = "HideAccessoriesToggle",
+    Callback = function(v) Settings.HideAccessories = v end,
+})
+
+VisualTab:CreateSection("👤 角色透明度")
+
+VisualTab:CreateToggle({
+    Name = "角色半透明",
+    CurrentValue = false,
+    Flag = "CharacterTransparencyToggle",
+    Callback = function(v) Settings.CharacterTransparency = v end,
+})
+
+VisualTab:CreateSlider({
+    Name = "透明度",
+    Range = {0.1, 0.9},
+    Increment = 0.1,
+    CurrentValue = 0.5,
+    Flag = "TransparencyAmount",
+    Callback = function(v) Settings.TransparencyAmount = v end,
+})
+
+VisualTab:CreateToggle({
+    Name = "Ghost Mode (完全隱形)",
+    CurrentValue = false,
+    Flag = "GhostModeToggle",
+    Callback = function(v)
+        Settings.GhostMode = v
+        if v then Rayfield:Notify({Title = "⚠️ Ghost", Content = "完全隱形已開啟", Duration = 2}) end
+    end,
+})
+
 print("[Zy hacker hub] 視覺分頁已載入")
 
 -- ═══════════════════════════════════════════════════════════════════════════════
@@ -3711,6 +3822,95 @@ UltimateTab:CreateToggle({
 })
 
 print("[Zy hacker hub] 終極分頁已載入")
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- ║                              Rivals 專區                                     ║
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+local RivalsTab = Window:CreateTab("⚔️ Rivals", 4483362458)
+
+RivalsTab:CreateSection("🔫 戰鬥輔助")
+
+RivalsTab:CreateToggle({
+    Name = "Silent Aim (靜默瞄準)",
+    CurrentValue = false,
+    Flag = "RivalsSilentAim",
+    Callback = function(v)
+        Settings.Rivals.SilentAim = v
+        if v then Rayfield:Notify({Title = "Rivals", Content = "Silent Aim 已開啟 - 子彈自動追蹤", Duration = 2}) end
+    end,
+})
+
+RivalsTab:CreateToggle({
+    Name = "Auto Shoot (自動射擊)",
+    CurrentValue = false,
+    Flag = "RivalsAutoShoot",
+    Callback = function(v) Settings.Rivals.AutoShoot = v end,
+})
+
+RivalsTab:CreateToggle({
+    Name = "Hitbox Expander (碰撞箱擴大)",
+    CurrentValue = false,
+    Flag = "RivalsHitbox",
+    Callback = function(v) Settings.Rivals.HitboxExpander = v end,
+})
+
+RivalsTab:CreateSlider({
+    Name = "碰撞箱大小",
+    Range = {1, 20},
+    Increment = 1,
+    CurrentValue = 5,
+    Flag = "RivalsHitboxSize",
+    Callback = function(v) Settings.Rivals.HitboxSize = v end,
+})
+
+RivalsTab:CreateSection("🔧 武器修改")
+
+RivalsTab:CreateToggle({
+    Name = "No Recoil (無後座力)",
+    CurrentValue = false,
+    Flag = "RivalsNoRecoil",
+    Callback = function(v) Settings.Rivals.NoRecoil = v end,
+})
+
+RivalsTab:CreateToggle({
+    Name = "No Spread (無擴散)",
+    CurrentValue = false,
+    Flag = "RivalsNoSpread",
+    Callback = function(v) Settings.Rivals.NoSpread = v end,
+})
+
+RivalsTab:CreateToggle({
+    Name = "Rapid Fire (快速射擊)",
+    CurrentValue = false,
+    Flag = "RivalsRapidFire",
+    Callback = function(v) Settings.Rivals.RapidFire = v end,
+})
+
+RivalsTab:CreateToggle({
+    Name = "Infinite Ammo (無限子彈)",
+    CurrentValue = false,
+    Flag = "RivalsInfAmmo",
+    Callback = function(v) Settings.Rivals.InfiniteAmmo = v end,
+})
+
+RivalsTab:CreateSection("👁️ 視覺輔助")
+
+RivalsTab:CreateToggle({
+    Name = "Rivals ESP",
+    CurrentValue = false,
+    Flag = "RivalsESP",
+    Callback = function(v) Settings.Rivals.ESP = v end,
+})
+
+RivalsTab:CreateToggle({
+    Name = "第一人稱角色隱藏",
+    CurrentValue = false,
+    Flag = "RivalsInvis",
+    Callback = function(v) Settings.FirstPersonInvisible = v end,
+})
+
+print("[Zy hacker hub] Rivals 分頁已載入")
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- ║                              核心邏輯系統                                    ║
@@ -6646,4 +6846,212 @@ print("   ║            Zy hacker hub v" .. VERSION .. " ULTIMATE EDITION      
 print("   ║                      350+ 功能模組已就緒                      ║")
 print("   ║                   感謝使用 Zy hacker hub                   ║")
 print("   ╚═══════════════════════════════════════════════════════════════╝")
+
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- ║                       第一人稱角色隱藏邏輯 (Arsenal/Rivals)                 ║
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+print("[Zy hacker hub] 載入第一人稱角色隱藏邏輯...")
+
+-- 隱藏部位列表
+local HeadParts = {"Head", "face", "Face", "HumanoidRootPart"}
+local TorsoParts = {"Torso", "UpperTorso", "LowerTorso", "HumanoidRootPart"}
+local ArmParts = {"Left Arm", "Right Arm", "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm", "LeftHand", "RightHand"}
+local LegParts = {"Left Leg", "Right Leg", "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg", "LeftFoot", "RightFoot"}
+
+local function SetPartTransparency(partName, transparency)
+    if not UpdateChar() then return end
+    local part = Character:FindFirstChild(partName)
+    if part and part:IsA("BasePart") then
+        part.LocalTransparencyModifier = transparency
+    end
+end
+
+local function SetCharacterVisibility()
+    if not UpdateChar() then return end
+    
+    local isFirstPerson = (Camera.CFrame.Position - (Head and Head.Position or RootPart.Position)).Magnitude < 2
+    local shouldHide = Settings.FirstPersonInvisible and (isFirstPerson or not Settings.AutoHideInFPS)
+    
+    if shouldHide or Settings.GhostMode then
+        local trans = Settings.GhostMode and 1 or 1
+        
+        -- 隱藏頭部
+        if Settings.HideHead then
+            for _, partName in pairs(HeadParts) do
+                SetPartTransparency(partName, trans)
+            end
+            -- 隱藏頭上的飾品
+            if Settings.HideAccessories and Head then
+                for _, acc in pairs(Character:GetDescendants()) do
+                    if acc:IsA("Accessory") then
+                        local handle = acc:FindFirstChild("Handle")
+                        if handle then handle.LocalTransparencyModifier = trans end
+                    end
+                end
+            end
+            -- 隱藏臉部
+            if Head then
+                local face = Head:FindFirstChild("face") or Head:FindFirstChild("Face")
+                if face then face.LocalTransparencyModifier = trans end
+            end
+        end
+        
+        -- 隱藏身體
+        if Settings.HideTorso then
+            for _, partName in pairs(TorsoParts) do
+                SetPartTransparency(partName, trans)
+            end
+        end
+        
+        -- 隱藏手臂
+        if Settings.HideArms then
+            for _, partName in pairs(ArmParts) do
+                SetPartTransparency(partName, trans)
+            end
+        end
+        
+        -- 隱藏腿部
+        if Settings.HideLegs then
+            for _, partName in pairs(LegParts) do
+                SetPartTransparency(partName, trans)
+            end
+        end
+    else
+        -- 恢復可見
+        local trans = Settings.CharacterTransparency and Settings.TransparencyAmount or 0
+        
+        for _, part in pairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.LocalTransparencyModifier = trans
+            end
+            if part:IsA("Decal") or part:IsA("Texture") then
+                part.LocalTransparencyModifier = trans
+            end
+        end
+    end
+end
+
+-- 主要循環
+RunService.RenderStepped:Connect(function()
+    if Settings.FirstPersonInvisible or Settings.GhostMode or Settings.CharacterTransparency then
+        SetCharacterVisibility()
+    end
+end)
+
+-- 角色重生時重新應用
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    if Settings.FirstPersonInvisible or Settings.GhostMode then
+        SetCharacterVisibility()
+    end
+end)
+
+print("[Zy hacker hub] 第一人稱角色隱藏邏輯已載入!")
+
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- ║                              Rivals 專區邏輯                                 ║
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+print("[Zy hacker hub] 載入 Rivals 專區邏輯...")
+
+-- === Silent Aim 邏輯 ===
+local function GetClosestToCrosshair()
+    local closest = nil
+    local minDist = math.huge
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            -- 檢查是否為隊友
+            if IsTeammate(player) then continue end
+            
+            local part = player.Character:FindFirstChild("Head")
+            if part then
+                local screenPos, onScreen = Camera:WorldToScreenPoint(part.Position)
+                if onScreen then
+                    local center = Camera.ViewportSize / 2
+                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+                    if dist < 300 and dist < minDist then -- FOV 300
+                        closest = part
+                        minDist = dist
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self, ...)
+    local args = {...}
+    local method = getnamecallmethod()
+    
+    if Settings.Rivals.SilentAim and method == "Raycast" or method == "FindPartOnRay" then
+        local target = GetClosestToCrosshair()
+        if target then
+            if method == "Raycast" then
+                -- 修改 Raycast 方向
+                args[2] = (target.Position - args[1]).Unit * 1000
+                return oldNamecall(self, unpack(args))
+            end
+        end
+    end
+    
+    return oldNamecall(self, ...)
+end)
+setreadonly(mt, true)
+
+-- === Gun Mods 邏輯 ===
+spawn(function()
+    while task.wait(0.5) do
+        -- 針對 Rivals 的武器系統進行修改
+        -- 注意: 這需要根據遊戲具體的武器腳本調整，這裡是通用概念
+        if Settings.Rivals.NoRecoil or Settings.Rivals.NoSpread or Settings.Rivals.RapidFire then
+            for _, v in pairs(getgc(true)) do
+                if type(v) == "table" and rawget(v, "Recoil") then
+                    if Settings.Rivals.NoRecoil then v.Recoil = 0 end
+                    if Settings.Rivals.NoSpread then v.Spread = 0 end
+                    if Settings.Rivals.RapidFire then v.FireRate = 0.05 end
+                    if Settings.Rivals.InfiniteAmmo then v.Ammo = 999; v.StoredAmmo = 999 end
+                end
+            end
+        end
+    end
+end)
+
+-- === Hitbox Expander 邏輯 ===
+spawn(function()
+    while task.wait(1) do
+        if Settings.Rivals.HitboxExpander then
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character and not IsTeammate(player) then
+                    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        hrp.Size = Vector3.new(Settings.Rivals.HitboxSize, Settings.Rivals.HitboxSize, Settings.Rivals.HitboxSize)
+                        hrp.Transparency = 0.5
+                        hrp.CanCollide = false
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- === Rivals ESP 邏輯 ===
+-- 復用主 ESP 系統，但添加 Rivals 特定的高亮
+spawn(function()
+    while task.wait(1) do
+        if Settings.Rivals.ESP then
+            Settings.ESP = true -- 強制開啟主 ESP
+            Settings.ESPBox = true
+        end
+    end
+end)
+
+print("[Zy hacker hub] Rivals 專區邏輯已載入!")
 
