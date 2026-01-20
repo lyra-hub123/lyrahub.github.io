@@ -35,6 +35,8 @@ local VirtualUser = game:GetService("VirtualUser")
 local Debris = game:GetService("Debris")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
+local PathfindingService = game:GetService("PathfindingService")
+local StatsService = game:GetService("Stats")
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- ║                              本地變量                                        ║
@@ -87,14 +89,14 @@ local Settings = {
     
     -- 瞄準
     Aimbot = false, AimPart = "Head", AimFOV = 150, AimSmooth = 0.3, AimPrediction = 0,
-    TeamCheck = true, VisibleCheck = false, AimLock = false,
+    TeamCheck = true, AutoTeamDetect = true, VisibleCheck = false, AimLock = false,
     SilentAim = false, SilentPrecision = 5, SilentHitChance = 100,
     TriggerBot = false, TriggerDelay = 0.05, TriggerBurst = false, BurstCount = 3,
     ShowFOV = false, FOVColor = Color3.new(1, 1, 1),
     NoRecoil = false, NoSpread = false, RapidFire = false, InfiniteAmmo = false,
     
     -- ESP
-    ESP = false, ESPTeamCheck = false, ESPMaxDist = 2000,
+    ESP = false, ESPTeamCheck = false, ESPMaxDist = 2000, ESPUpdateRate = 0.15, ESPDistanceColor = true,
     ESPBox = true, ESPName = true, ESPHealth = true, ESPDist = true, ESPTracer = false, ESPSkeleton = false,
     ESPColor = Color3.new(1, 0, 0), SkeletonColor = Color3.new(1, 1, 0),
     Chams = false, ChamsFill = 0.5, ChamsOutline = 0,
@@ -141,6 +143,7 @@ local Settings = {
         Speed = Enum.KeyCode.G,
         ESP = Enum.KeyCode.X,
         God = Enum.KeyCode.H,
+        Panic = Enum.KeyCode.P,
     },
     KeybindsEnabled = true,
     
@@ -555,7 +558,71 @@ local Settings = {
     CharacterTransparency = false,
     TransparencyAmount = 0.5,
     GhostMode = false,  -- 完全隱形
+
+    -- 自訂設定 & 錯誤處理
+    ConfigProfile = "Default",
+    AutoSaveConfig = true,
+    ErrorToast = true,
+    ErrorCooldown = 3,
+    ErrorLogMax = 60,
+    ErrorDebug = false,
+
+    -- 效能自動調整
+    AutoPerformance = true,
+    PerfMinFPS = 35,
+    PerfMidFPS = 50,
+    ItemESPUpdateRate = 0.5,
+    ChestESPUpdateRate = 0.6,
+    NPCESPUpdateRate = 1,
+    WallHackUpdateRate = 0.6,
+    XRayUpdateRate = 0.6,
+
+    -- 自動化
+    AutoPath = false,
+    AutoPathMode = "Mouse", -- Mouse, Waypoint, Player
+    AutoPathRecalc = 1,
+    AutoPathSpeed = 16,
+    AutoPathWaypoint = "",
+    AutoPathPlayer = "",
+    AutoPathStopDist = 4,
+    AutoCollect = false,
+    CollectMode = "Path", -- Path, Teleport, Touch
+    CollectRange = 60,
+    CollectInterval = 0.6,
+    CollectTools = true,
+    CollectKeywords = "coin,gem,chest,drop,item",
+    CollectMaxPerCycle = 2,
+
+    -- 戰鬥輔助
+    CombatAssist = false,
+    AssistTargetMode = "Players", -- Players, NPC, Both
+    AssistRange = 12,
+    AssistFaceTarget = true,
+    AssistAutoEquip = true,
+    AssistAutoClick = true,
+    AssistDelay = 0.2,
+
+    -- 記錄/分析
+    LogEnabled = true,
+    LogOverlay = false,
+    LogOverlayLines = 6,
+    LogMaxEntries = 200,
+    LogToConsole = false,
 }
+
+local function DeepCopy(tbl, cache)
+    if type(tbl) ~= "table" then return tbl end
+    cache = cache or {}
+    if cache[tbl] then return cache[tbl] end
+    local new = {}
+    cache[tbl] = new
+    for k, v in pairs(tbl) do
+        new[DeepCopy(k, cache)] = DeepCopy(v, cache)
+    end
+    return new
+end
+
+local DefaultSettings = DeepCopy(Settings)
 
 
 
@@ -567,33 +634,375 @@ local Settings = {
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 
+local function GetHumanoidFromCharacter(char)
+    return char and char:FindFirstChildOfClass("Humanoid") or nil
+end
+
+local function GetRootPartFromCharacter(char)
+    if not char then return nil end
+    return char:FindFirstChild("HumanoidRootPart")
+        or char:FindFirstChild("UpperTorso")
+        or char:FindFirstChild("LowerTorso")
+        or char:FindFirstChild("Torso")
+        or char.PrimaryPart
+end
+
+local function GetHeadPartFromCharacter(char)
+    if not char then return nil end
+    return char:FindFirstChild("Head")
+        or char:FindFirstChild("UpperTorso")
+        or char:FindFirstChild("Torso")
+        or GetRootPartFromCharacter(char)
+end
+
+local function ResolveCharacterParts(char)
+    local hum = GetHumanoidFromCharacter(char)
+    local root = GetRootPartFromCharacter(char)
+    local head = GetHeadPartFromCharacter(char)
+    return hum, root, head
+end
+
+local function GetEquippedToolName(char)
+    if not char then return nil end
+    local tool = char:FindFirstChildOfClass("Tool")
+    return tool and tool.Name or nil
+end
+
+local TeamDetectCache = {last = 0, hasTeams = CurrentGame.HasTeams}
+
+local function ShouldUseTeams()
+    if CurrentGame.HasTeams then
+        return true
+    end
+    if not Settings.AutoTeamDetect then
+        return false
+    end
+    local now = os.clock()
+    if now - TeamDetectCache.last < 2 then
+        return TeamDetectCache.hasTeams
+    end
+    TeamDetectCache.last = now
+
+    local seen = {}
+    local count = 0
+    for _, p in pairs(Players:GetPlayers()) do
+        local teamKey = nil
+        if p.Team then
+            teamKey = "team:" .. p.Team.Name
+        elseif p.TeamColor then
+            teamKey = "color:" .. p.TeamColor.Name
+        end
+        if teamKey and not seen[teamKey] then
+            seen[teamKey] = true
+            count = count + 1
+            if count >= 2 then
+                TeamDetectCache.hasTeams = true
+                return true
+            end
+        end
+    end
+
+    TeamDetectCache.hasTeams = false
+    return false
+end
+
+local HumanoidDiedConn = nil
+
+local function BindHumanoidDied(humanoid)
+    if HumanoidDiedConn then
+        HumanoidDiedConn:Disconnect()
+        HumanoidDiedConn = nil
+    end
+    if humanoid then
+        HumanoidDiedConn = humanoid.Died:Connect(function()
+            if Settings.AutoRespawn then
+                task.wait(1)
+                pcall(function()
+                    LocalPlayer:LoadCharacter()
+                end)
+            end
+        end)
+    end
+end
+
+local LastFPS = 0
+local SessionStats = {
+    StartTime = os.clock(),
+    Actions = 0,
+    Errors = 0,
+    Kills = 0,
+    Paths = 0,
+    Collects = 0,
+    CombatHits = 0,
+    KeybindToggles = 0,
+    FPSSamples = 0,
+    FPSAvg = 0,
+    PingSamples = 0,
+    PingAvg = 0,
+}
+local LogEntries = {}
+local ErrorEntries = {}
+local LastErrorMessage = ""
+local LastErrorTime = 0
+
+local function AddLog(kind, message)
+    if not Settings.LogEnabled then return end
+    local entry = {
+        time = os.date("%H:%M:%S"),
+        kind = tostring(kind),
+        message = tostring(message),
+    }
+    table.insert(LogEntries, 1, entry)
+    if #LogEntries > Settings.LogMaxEntries then
+        table.remove(LogEntries)
+    end
+    if Settings.LogToConsole then
+        print("[ZyLog][" .. entry.time .. "][" .. entry.kind .. "] " .. entry.message)
+    end
+end
+
+local function PushError(scope, err)
+    SessionStats.Errors = SessionStats.Errors + 1
+    local message = "[" .. tostring(scope) .. "] " .. tostring(err)
+    AddLog("Error", message)
+    table.insert(ErrorEntries, 1, {time = os.date("%H:%M:%S"), message = message})
+    if #ErrorEntries > Settings.ErrorLogMax then
+        table.remove(ErrorEntries)
+    end
+
+    if Settings.ErrorToast then
+        local now = os.clock()
+        if message ~= LastErrorMessage or now - LastErrorTime > Settings.ErrorCooldown then
+            LastErrorMessage = message
+            LastErrorTime = now
+            pcall(function()
+                Rayfield:Notify({Title = "腳本錯誤", Content = message, Duration = 3})
+            end)
+        end
+    end
+    if Settings.ErrorDebug then
+        warn(message)
+    end
+end
+
+local function SafeCall(scope, fn, ...)
+    local args = {...}
+    local results = {xpcall(function()
+        return fn(unpack(args))
+    end, debug.traceback)}
+    local ok = table.remove(results, 1)
+    if not ok then
+        PushError(scope, results[1])
+    end
+    return ok, unpack(results)
+end
+
+local function GetPerfInterval(base)
+    if not Settings.AutoPerformance then return base end
+    local fps = LastFPS or 0
+    if fps <= Settings.PerfMinFPS then
+        return base * 2.5
+    end
+    if fps <= Settings.PerfMidFPS then
+        return base * 1.5
+    end
+    return base
+end
+
+local function NormalizeKeybind(value)
+    if typeof(value) == "EnumItem" then
+        return value
+    end
+    if type(value) == "string" and Enum.KeyCode[value] then
+        return Enum.KeyCode[value]
+    end
+    return nil
+end
+
+local function IsKey(input, key)
+    return key and input.KeyCode == key
+end
+
+local function ParseKeywords(text)
+    local keywords = {}
+    if type(text) ~= "string" then return keywords end
+    for raw in string.gmatch(text:lower(), "([^,]+)") do
+        local word = raw:gsub("^%s+", ""):gsub("%s+$", "")
+        if word ~= "" then
+            table.insert(keywords, word)
+        end
+    end
+    return keywords
+end
+
+local function MatchesKeywords(name, keywords)
+    if not name then return false end
+    local lower = name:lower()
+    for _, word in pairs(keywords) do
+        if lower:find(word, 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
+local SettingsSaveBlacklist = {
+    SavedPositions = true,
+    Waypoints = true,
+    LockedTarget = true,
+    SessionTime = true,
+    KillCount = true,
+    DeathCount = true,
+}
+
+local function SerializeValue(value)
+    local t = typeof(value)
+    if t == "Color3" then
+        return {__type = "Color3", r = value.R, g = value.G, b = value.B}
+    elseif t == "EnumItem" then
+        return {__type = "EnumItem", enum = value.EnumType.Name, name = value.Name}
+    elseif type(value) == "table" then
+        local out = {}
+        for k, v in pairs(value) do
+            if type(k) == "string" then
+                local sv = SerializeValue(v)
+                if sv ~= nil then
+                    out[k] = sv
+                end
+            end
+        end
+        return out
+    elseif type(value) == "boolean" or type(value) == "number" or type(value) == "string" then
+        return value
+    end
+    return nil
+end
+
+local function DeserializeValue(value)
+    if type(value) == "table" and value.__type == "Color3" then
+        return Color3.new(value.r, value.g, value.b)
+    elseif type(value) == "table" and value.__type == "EnumItem" then
+        local enum = Enum[value.enum]
+        return enum and enum[value.name] or nil
+    elseif type(value) == "table" then
+        local out = {}
+        for k, v in pairs(value) do
+            out[k] = DeserializeValue(v)
+        end
+        return out
+    end
+    return value
+end
+
+local function ExportSettings()
+    local data = {}
+    for k, v in pairs(Settings) do
+        if not SettingsSaveBlacklist[k] then
+            local sv = SerializeValue(v)
+            if sv ~= nil then
+                data[k] = sv
+            end
+        end
+    end
+    data.__meta = {version = VERSION, time = os.time(), profile = Settings.ConfigProfile}
+    return HttpService:JSONEncode(data)
+end
+
+local function ApplySettingsFromJson(json)
+    local ok, decoded = pcall(function()
+        return HttpService:JSONDecode(json)
+    end)
+    if not ok or type(decoded) ~= "table" then
+        return false, "設定格式錯誤"
+    end
+    for k, v in pairs(decoded) do
+        if k ~= "__meta" and not SettingsSaveBlacklist[k] then
+            local dv = DeserializeValue(v)
+            if dv ~= nil then
+                Settings[k] = dv
+            end
+        end
+    end
+    return true
+end
+
+local function ResetSettings()
+    local fresh = DeepCopy(DefaultSettings)
+    for k in pairs(Settings) do
+        Settings[k] = nil
+    end
+    for k, v in pairs(fresh) do
+        Settings[k] = v
+    end
+end
+
+local function GetRecentLogText(limit)
+    local lines = {}
+    for i = 1, math.min(limit, #LogEntries) do
+        local entry = LogEntries[i]
+        table.insert(lines, "[" .. entry.time .. "] " .. entry.kind .. ": " .. entry.message)
+    end
+    if #lines == 0 then
+        return "目前沒有紀錄"
+    end
+    return table.concat(lines, "\n")
+end
+
+local function GetRecentErrorText(limit)
+    local lines = {}
+    for i = 1, math.min(limit, #ErrorEntries) do
+        local entry = ErrorEntries[i]
+        table.insert(lines, "[" .. entry.time .. "] " .. entry.message)
+    end
+    if #lines == 0 then
+        return "目前沒有錯誤"
+    end
+    return table.concat(lines, "\n")
+end
+
+local function ExportLogJson()
+    return HttpService:JSONEncode(LogEntries)
+end
+
 local function UpdateChar()
     Character = LocalPlayer.Character
     if Character then
-        Humanoid = Character:FindFirstChildOfClass("Humanoid")
-        RootPart = Character:FindFirstChild("HumanoidRootPart")
-        Head = Character:FindFirstChild("Head")
+        Humanoid, RootPart, Head = ResolveCharacterParts(Character)
     end
     return Character and Humanoid and RootPart
 end
 UpdateChar()
+BindHumanoidDied(Humanoid)
+
+Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+    Camera = Workspace.CurrentCamera or Camera
+end)
 
 LocalPlayer.CharacterAdded:Connect(function(c)
     task.wait(0.5)
     Character = c
-    Humanoid = c:WaitForChild("Humanoid")
-    RootPart = c:WaitForChild("HumanoidRootPart")
-    Head = c:WaitForChild("Head")
+    Humanoid, RootPart, Head = ResolveCharacterParts(c)
+    if not Humanoid then Humanoid = c:WaitForChild("Humanoid", 5) end
+    if not RootPart then
+        RootPart = c:WaitForChild("HumanoidRootPart", 5) or c:WaitForChild("Torso", 5)
+    end
+    if not Head then
+        Head = c:WaitForChild("Head", 5) or RootPart
+    end
+
+    BindHumanoidDied(Humanoid)
     
-    if Settings.God then Humanoid.MaxHealth = math.huge; Humanoid.Health = math.huge end
-    if Settings.Speed then Humanoid.WalkSpeed = 16 * Settings.SpeedMult * CurrentGame.SpeedMult end
-    if Settings.JumpPower ~= 50 then Humanoid.JumpPower = Settings.JumpPower end
-    
-    Humanoid.StateChanged:Connect(function(_, new)
-        if Settings.AntiRagdoll and new == Enum.HumanoidStateType.Ragdoll then
-            Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-        end
-    end)
+    if Humanoid then
+        if Settings.God then Humanoid.MaxHealth = math.huge; Humanoid.Health = math.huge end
+        if Settings.Speed then Humanoid.WalkSpeed = 16 * Settings.SpeedMult * CurrentGame.SpeedMult end
+        if Settings.JumpPower ~= 50 then Humanoid.JumpPower = Settings.JumpPower end
+
+        Humanoid.StateChanged:Connect(function(_, new)
+            if Settings.AntiRagdoll and new == Enum.HumanoidStateType.Ragdoll then
+                Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+            end
+        end)
+    end
 end)
 
 local function GetPlayerList()
@@ -604,13 +1013,21 @@ local function GetPlayerList()
     return list
 end
 
-local function IsTeammate(player)
-    if not Settings.TeamCheck or not CurrentGame.HasTeams then return false end
-    return player.Team == LocalPlayer.Team
+local function IsTeammate(player, forceCheck)
+    if not forceCheck and not Settings.TeamCheck then return false end
+    if not ShouldUseTeams() then return false end
+
+    if player.Team ~= nil and LocalPlayer.Team ~= nil then
+        return player.Team == LocalPlayer.Team
+    end
+    if player.TeamColor and LocalPlayer.TeamColor then
+        return player.TeamColor == LocalPlayer.TeamColor
+    end
+    return false
 end
 
 local function IsVisible(part)
-    if not part then return false end
+    if not part or not Camera then return false end
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Exclude
     params.FilterDescendantsInstances = {Character, Camera}
@@ -673,6 +1090,32 @@ local MoveTab = Window:CreateTab("🏃 移動", 4483362458)
 -- 飛行變量
 local FlyBV, FlyBG, FlyActive = nil, nil, false
 
+local function SetFlyEnabled(v, silent)
+    Settings.Fly = v
+    FlyActive = v
+    if not UpdateChar() then return end
+    if v then
+        FlyBV = Instance.new("BodyVelocity")
+        FlyBV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        FlyBV.Velocity = Vector3.zero
+        FlyBV.Parent = RootPart
+
+        FlyBG = Instance.new("BodyGyro")
+        FlyBG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        FlyBG.P = 9e4
+        FlyBG.Parent = RootPart
+
+        Humanoid.PlatformStand = true
+        if not silent then
+            Rayfield:Notify({Title = "飛行", Content = "飛行已開啟！WASD移動, Space上升, Ctrl下降, Shift加速", Duration = 3})
+        end
+    else
+        if FlyBV then FlyBV:Destroy(); FlyBV = nil end
+        if FlyBG then FlyBG:Destroy(); FlyBG = nil end
+        if Humanoid then Humanoid.PlatformStand = false end
+    end
+end
+
 MoveTab:CreateSection("✈️ 飛行系統")
 
 MoveTab:CreateToggle({
@@ -680,29 +1123,7 @@ MoveTab:CreateToggle({
     CurrentValue = false,
     Flag = "FlyToggle",
     Callback = function(v)
-        Settings.Fly = v
-        FlyActive = v
-        if not UpdateChar() then return end
-        
-        if v then
-            FlyBV = Instance.new("BodyVelocity")
-            FlyBV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-            FlyBV.Velocity = Vector3.zero
-            FlyBV.Parent = RootPart
-            
-            FlyBG = Instance.new("BodyGyro")
-            FlyBG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-            FlyBG.P = 9e4
-            FlyBG.Parent = RootPart
-            
-            Humanoid.PlatformStand = true
-            
-            Rayfield:Notify({Title = "飛行", Content = "飛行已開啟！WASD移動, Space上升, Ctrl下降, Shift加速", Duration = 3})
-        else
-            if FlyBV then FlyBV:Destroy(); FlyBV = nil end
-            if FlyBG then FlyBG:Destroy(); FlyBG = nil end
-            if Humanoid then Humanoid.PlatformStand = false end
-        end
+        SetFlyEnabled(v)
     end,
 })
 
@@ -1416,6 +1837,13 @@ AimTab:CreateToggle({
 })
 
 AimTab:CreateToggle({
+    Name = "自動隊伍偵測",
+    CurrentValue = true,
+    Flag = "AutoTeamDetectToggle",
+    Callback = function(v) Settings.AutoTeamDetect = v end,
+})
+
+AimTab:CreateToggle({
     Name = "可見檢查",
     CurrentValue = false,
     Flag = "VisibleCheckToggle",
@@ -1599,6 +2027,18 @@ print("[Zy hacker hub] 瞄準分頁已載入")
 local ESPTab = Window:CreateTab("👁️ ESP", 4483362458)
 
 local ESPStorage = {}
+local ESPLastUpdate = 0
+
+local function ClearESP(player)
+    local data = ESPStorage[player]
+    if not data then return end
+    pcall(function()
+        if data.Highlight then data.Highlight:Destroy() end
+        if data.Billboard then data.Billboard:Destroy() end
+        if data.Glow then data.Glow:Destroy() end
+    end)
+    ESPStorage[player] = nil
+end
 
 ESPTab:CreateSection("👀 ESP 主設定")
 
@@ -1609,11 +2049,8 @@ ESPTab:CreateToggle({
     Callback = function(v)
         Settings.ESP = v
         if not v then
-            for _, data in pairs(ESPStorage) do
-                pcall(function()
-                    if data.Highlight then data.Highlight:Destroy() end
-                    if data.Billboard then data.Billboard:Destroy() end
-                end)
+            for player in pairs(ESPStorage) do
+                ClearESP(player)
             end
             ESPStorage = {}
         else
@@ -1636,6 +2073,15 @@ ESPTab:CreateSlider({
     CurrentValue = 2000,
     Flag = "ESPMaxDist",
     Callback = function(v) Settings.ESPMaxDist = v end,
+})
+
+ESPTab:CreateSlider({
+    Name = "更新間隔 (秒)",
+    Range = {0.05, 1},
+    Increment = 0.05,
+    CurrentValue = 0.15,
+    Flag = "ESPUpdateRate",
+    Callback = function(v) Settings.ESPUpdateRate = v end,
 })
 
 ESPTab:CreateSection("👤 玩家 ESP")
@@ -1703,6 +2149,13 @@ ESPTab:CreateToggle({
     CurrentValue = true,
     Flag = "ESPTeamColorToggle",
     Callback = function(v) Settings.ESPTeamColor = v end,
+})
+
+ESPTab:CreateToggle({
+    Name = "距離顏色",
+    CurrentValue = true,
+    Flag = "ESPDistanceColorToggle",
+    Callback = function(v) Settings.ESPDistanceColor = v end,
 })
 
 ESPTab:CreateToggle({
@@ -2303,9 +2756,12 @@ TPTab:CreateButton({
             return
         end
         local player = Players:FindFirstChild(TargetPlayer)
-        if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            if UpdateChar() then
-                RootPart.CFrame = player.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+        if player and player.Character then
+            local targetRoot = GetRootPartFromCharacter(player.Character)
+            if targetRoot and UpdateChar() then
+                RootPart.CFrame = targetRoot.CFrame + Vector3.new(0, 3, 0)
+                SessionStats.Actions = SessionStats.Actions + 1
+                AddLog("TP", "傳送到 " .. TargetPlayer)
                 Rayfield:Notify({Title = "傳送", Content = "已傳送到 " .. TargetPlayer, Duration = 2})
             end
         end
@@ -2321,9 +2777,14 @@ TPTab:CreateButton({
         end
         if #players == 0 then return end
         local rp = players[math.random(1, #players)]
-        if rp.Character and rp.Character:FindFirstChild("HumanoidRootPart") and UpdateChar() then
-            RootPart.CFrame = rp.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
-            Rayfield:Notify({Title = "傳送", Content = "已傳送到 " .. rp.Name, Duration = 2})
+        if rp.Character and UpdateChar() then
+            local targetRoot = GetRootPartFromCharacter(rp.Character)
+            if targetRoot then
+                RootPart.CFrame = targetRoot.CFrame + Vector3.new(0, 3, 0)
+                SessionStats.Actions = SessionStats.Actions + 1
+                AddLog("TP", "傳送到 " .. rp.Name)
+                Rayfield:Notify({Title = "傳送", Content = "已傳送到 " .. rp.Name, Duration = 2})
+            end
         end
     end,
 })
@@ -2682,7 +3143,7 @@ MiscTab:CreateToggle({
 
 MiscTab:CreateParagraph({
     Title = "預設快捷鍵",
-    Content = "F - 飛行\nV - 穿牆\nG - 速度\nX - ESP\nH - 無敵\nP - 緊急關閉全部"
+    Content = "F - 飛行\nV - 穿牆\nG - 速度\nX - ESP\nH - 無敵\nP - 緊急關閉全部\n(可在設定分頁自訂)"
 })
 
 print("[Zy hacker hub] 雜項分頁已載入")
@@ -2787,7 +3248,445 @@ SettingsTab:CreateToggle({
     Callback = function(v) Settings.SoundNotify = v end,
 })
 
+SettingsTab:CreateSection("🧩 自訂設定")
+
+SettingsTab:CreateInput({
+    Name = "設定檔名稱",
+    PlaceholderText = "例如: Default / FPS / PvP",
+    RemoveTextAfterFocusLost = false,
+    Flag = "ConfigProfileInput",
+    Callback = function(v) Settings.ConfigProfile = v end,
+})
+
+SettingsTab:CreateToggle({
+    Name = "自動儲存設定",
+    CurrentValue = true,
+    Flag = "AutoSaveConfigToggle",
+    Callback = function(v) Settings.AutoSaveConfig = v end,
+})
+
+SettingsTab:CreateButton({
+    Name = "匯出設定到剪貼簿",
+    Callback = function()
+        local ok, json = SafeCall("ExportSettings", ExportSettings)
+        if ok and json and setclipboard then
+            setclipboard(json)
+            Rayfield:Notify({Title = "設定", Content = "設定已匯出到剪貼簿", Duration = 2})
+        else
+            Rayfield:Notify({Title = "設定", Content = "匯出失敗 (無剪貼簿權限)", Duration = 2})
+        end
+    end,
+})
+
+SettingsTab:CreateInput({
+    Name = "匯入設定 (JSON)",
+    PlaceholderText = "貼上 JSON 設定字串",
+    RemoveTextAfterFocusLost = false,
+    Flag = "ImportConfigInput",
+    Callback = function(v)
+        if v and v ~= "" then
+            local ok, success, err = SafeCall("ImportSettings", ApplySettingsFromJson, v)
+            if ok and success then
+                Rayfield:Notify({Title = "設定", Content = "設定已套用", Duration = 2})
+                AddLog("Config", "已匯入設定")
+            else
+                Rayfield:Notify({Title = "設定", Content = err or "匯入失敗", Duration = 2})
+            end
+        end
+    end,
+})
+
+SettingsTab:CreateButton({
+    Name = "重置設定為預設值",
+    Callback = function()
+        ResetSettings()
+        Rayfield:Notify({Title = "設定", Content = "已重置為預設值", Duration = 2})
+        AddLog("Config", "重置設定")
+    end,
+})
+
+SettingsTab:CreateSection("🧯 錯誤處理")
+
+SettingsTab:CreateToggle({
+    Name = "錯誤提示",
+    CurrentValue = true,
+    Flag = "ErrorToastToggle",
+    Callback = function(v) Settings.ErrorToast = v end,
+})
+
+SettingsTab:CreateSlider({
+    Name = "錯誤提示冷卻 (秒)",
+    Range = {1, 10},
+    Increment = 1,
+    CurrentValue = 3,
+    Flag = "ErrorCooldown",
+    Callback = function(v) Settings.ErrorCooldown = v end,
+})
+
+SettingsTab:CreateSlider({
+    Name = "錯誤紀錄上限",
+    Range = {10, 200},
+    Increment = 10,
+    CurrentValue = 60,
+    Flag = "ErrorLogMax",
+    Callback = function(v) Settings.ErrorLogMax = v end,
+})
+
+SettingsTab:CreateToggle({
+    Name = "除錯模式 (Console)",
+    CurrentValue = false,
+    Flag = "ErrorDebugToggle",
+    Callback = function(v) Settings.ErrorDebug = v end,
+})
+
+SettingsTab:CreateSection("⚙️ 效能自動調整")
+
+SettingsTab:CreateToggle({
+    Name = "自動效能調整",
+    CurrentValue = true,
+    Flag = "AutoPerformanceToggle",
+    Callback = function(v) Settings.AutoPerformance = v end,
+})
+
+SettingsTab:CreateSlider({
+    Name = "FPS 低負載門檻",
+    Range = {10, 60},
+    Increment = 5,
+    CurrentValue = 35,
+    Flag = "PerfMinFPS",
+    Callback = function(v) Settings.PerfMinFPS = v end,
+})
+
+SettingsTab:CreateSlider({
+    Name = "FPS 中負載門檻",
+    Range = {20, 90},
+    Increment = 5,
+    CurrentValue = 50,
+    Flag = "PerfMidFPS",
+    Callback = function(v) Settings.PerfMidFPS = v end,
+})
+
+SettingsTab:CreateSection("⌨️ 快捷鍵自訂")
+
+SettingsTab:CreateKeybind({
+    Name = "飛行",
+    CurrentKeybind = (Settings.Keybinds.Fly and Settings.Keybinds.Fly.Name) or "F",
+    HoldToInteract = false,
+    Flag = "FlyKeybind",
+    Callback = function(key)
+        local normalized = NormalizeKeybind(key)
+        if normalized then Settings.Keybinds.Fly = normalized end
+    end,
+})
+
+SettingsTab:CreateKeybind({
+    Name = "穿牆",
+    CurrentKeybind = (Settings.Keybinds.Noclip and Settings.Keybinds.Noclip.Name) or "V",
+    HoldToInteract = false,
+    Flag = "NoclipKeybind",
+    Callback = function(key)
+        local normalized = NormalizeKeybind(key)
+        if normalized then Settings.Keybinds.Noclip = normalized end
+    end,
+})
+
+SettingsTab:CreateKeybind({
+    Name = "速度",
+    CurrentKeybind = (Settings.Keybinds.Speed and Settings.Keybinds.Speed.Name) or "G",
+    HoldToInteract = false,
+    Flag = "SpeedKeybind",
+    Callback = function(key)
+        local normalized = NormalizeKeybind(key)
+        if normalized then Settings.Keybinds.Speed = normalized end
+    end,
+})
+
+SettingsTab:CreateKeybind({
+    Name = "ESP",
+    CurrentKeybind = (Settings.Keybinds.ESP and Settings.Keybinds.ESP.Name) or "X",
+    HoldToInteract = false,
+    Flag = "ESPKeybind",
+    Callback = function(key)
+        local normalized = NormalizeKeybind(key)
+        if normalized then Settings.Keybinds.ESP = normalized end
+    end,
+})
+
+SettingsTab:CreateKeybind({
+    Name = "無敵",
+    CurrentKeybind = (Settings.Keybinds.God and Settings.Keybinds.God.Name) or "H",
+    HoldToInteract = false,
+    Flag = "GodKeybind",
+    Callback = function(key)
+        local normalized = NormalizeKeybind(key)
+        if normalized then Settings.Keybinds.God = normalized end
+    end,
+})
+
+SettingsTab:CreateKeybind({
+    Name = "緊急關閉",
+    CurrentKeybind = (Settings.Keybinds.Panic and Settings.Keybinds.Panic.Name) or "P",
+    HoldToInteract = false,
+    Flag = "PanicKeybind",
+    Callback = function(key)
+        local normalized = NormalizeKeybind(key)
+        if normalized then Settings.Keybinds.Panic = normalized end
+    end,
+})
+
 print("[Zy hacker hub] 設定分頁已載入")
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- ║                              自動化分頁                                      ║
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+local AutoTab = Window:CreateTab("🤖 自動化", 4483362458)
+
+AutoTab:CreateSection("🧭 自動導航")
+
+AutoTab:CreateToggle({
+    Name = "自動尋路",
+    CurrentValue = false,
+    Flag = "AutoPathToggle",
+    Callback = function(v) Settings.AutoPath = v end,
+})
+
+AutoTab:CreateDropdown({
+    Name = "導航目標",
+    Options = {"Mouse", "Waypoint", "Player"},
+    CurrentOption = {"Mouse"},
+    Flag = "AutoPathMode",
+    Callback = function(v) Settings.AutoPathMode = v end,
+})
+
+AutoTab:CreateInput({
+    Name = "航點名稱",
+    PlaceholderText = "例: base / spawn / shop",
+    RemoveTextAfterFocusLost = false,
+    Flag = "AutoPathWaypoint",
+    Callback = function(v) Settings.AutoPathWaypoint = v end,
+})
+
+AutoTab:CreateInput({
+    Name = "玩家名稱",
+    PlaceholderText = "例: Player123",
+    RemoveTextAfterFocusLost = false,
+    Flag = "AutoPathPlayer",
+    Callback = function(v) Settings.AutoPathPlayer = v end,
+})
+
+AutoTab:CreateSlider({
+    Name = "重新計算間隔 (秒)",
+    Range = {0.2, 5},
+    Increment = 0.1,
+    CurrentValue = 1,
+    Flag = "AutoPathRecalc",
+    Callback = function(v) Settings.AutoPathRecalc = v end,
+})
+
+AutoTab:CreateSlider({
+    Name = "導航速度",
+    Range = {8, 50},
+    Increment = 1,
+    CurrentValue = 16,
+    Flag = "AutoPathSpeed",
+    Callback = function(v) Settings.AutoPathSpeed = v end,
+})
+
+AutoTab:CreateSlider({
+    Name = "停止距離",
+    Range = {2, 15},
+    Increment = 1,
+    CurrentValue = 4,
+    Flag = "AutoPathStopDist",
+    Callback = function(v) Settings.AutoPathStopDist = v end,
+})
+
+AutoTab:CreateSection("📦 自動收集")
+
+AutoTab:CreateToggle({
+    Name = "自動收集物品",
+    CurrentValue = false,
+    Flag = "AutoCollectToggle",
+    Callback = function(v) Settings.AutoCollect = v end,
+})
+
+AutoTab:CreateDropdown({
+    Name = "收集方式",
+    Options = {"Path", "Teleport", "Touch"},
+    CurrentOption = {"Path"},
+    Flag = "CollectMode",
+    Callback = function(v) Settings.CollectMode = v end,
+})
+
+AutoTab:CreateSlider({
+    Name = "收集範圍",
+    Range = {10, 200},
+    Increment = 5,
+    CurrentValue = 60,
+    Flag = "CollectRange",
+    Callback = function(v) Settings.CollectRange = v end,
+})
+
+AutoTab:CreateSlider({
+    Name = "收集間隔 (秒)",
+    Range = {0.1, 2},
+    Increment = 0.1,
+    CurrentValue = 0.6,
+    Flag = "CollectInterval",
+    Callback = function(v) Settings.CollectInterval = v end,
+})
+
+AutoTab:CreateSlider({
+    Name = "每次最多收集",
+    Range = {1, 5},
+    Increment = 1,
+    CurrentValue = 2,
+    Flag = "CollectMaxPerCycle",
+    Callback = function(v) Settings.CollectMaxPerCycle = v end,
+})
+
+AutoTab:CreateToggle({
+    Name = "收集工具",
+    CurrentValue = true,
+    Flag = "CollectTools",
+    Callback = function(v) Settings.CollectTools = v end,
+})
+
+AutoTab:CreateInput({
+    Name = "關鍵字 (逗號分隔)",
+    PlaceholderText = "coin, gem, chest, drop, item",
+    RemoveTextAfterFocusLost = false,
+    Flag = "CollectKeywords",
+    Callback = function(v) Settings.CollectKeywords = v end,
+})
+
+AutoTab:CreateSection("⚔️ 戰鬥輔助")
+
+AutoTab:CreateToggle({
+    Name = "戰鬥輔助",
+    CurrentValue = false,
+    Flag = "CombatAssistToggle",
+    Callback = function(v) Settings.CombatAssist = v end,
+})
+
+AutoTab:CreateDropdown({
+    Name = "目標類型",
+    Options = {"Players", "NPC", "Both"},
+    CurrentOption = {"Players"},
+    Flag = "AssistTargetMode",
+    Callback = function(v) Settings.AssistTargetMode = v end,
+})
+
+AutoTab:CreateSlider({
+    Name = "作用距離",
+    Range = {5, 30},
+    Increment = 1,
+    CurrentValue = 12,
+    Flag = "AssistRange",
+    Callback = function(v) Settings.AssistRange = v end,
+})
+
+AutoTab:CreateToggle({
+    Name = "面向目標",
+    CurrentValue = true,
+    Flag = "AssistFaceTarget",
+    Callback = function(v) Settings.AssistFaceTarget = v end,
+})
+
+AutoTab:CreateToggle({
+    Name = "自動裝備武器",
+    CurrentValue = true,
+    Flag = "AssistAutoEquip",
+    Callback = function(v) Settings.AssistAutoEquip = v end,
+})
+
+AutoTab:CreateToggle({
+    Name = "自動攻擊",
+    CurrentValue = true,
+    Flag = "AssistAutoClick",
+    Callback = function(v) Settings.AssistAutoClick = v end,
+})
+
+AutoTab:CreateSlider({
+    Name = "攻擊間隔 (秒)",
+    Range = {0.05, 1},
+    Increment = 0.05,
+    CurrentValue = 0.2,
+    Flag = "AssistDelay",
+    Callback = function(v) Settings.AssistDelay = v end,
+})
+
+AutoTab:CreateSection("📈 記錄 / 分析")
+
+AutoTab:CreateToggle({
+    Name = "啟用紀錄",
+    CurrentValue = true,
+    Flag = "LogEnabledToggle",
+    Callback = function(v) Settings.LogEnabled = v end,
+})
+
+AutoTab:CreateToggle({
+    Name = "顯示紀錄浮窗",
+    CurrentValue = false,
+    Flag = "LogOverlayToggle",
+    Callback = function(v) Settings.LogOverlay = v end,
+})
+
+AutoTab:CreateSlider({
+    Name = "浮窗顯示行數",
+    Range = {3, 12},
+    Increment = 1,
+    CurrentValue = 6,
+    Flag = "LogOverlayLines",
+    Callback = function(v) Settings.LogOverlayLines = v end,
+})
+
+AutoTab:CreateSlider({
+    Name = "紀錄上限",
+    Range = {50, 500},
+    Increment = 50,
+    CurrentValue = 200,
+    Flag = "LogMaxEntries",
+    Callback = function(v) Settings.LogMaxEntries = v end,
+})
+
+AutoTab:CreateButton({
+    Name = "顯示最近紀錄",
+    Callback = function()
+        Rayfield:Notify({Title = "最近紀錄", Content = GetRecentLogText(6), Duration = 6})
+    end,
+})
+
+AutoTab:CreateButton({
+    Name = "顯示錯誤紀錄",
+    Callback = function()
+        Rayfield:Notify({Title = "錯誤紀錄", Content = GetRecentErrorText(6), Duration = 6})
+    end,
+})
+
+AutoTab:CreateButton({
+    Name = "匯出紀錄到剪貼簿",
+    Callback = function()
+        local ok, json = SafeCall("ExportLog", ExportLogJson)
+        if ok and json and setclipboard then
+            setclipboard(json)
+            Rayfield:Notify({Title = "紀錄", Content = "紀錄已匯出到剪貼簿", Duration = 2})
+        else
+            Rayfield:Notify({Title = "紀錄", Content = "匯出失敗 (無剪貼簿權限)", Duration = 2})
+        end
+    end,
+})
+
+AutoTab:CreateButton({
+    Name = "清除紀錄",
+    Callback = function()
+        LogEntries = {}
+        Rayfield:Notify({Title = "紀錄", Content = "已清除紀錄", Duration = 2})
+    end,
+})
+
+print("[Zy hacker hub] 自動化分頁已載入")
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- ║                              HUD 分頁                                        ║
@@ -4087,8 +4986,8 @@ spawn(function()
         if Settings.KillAura and UpdateChar() then
             for _, player in pairs(Players:GetPlayers()) do
                 if player ~= LocalPlayer and player.Character then
-                    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-                    local hum = player.Character:FindFirstChildOfClass("Humanoid")
+                    local hrp = GetRootPartFromCharacter(player.Character)
+                    local hum = GetHumanoidFromCharacter(player.Character)
                     if hrp and hum and hum.Health > 0 then
                         local dist = GetDistance(hrp.Position)
                         if dist <= Settings.KillRange then
@@ -4125,7 +5024,7 @@ spawn(function()
     while task.wait(0.2) do
         for _, player in pairs(Players:GetPlayers()) do
             if player ~= LocalPlayer and player.Character then
-                local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+                local hrp = GetRootPartFromCharacter(player.Character)
                 if hrp then
                     if Settings.Hitbox then
                         hrp.Size = Vector3.one * Settings.HitboxSize
@@ -4141,50 +5040,150 @@ spawn(function()
 end)
 
 -- === Aimbot ===
-local function GetClosest()
-    local closest, minDist = nil, math.huge
+local AimState = {
+    TargetPart = nil,
+    TargetPlayer = nil,
+    LastNotify = nil,
+    LastNotifyTime = 0,
+}
+
+local function ResolveOption(option)
+    if type(option) == "table" then
+        return option[1]
+    end
+    return option
+end
+
+local function GetAimPartFromCharacter(char)
+    if not char then return nil end
+    if Settings.HeadshotOnly then
+        return char:FindFirstChild("Head") or GetHeadPartFromCharacter(char)
+    end
+    local desired = ResolveOption(Settings.AimPart)
+    return char:FindFirstChild(desired) or char:FindFirstChild("Head") or GetHeadPartFromCharacter(char)
+end
+
+local function IsAimTargetValid(player, part, hum, fovMultiplier)
+    if not Camera then return false end
+    if not player or player == LocalPlayer then return false end
+    if not part or not hum or hum.Health <= 0 then return false end
+    if Settings.TeamCheck and IsTeammate(player) then return false end
+    if Settings.VisibleCheck and not Settings.AimThroughWalls and not IsVisible(part) then return false end
+
+    local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+    if not onScreen then return false end
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    
+    local dist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+    local fov = Settings.AimFOV * (fovMultiplier or 1)
+    if dist > fov then return false end
+    return true, dist
+end
+
+local function GetAimScore(mode, dist, hum, player)
+    if mode == "Lowest HP" then
+        return -(hum and hum.Health or math.huge)
+    elseif mode == "Highest Threat" then
+        local healthPct = 1
+        if hum and hum.MaxHealth > 0 then
+            healthPct = hum.Health / hum.MaxHealth
+        end
+        local threat = (1 - healthPct) + (1 / (dist + 1))
+        local enemyRoot = GetRootPartFromCharacter(player.Character)
+        if enemyRoot and RootPart then
+            local toMe = (RootPart.Position - enemyRoot.Position).Unit
+            local facing = enemyRoot.CFrame.LookVector:Dot(toMe)
+            if facing > 0.75 then
+                threat = threat + 0.5
+            end
+        end
+        if GetEquippedToolName(player.Character) then
+            threat = threat + 0.15
+        end
+        return threat
+    end
+    return -dist
+end
+
+local function GetBestAimTarget()
+    local bestPart, bestPlayer, bestScore = nil, nil, nil
+    local mode = ResolveOption(Settings.AimMode)
+
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
-            if Settings.TeamCheck and IsTeammate(player) then continue end
-            
-            local part = player.Character:FindFirstChild(Settings.AimPart) or player.Character:FindFirstChild("Head")
-            local hum = player.Character:FindFirstChildOfClass("Humanoid")
-            
-            if part and hum and hum.Health > 0 then
-                local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                if onScreen then
-                    local dist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
-                    if dist < Settings.AimFOV and dist < minDist then
-                        if Settings.VisibleCheck and not IsVisible(part) then continue end
-                        closest, minDist = part, dist
-                    end
+            local part = GetAimPartFromCharacter(player.Character)
+            local hum = GetHumanoidFromCharacter(player.Character)
+            local ok, dist = IsAimTargetValid(player, part, hum, 1)
+            if ok then
+                local score = GetAimScore(mode, dist, hum, player)
+                if bestScore == nil or score > bestScore then
+                    bestScore = score
+                    bestPart = part
+                    bestPlayer = player
                 end
             end
         end
     end
-    return closest
+    return bestPart, bestPlayer
+end
+
+local function NotifyAimTarget(player)
+    if not Settings.AimNotify then return end
+    if player and player ~= AimState.LastNotify then
+        local now = os.clock()
+        if now - AimState.LastNotifyTime > 0.5 then
+            Rayfield:Notify({Title = "Aimbot", Content = "鎖定: " .. player.Name, Duration = 1.5})
+            AimState.LastNotifyTime = now
+        end
+        AimState.LastNotify = player
+    elseif not player then
+        AimState.LastNotify = nil
+    end
+end
+
+local function ResolveAimTarget()
+    local stickyMultiplier = Settings.AimStickyTarget and 1.35 or 1
+    if (Settings.AimLock or Settings.AimStickyTarget) and AimState.TargetPart and AimState.TargetPlayer then
+        local hum = GetHumanoidFromCharacter(AimState.TargetPlayer.Character)
+        local ok = IsAimTargetValid(AimState.TargetPlayer, AimState.TargetPart, hum, stickyMultiplier)
+        if ok then
+            return AimState.TargetPart, AimState.TargetPlayer
+        end
+    end
+
+    local part, player = GetBestAimTarget()
+    if Settings.AimLock or Settings.AimStickyTarget then
+        AimState.TargetPart = part
+        AimState.TargetPlayer = player
+    end
+    NotifyAimTarget(player)
+    return part, player
 end
 
 RunService.RenderStepped:Connect(function()
     if Settings.Aimbot and MouseDown[2] then
-        local target = GetClosest()
-        if target then
-            local targetPos = target.Position
-            if Settings.AimPrediction > 0 then
-                local vel = target.Parent:FindFirstChild("HumanoidRootPart")
-                if vel then targetPos = targetPos + (vel.Velocity * Settings.AimPrediction * 0.01) end
+        if UpdateChar() and Camera then
+            local target, targetPlayer = ResolveAimTarget()
+            if target then
+                local targetPos = target.Position
+                if Settings.AimPrediction > 0 and targetPlayer and targetPlayer.Character then
+                    local velRoot = GetRootPartFromCharacter(targetPlayer.Character)
+                    if velRoot then
+                        targetPos = targetPos + (velRoot.Velocity * Settings.AimPrediction * 0.01)
+                    end
+                end
+                local cf = CFrame.lookAt(Camera.CFrame.Position, targetPos)
+                Camera.CFrame = Camera.CFrame:Lerp(cf, Settings.AimSmooth)
             end
-            local cf = CFrame.lookAt(Camera.CFrame.Position, targetPos)
-            Camera.CFrame = Camera.CFrame:Lerp(cf, Settings.AimSmooth)
         end
+    else
+        AimState.TargetPart = nil
+        AimState.TargetPlayer = nil
     end
-    
+
     if Settings.CustomFOV then
         Camera.FieldOfView = Settings.FOVValue
     end
-    
+
     if Settings.TimeFreeze then
         Lighting.ClockTime = Settings.CustomTime
     end
@@ -4219,37 +5218,39 @@ local function CreateESP(player)
     if player == LocalPlayer or ESPStorage[player] then return end
     local char = player.Character
     if not char then return end
-    
-    local data = {}
-    
+    local data = {Character = char}
+
     local hl = Instance.new("Highlight")
     hl.FillColor = Settings.ESPColor
     hl.OutlineColor = Color3.new(1, 1, 1)
     hl.FillTransparency = 0.6
+    hl.OutlineTransparency = 0
     hl.Adornee = char
     hl.Parent = char
     data.Highlight = hl
-    
-    local head = char:FindFirstChild("Head")
+
+    local head = GetHeadPartFromCharacter(char)
     if head then
         local bb = Instance.new("BillboardGui")
         bb.Adornee = head
-        bb.Size = UDim2.new(0, 200, 0, 80)
+        bb.Size = UDim2.new(0, 200, 0, 92)
         bb.StudsOffset = Vector3.new(0, 2.5, 0)
         bb.AlwaysOnTop = true
         bb.Parent = head
-        
+
         local container = Instance.new("Frame")
         container.Size = UDim2.new(1, 0, 1, 0)
         container.BackgroundTransparency = 1
         container.Parent = bb
-        
+
         local layout = Instance.new("UIListLayout")
         layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
         layout.Parent = container
-        
+
         local name = Instance.new("TextLabel")
         name.Name = "Name"
+        name.LayoutOrder = 1
         name.Size = UDim2.new(1, 0, 0, 18)
         name.BackgroundTransparency = 1
         name.TextColor3 = Color3.new(1, 1, 1)
@@ -4258,9 +5259,23 @@ local function CreateESP(player)
         name.TextSize = 14
         name.Text = player.Name
         name.Parent = container
-        
+        data.NameLabel = name
+
+        local weapon = Instance.new("TextLabel")
+        weapon.Name = "Weapon"
+        weapon.LayoutOrder = 2
+        weapon.Size = UDim2.new(1, 0, 0, 16)
+        weapon.BackgroundTransparency = 1
+        weapon.TextColor3 = Color3.new(0.7, 0.9, 1)
+        weapon.TextStrokeTransparency = 0
+        weapon.Font = Enum.Font.Gotham
+        weapon.TextSize = 12
+        weapon.Parent = container
+        data.WeaponLabel = weapon
+
         local health = Instance.new("TextLabel")
         health.Name = "Health"
+        health.LayoutOrder = 3
         health.Size = UDim2.new(1, 0, 0, 16)
         health.BackgroundTransparency = 1
         health.TextColor3 = Color3.new(0, 1, 0)
@@ -4268,9 +5283,29 @@ local function CreateESP(player)
         health.Font = Enum.Font.Gotham
         health.TextSize = 12
         health.Parent = container
-        
+        data.HealthLabel = health
+
+        local healthBarBack = Instance.new("Frame")
+        healthBarBack.Name = "HealthBar"
+        healthBarBack.LayoutOrder = 4
+        healthBarBack.Size = UDim2.new(1, -20, 0, 4)
+        healthBarBack.BackgroundColor3 = Color3.new(0, 0, 0)
+        healthBarBack.BackgroundTransparency = 0.2
+        healthBarBack.BorderSizePixel = 0
+        healthBarBack.Parent = container
+
+        local healthBarFill = Instance.new("Frame")
+        healthBarFill.Name = "HealthFill"
+        healthBarFill.Size = UDim2.new(1, 0, 1, 0)
+        healthBarFill.BackgroundColor3 = Color3.new(0, 1, 0)
+        healthBarFill.BorderSizePixel = 0
+        healthBarFill.Parent = healthBarBack
+        data.HealthBarBack = healthBarBack
+        data.HealthBarFill = healthBarFill
+
         local dist = Instance.new("TextLabel")
         dist.Name = "Distance"
+        dist.LayoutOrder = 5
         dist.Size = UDim2.new(1, 0, 0, 16)
         dist.BackgroundTransparency = 1
         dist.TextColor3 = Color3.new(1, 1, 0)
@@ -4278,60 +5313,140 @@ local function CreateESP(player)
         dist.Font = Enum.Font.Gotham
         dist.TextSize = 12
         dist.Parent = container
-        
+        data.DistanceLabel = dist
+
         data.Billboard = bb
     end
-    
+
     ESPStorage[player] = data
 end
 
 -- === ESP 更新 ===
+local function ResolveESPColor(player, distance)
+    if Settings.ESPRainbow then
+        return Settings.ESPColor
+    end
+    if Settings.ESPTeamColor and player.TeamColor then
+        return player.TeamColor.Color
+    end
+    if Settings.ESPDistanceColor and distance then
+        if distance < 30 then
+            return Color3.new(1, 0, 0)
+        elseif distance < 60 then
+            return Color3.new(1, 1, 0)
+        else
+            return Color3.new(0, 1, 0)
+        end
+    end
+    return Settings.ESPColor
+end
+
 RunService.Heartbeat:Connect(function()
     if not Settings.ESP or not UpdateChar() then return end
-    
+
+    local now = os.clock()
+    if Settings.ESPUpdateRate and Settings.ESPUpdateRate > 0 then
+        local interval = GetPerfInterval(Settings.ESPUpdateRate)
+        if now - ESPLastUpdate < interval then return end
+        ESPLastUpdate = now
+    end
+
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
-            if Settings.ESPTeamCheck and IsTeammate(player) then continue end
-            
-            if not ESPStorage[player] then CreateESP(player) end
-            
+            if Settings.ESPTeamCheck and IsTeammate(player, true) then continue end
+
             local data = ESPStorage[player]
+            if data and data.Character ~= player.Character then
+                ClearESP(player)
+                data = nil
+            end
+            if not data then
+                CreateESP(player)
+                data = ESPStorage[player]
+            end
             if not data then continue end
-            
-            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-            local hum = player.Character:FindFirstChildOfClass("Humanoid")
-            
+
+            local char = player.Character
+            local hrp = GetRootPartFromCharacter(char)
+            local hum = GetHumanoidFromCharacter(char)
+
             if hrp and hum then
                 local d = math.floor(GetDistance(hrp.Position))
-                
+                local espColor = ResolveESPColor(player, d)
+
                 if d > Settings.ESPMaxDist then
                     if data.Highlight then data.Highlight.Enabled = false end
                     if data.Billboard then data.Billboard.Enabled = false end
+                    if data.Glow then data.Glow.Enabled = false end
                     continue
                 else
                     if data.Highlight then data.Highlight.Enabled = true end
                     if data.Billboard then data.Billboard.Enabled = true end
                 end
-                
+
                 if data.Highlight then
-                    if d < 30 then
-                        data.Highlight.FillColor = Color3.new(1, 0, 0)
-                    elseif d < 60 then
-                        data.Highlight.FillColor = Color3.new(1, 1, 0)
-                    else
-                        data.Highlight.FillColor = Color3.new(0, 1, 0)
-                    end
+                    data.Highlight.FillColor = espColor
+                    data.Highlight.OutlineColor = espColor
+                    data.Highlight.FillTransparency = Settings.ESPOutlineOnly and 1 or 0.6
                 end
-                
-                if data.Billboard then
-                    local hp = data.Billboard:FindFirstChild("Health", true)
-                    local dst = data.Billboard:FindFirstChild("Distance", true)
-                    if hp then
-                        hp.Text = "HP: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)
-                        local pct = hum.Health / hum.MaxHealth
-                        hp.TextColor3 = Color3.new(1 - pct, pct, 0)
+
+                if Settings.ESPGlow then
+                    if not data.Glow or not data.Glow.Parent then
+                        local glow = Instance.new("PointLight")
+                        glow.Name = "ESPGlow"
+                        glow.Color = espColor
+                        glow.Brightness = 1
+                        glow.Range = 12
+                        glow.Parent = hrp
+                        data.Glow = glow
+                    else
+                        data.Glow.Color = espColor
+                        data.Glow.Enabled = true
                     end
-                    if dst then dst.Text = d .. " studs" end
+                elseif data.Glow then
+                    data.Glow:Destroy()
+                    data.Glow = nil
+                end
+
+                if data.Billboard then
+                    if data.NameLabel then
+                        data.NameLabel.Visible = Settings.ESPName
+                        if Settings.ESPName then data.NameLabel.Text = player.Name end
+                    end
+
+                    if data.HealthLabel then
+                        data.HealthLabel.Visible = Settings.ESPHealth
+                        if Settings.ESPHealth then
+                            data.HealthLabel.Text = "HP: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)
+                            local pct = hum.MaxHealth > 0 and (hum.Health / hum.MaxHealth) or 0
+                            data.HealthLabel.TextColor3 = Color3.new(1 - pct, pct, 0)
+                        end
+                    end
+
+                    if data.HealthBarBack and data.HealthBarFill then
+                        data.HealthBarBack.Visible = Settings.ESPHealthBar
+                        data.HealthBarFill.Visible = Settings.ESPHealthBar
+                        if Settings.ESPHealthBar then
+                            local pct = hum.MaxHealth > 0 and (hum.Health / hum.MaxHealth) or 0
+                            data.HealthBarFill.Size = UDim2.new(math.clamp(pct, 0, 1), 0, 1, 0)
+                            data.HealthBarFill.BackgroundColor3 = Color3.new(1 - pct, pct, 0)
+                        end
+                    end
+
+                    if data.WeaponLabel then
+                        data.WeaponLabel.Visible = Settings.ESPWeaponInfo
+                        if Settings.ESPWeaponInfo then
+                            local toolName = GetEquippedToolName(char)
+                            data.WeaponLabel.Text = toolName and ("武器: " .. toolName) or "武器: -"
+                        end
+                    end
+
+                    if data.DistanceLabel then
+                        data.DistanceLabel.Visible = Settings.ESPDist
+                        if Settings.ESPDist then
+                            data.DistanceLabel.Text = d .. " studs"
+                        end
+                    end
                 end
             end
         end
@@ -4368,13 +5483,7 @@ end)
 
 -- === 清理 ===
 Players.PlayerRemoving:Connect(function(player)
-    if ESPStorage[player] then
-        pcall(function()
-            if ESPStorage[player].Highlight then ESPStorage[player].Highlight:Destroy() end
-            if ESPStorage[player].Billboard then ESPStorage[player].Billboard:Destroy() end
-        end)
-        ESPStorage[player] = nil
-    end
+    ClearESP(player)
 end)
 
 -- === Anti-AFK ===
@@ -4426,6 +5535,7 @@ print("[Zy hacker hub] 載入進階功能模組...")
 
 -- === FOV 圓圈 (Drawing API) ===
 local FOVCircle = nil
+local FOVPulse = 0
 pcall(function()
     FOVCircle = Drawing.new("Circle")
     FOVCircle.Thickness = 1
@@ -4436,10 +5546,16 @@ pcall(function()
     FOVCircle.Visible = false
 end)
 
-RunService.RenderStepped:Connect(function()
+RunService.RenderStepped:Connect(function(dt)
     if FOVCircle then
+        if not Camera then return end
         FOVCircle.Visible = Settings.ShowFOV
-        FOVCircle.Radius = Settings.AimFOV
+        local radius = Settings.AimFOV
+        if Settings.AimCircleAnim then
+            FOVPulse = FOVPulse + dt
+            radius = radius + math.sin(FOVPulse * 4) * 2
+        end
+        FOVCircle.Radius = radius
         FOVCircle.Color = Settings.FOVColor
         FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     end
@@ -4459,6 +5575,7 @@ end)
 
 RunService.RenderStepped:Connect(function()
     if #CrosshairLines == 4 then
+        if not Camera then return end
         local visible = Settings.ShowCrosshair
         local cx = Camera.ViewportSize.X / 2
         local cy = Camera.ViewportSize.Y / 2
@@ -4493,14 +5610,7 @@ end)
 
 -- === 自動重生處理 ===
 if Humanoid then
-    Humanoid.Died:Connect(function()
-        if Settings.AutoRespawn then
-            task.wait(1)
-            pcall(function()
-                LocalPlayer:LoadCharacter()
-            end)
-        end
-    end)
+    BindHumanoidDied(Humanoid)
 end
 
 -- === 無後座力 / 無散射 嘗試 ===
@@ -4656,7 +5766,7 @@ if CurrentGame.Name == "Murder Mystery 2" then
 end
 
 -- === 性能監控 ===
-local LastFPS = 0
+LastFPS = 0
 local FrameCount = 0
 local LastTime = tick()
 
@@ -4667,32 +5777,48 @@ RunService.RenderStepped:Connect(function()
         LastFPS = FrameCount
         FrameCount = 0
         LastTime = now
+        SessionStats.FPSSamples = SessionStats.FPSSamples + 1
+        SessionStats.FPSAvg = ((SessionStats.FPSAvg * (SessionStats.FPSSamples - 1)) + LastFPS) / SessionStats.FPSSamples
+        local ping = 0
+        pcall(function()
+            ping = math.floor(LocalPlayer:GetNetworkPing() * 1000)
+        end)
+        SessionStats.PingSamples = SessionStats.PingSamples + 1
+        SessionStats.PingAvg = ((SessionStats.PingAvg * (SessionStats.PingSamples - 1)) + ping) / SessionStats.PingSamples
     end
 end)
 
 -- === 緊急關閉快捷鍵 ===
+local function PanicShutdown()
+    Settings.Fly = false
+    Settings.Noclip = false
+    Settings.Speed = false
+    Settings.God = false
+    Settings.KillAura = false
+    Settings.ESP = false
+    Settings.Aimbot = false
+    Settings.AutoPath = false
+    Settings.AutoCollect = false
+    Settings.CombatAssist = false
+
+    if FlyBV then FlyBV:Destroy(); FlyBV = nil end
+    if FlyBG then FlyBG:Destroy(); FlyBG = nil end
+    if Humanoid then
+        Humanoid.PlatformStand = false
+        Humanoid.WalkSpeed = 16
+        Humanoid.JumpPower = 50
+    end
+
+    SessionStats.Actions = SessionStats.Actions + 1
+    AddLog("Panic", "已關閉所有功能")
+    Rayfield:Notify({Title = "緊急關閉", Content = "已關閉所有功能", Duration = 3})
+end
+
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
-    
-    -- P 鍵關閉所有功能
-    if input.KeyCode == Enum.KeyCode.P then
-        Settings.Fly = false
-        Settings.Noclip = false
-        Settings.Speed = false
-        Settings.God = false
-        Settings.KillAura = false
-        Settings.ESP = false
-        Settings.Aimbot = false
-        
-        if FlyBV then FlyBV:Destroy(); FlyBV = nil end
-        if FlyBG then FlyBG:Destroy(); FlyBG = nil end
-        if Humanoid then
-            Humanoid.PlatformStand = false
-            Humanoid.WalkSpeed = 16
-            Humanoid.JumpPower = 50
-        end
-        
-        Rayfield:Notify({Title = "緊急關閉", Content = "已關閉所有功能 (按 P)", Duration = 3})
+    local panicKey = NormalizeKeybind(Settings.Keybinds.Panic)
+    if IsKey(input, panicKey) then
+        PanicShutdown()
     end
 end)
 
@@ -5288,45 +6414,45 @@ end)
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if not Settings.KeybindsEnabled then return end
-    
-    -- F - 飛行
-    if input.KeyCode == Enum.KeyCode.F then
-        Settings.Fly = not Settings.Fly
-        if UpdateChar() then
-            if Settings.Fly then
-                local bv = Instance.new("BodyVelocity")
-                bv.Name = "KeybindFlyBV"
-                bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                bv.Parent = RootPart
-                Humanoid.PlatformStand = true
-            else
-                local bv = RootPart:FindFirstChild("KeybindFlyBV")
-                if bv then bv:Destroy() end
-                Humanoid.PlatformStand = false
-            end
-        end
+
+    local flyKey = NormalizeKeybind(Settings.Keybinds.Fly)
+    local noclipKey = NormalizeKeybind(Settings.Keybinds.Noclip)
+    local speedKey = NormalizeKeybind(Settings.Keybinds.Speed)
+    local espKey = NormalizeKeybind(Settings.Keybinds.ESP)
+    local godKey = NormalizeKeybind(Settings.Keybinds.God)
+
+    if IsKey(input, flyKey) then
+        SetFlyEnabled(not Settings.Fly, true)
+        SessionStats.Actions = SessionStats.Actions + 1
+        SessionStats.KeybindToggles = SessionStats.KeybindToggles + 1
+        AddLog("Keybind", "飛行: " .. (Settings.Fly and "開" or "關"))
         Rayfield:Notify({Title = "快捷鍵", Content = "飛行: " .. (Settings.Fly and "開" or "關"), Duration = 1})
-        
-    -- V - 穿牆
-    elseif input.KeyCode == Enum.KeyCode.V then
+
+    elseif IsKey(input, noclipKey) then
         Settings.Noclip = not Settings.Noclip
+        SessionStats.Actions = SessionStats.Actions + 1
+        SessionStats.KeybindToggles = SessionStats.KeybindToggles + 1
+        AddLog("Keybind", "穿牆: " .. (Settings.Noclip and "開" or "關"))
         Rayfield:Notify({Title = "快捷鍵", Content = "穿牆: " .. (Settings.Noclip and "開" or "關"), Duration = 1})
-        
-    -- G - 速度
-    elseif input.KeyCode == Enum.KeyCode.G then
+
+    elseif IsKey(input, speedKey) then
         Settings.Speed = not Settings.Speed
         if UpdateChar() and Humanoid then
             Humanoid.WalkSpeed = Settings.Speed and (16 * Settings.SpeedMult) or 16
         end
+        SessionStats.Actions = SessionStats.Actions + 1
+        SessionStats.KeybindToggles = SessionStats.KeybindToggles + 1
+        AddLog("Keybind", "速度: " .. (Settings.Speed and "開" or "關"))
         Rayfield:Notify({Title = "快捷鍵", Content = "速度: " .. (Settings.Speed and "開" or "關"), Duration = 1})
-        
-    -- X - ESP
-    elseif input.KeyCode == Enum.KeyCode.X then
+
+    elseif IsKey(input, espKey) then
         Settings.ESP = not Settings.ESP
+        SessionStats.Actions = SessionStats.Actions + 1
+        SessionStats.KeybindToggles = SessionStats.KeybindToggles + 1
+        AddLog("Keybind", "ESP: " .. (Settings.ESP and "開" or "關"))
         Rayfield:Notify({Title = "快捷鍵", Content = "ESP: " .. (Settings.ESP and "開" or "關"), Duration = 1})
-        
-    -- H - 無敵
-    elseif input.KeyCode == Enum.KeyCode.H then
+
+    elseif IsKey(input, godKey) then
         Settings.God = not Settings.God
         if UpdateChar() and Humanoid then
             if Settings.God then
@@ -5337,14 +6463,314 @@ UserInputService.InputBegan:Connect(function(input, gpe)
                 Humanoid.Health = 100
             end
         end
+        SessionStats.Actions = SessionStats.Actions + 1
+        SessionStats.KeybindToggles = SessionStats.KeybindToggles + 1
+        AddLog("Keybind", "無敵: " .. (Settings.God and "開" or "關"))
         Rayfield:Notify({Title = "快捷鍵", Content = "無敵: " .. (Settings.God and "開" or "關"), Duration = 1})
     end
+end)
+
+-- === 自動化系統 ===
+local AutoPathState = {
+    Path = nil,
+    Waypoints = nil,
+    Index = 1,
+    LastRecalc = 0,
+    LastTarget = nil,
+    OriginalSpeed = nil,
+}
+
+local function ResolveAutoPathMode()
+    return ResolveOption(Settings.AutoPathMode)
+end
+
+local function GetAutoPathTargetPosition()
+    local mode = ResolveAutoPathMode()
+    if mode == "Mouse" then
+        if Mouse and Mouse.Hit then
+            return Mouse.Hit.Position
+        end
+    elseif mode == "Waypoint" then
+        local cf = Settings.Waypoints and Settings.Waypoints[Settings.AutoPathWaypoint]
+        if typeof(cf) == "CFrame" then
+            return cf.Position
+        end
+    elseif mode == "Player" then
+        local player = Players:FindFirstChild(Settings.AutoPathPlayer)
+        if player and player.Character then
+            local root = GetRootPartFromCharacter(player.Character)
+            if root then return root.Position end
+        end
+    end
+    return nil
+end
+
+local function ComputePath(targetPos)
+    local path = PathfindingService:CreatePath({
+        AgentRadius = 2,
+        AgentHeight = 5,
+        AgentCanJump = true,
+    })
+    local ok, err = pcall(function()
+        path:ComputeAsync(RootPart.Position, targetPos)
+    end)
+    if not ok or path.Status ~= Enum.PathStatus.Success then
+        return nil, err
+    end
+    return path
+end
+
+RunService.Heartbeat:Connect(function()
+    SafeCall("AutoPath", function()
+        if not Settings.AutoPath then
+            if AutoPathState.OriginalSpeed and Humanoid then
+                Humanoid.WalkSpeed = AutoPathState.OriginalSpeed
+            end
+            AutoPathState.Path = nil
+            AutoPathState.Waypoints = nil
+            AutoPathState.Index = 1
+            AutoPathState.LastTarget = nil
+            AutoPathState.OriginalSpeed = nil
+            return
+        end
+
+        if not UpdateChar() or not Humanoid then return end
+        local targetPos = GetAutoPathTargetPosition()
+        if not targetPos then return end
+
+        if not Settings.Speed then
+            if not AutoPathState.OriginalSpeed then
+                AutoPathState.OriginalSpeed = Humanoid.WalkSpeed
+            end
+            if Settings.AutoPathSpeed > 0 then
+                Humanoid.WalkSpeed = Settings.AutoPathSpeed
+            end
+        else
+            AutoPathState.OriginalSpeed = nil
+        end
+
+        local now = os.clock()
+        local recalcInterval = GetPerfInterval(Settings.AutoPathRecalc)
+        if (not AutoPathState.LastTarget)
+            or (AutoPathState.LastTarget - targetPos).Magnitude > 8
+            or (now - AutoPathState.LastRecalc) > recalcInterval then
+
+            local path = ComputePath(targetPos)
+            if path then
+                AutoPathState.Path = path
+                AutoPathState.Waypoints = path:GetWaypoints()
+                AutoPathState.Index = 1
+                AutoPathState.LastRecalc = now
+                AutoPathState.LastTarget = targetPos
+                SessionStats.Paths = SessionStats.Paths + 1
+                AddLog("Path", "重新計算路徑")
+            else
+                AutoPathState.Path = nil
+                AutoPathState.Waypoints = nil
+                AutoPathState.Index = 1
+            end
+        end
+
+        if AutoPathState.Waypoints and AutoPathState.Index <= #AutoPathState.Waypoints then
+            local wp = AutoPathState.Waypoints[AutoPathState.Index]
+            if wp.Action == Enum.PathWaypointAction.Jump then
+                Humanoid.Jump = true
+            end
+            Humanoid:MoveTo(wp.Position)
+            if (RootPart.Position - wp.Position).Magnitude <= Settings.AutoPathStopDist then
+                AutoPathState.Index = AutoPathState.Index + 1
+            end
+        else
+            Humanoid:MoveTo(targetPos)
+        end
+    end)
+end)
+
+local function FindNearestCollectible()
+    if not UpdateChar() then return nil end
+    local keywords = ParseKeywords(Settings.CollectKeywords)
+    local nearestPart = nil
+    local nearestDist = math.huge
+
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if Character and obj:IsDescendantOf(Character) then
+            continue
+        end
+
+        local part = nil
+        if obj:IsA("Tool") and Settings.CollectTools then
+            part = obj:FindFirstChild("Handle")
+        elseif obj:IsA("BasePart") then
+            if MatchesKeywords(obj.Name, keywords) then
+                part = obj
+            end
+        elseif obj:IsA("Model") then
+            if MatchesKeywords(obj.Name, keywords) and not Players:GetPlayerFromCharacter(obj) then
+                part = GetRootPartFromCharacter(obj) or obj.PrimaryPart
+            end
+        end
+
+        if part and part:IsA("BasePart") then
+            local dist = (part.Position - RootPart.Position).Magnitude
+            if dist <= Settings.CollectRange and dist < nearestDist then
+                nearestDist = dist
+                nearestPart = part
+            end
+        end
+    end
+
+    return nearestPart, nearestDist
+end
+
+local function TryCollect(part)
+    if not part or not RootPart then return end
+    if firetouchinterest then
+        firetouchinterest(RootPart, part, 0)
+        task.wait()
+        firetouchinterest(RootPart, part, 1)
+    else
+        RootPart.CFrame = part.CFrame + Vector3.new(0, 2, 0)
+    end
+end
+
+spawn(function()
+    while task.wait(GetPerfInterval(Settings.CollectInterval)) do
+        SafeCall("AutoCollect", function()
+            if not Settings.AutoCollect or Settings.AutoPath then return end
+            if not UpdateChar() or not Humanoid then return end
+            local mode = ResolveOption(Settings.CollectMode)
+            local cycles = 1
+            if mode == "Teleport" or mode == "Touch" then
+                cycles = Settings.CollectMaxPerCycle
+            end
+
+            for _ = 1, cycles do
+                local target, dist = FindNearestCollectible()
+                if not target or not dist then break end
+
+                if mode == "Teleport" then
+                    RootPart.CFrame = target.CFrame + Vector3.new(0, 2, 0)
+                    TryCollect(target)
+                    SessionStats.Collects = SessionStats.Collects + 1
+                    AddLog("Collect", "收集: " .. target.Name)
+                elseif mode == "Touch" then
+                    if dist > 8 then
+                        Humanoid:MoveTo(target.Position)
+                    else
+                        TryCollect(target)
+                        SessionStats.Collects = SessionStats.Collects + 1
+                        AddLog("Collect", "收集: " .. target.Name)
+                    end
+                    break
+                else -- Path
+                    if dist <= Settings.AutoPathStopDist then
+                        TryCollect(target)
+                        SessionStats.Collects = SessionStats.Collects + 1
+                        AddLog("Collect", "收集: " .. target.Name)
+                    else
+                        Humanoid:MoveTo(target.Position)
+                    end
+                    break
+                end
+            end
+        end)
+    end
+end)
+
+local AssistState = {LastAttack = 0}
+
+local function GetAssistTarget()
+    if not UpdateChar() then return nil, nil end
+    local mode = ResolveOption(Settings.AssistTargetMode)
+    local nearestPart = nil
+    local nearestDist = math.huge
+    local nearestName = nil
+
+    if mode == "Players" or mode == "Both" then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                if Settings.TeamCheck and IsTeammate(player) then continue end
+                local hrp = GetRootPartFromCharacter(player.Character)
+                local hum = GetHumanoidFromCharacter(player.Character)
+                if hrp and hum and hum.Health > 0 then
+                    local dist = (hrp.Position - RootPart.Position).Magnitude
+                    if dist <= Settings.AssistRange and dist < nearestDist then
+                        nearestDist = dist
+                        nearestPart = hrp
+                        nearestName = player.Name
+                    end
+                end
+            end
+        end
+    end
+
+    if mode == "NPC" or mode == "Both" then
+        for _, model in pairs(Workspace:GetDescendants()) do
+            if model:IsA("Model") and not Players:GetPlayerFromCharacter(model) then
+                local hum = GetHumanoidFromCharacter(model)
+                local hrp = GetRootPartFromCharacter(model)
+                if hrp and hum and hum.Health > 0 then
+                    local dist = (hrp.Position - RootPart.Position).Magnitude
+                    if dist <= Settings.AssistRange and dist < nearestDist then
+                        nearestDist = dist
+                        nearestPart = hrp
+                        nearestName = model.Name
+                    end
+                end
+            end
+        end
+    end
+
+    return nearestPart, nearestName
+end
+
+local function EquipFirstTool()
+    if not Settings.AssistAutoEquip then return end
+    if not Character then return end
+    if Character:FindFirstChildOfClass("Tool") then return end
+    local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+    if backpack then
+        local tool = backpack:FindFirstChildOfClass("Tool")
+        if tool then
+            tool.Parent = Character
+        end
+    end
+end
+
+RunService.Heartbeat:Connect(function()
+    SafeCall("CombatAssist", function()
+        if not Settings.CombatAssist or not UpdateChar() then return end
+        local now = os.clock()
+        if now - AssistState.LastAttack < Settings.AssistDelay then return end
+
+        local targetPart, targetName = GetAssistTarget()
+        if not targetPart then return end
+
+        if Settings.AssistFaceTarget then
+            local lookPos = Vector3.new(targetPart.Position.X, RootPart.Position.Y, targetPart.Position.Z)
+            RootPart.CFrame = CFrame.lookAt(RootPart.Position, lookPos)
+        end
+
+        EquipFirstTool()
+
+        if Settings.AssistAutoClick and mouse1click then
+            mouse1click()
+        elseif Settings.AssistAutoClick and firetouchinterest then
+            firetouchinterest(RootPart, targetPart, 0)
+            task.wait()
+            firetouchinterest(RootPart, targetPart, 1)
+        end
+
+        AssistState.LastAttack = now
+        SessionStats.CombatHits = SessionStats.CombatHits + 1
+        AddLog("Assist", "攻擊: " .. (targetName or "Target"))
+    end)
 end)
 
 -- === 物品 ESP ===
 local ItemESPData = {}
 spawn(function()
-    while task.wait(0.5) do
+    while task.wait(GetPerfInterval(Settings.ItemESPUpdateRate)) do
         if Settings.ItemESP and UpdateChar() then
             -- 清理舊的
             for item, gui in pairs(ItemESPData) do
@@ -5396,7 +6822,7 @@ end)
 -- === 寶箱 ESP (Blox Fruits) ===
 local ChestESPData = {}
 spawn(function()
-    while task.wait(1) do
+    while task.wait(GetPerfInterval(Settings.ChestESPUpdateRate)) do
         if Settings.ChestESP and UpdateChar() then
             for _, obj in pairs(Workspace:GetDescendants()) do
                 local name = obj.Name:lower()
@@ -5450,7 +6876,7 @@ end)
 
 -- === Wall Hack (透視牆壁) ===
 spawn(function()
-    while task.wait(0.5) do
+    while task.wait(GetPerfInterval(Settings.WallHackUpdateRate)) do
         if Settings.WallHack then
             for _, obj in pairs(Workspace:GetDescendants()) do
                 if obj:IsA("BasePart") and obj.Transparency < 0.5 then
@@ -5561,8 +6987,8 @@ spawn(function()
         if Settings.PunchAura and UpdateChar() then
             for _, player in pairs(Players:GetPlayers()) do
                 if player ~= LocalPlayer and player.Character then
-                    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-                    local hum = player.Character:FindFirstChildOfClass("Humanoid")
+                    local hrp = GetRootPartFromCharacter(player.Character)
+                    local hum = GetHumanoidFromCharacter(player.Character)
                     if hrp and hum and hum.Health > 0 then
                         local dist = (hrp.Position - RootPart.Position).Magnitude
                         if dist <= Settings.PunchRange then
@@ -5589,7 +7015,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
         local closest, minDist = nil, math.huge
         for _, player in pairs(Players:GetPlayers()) do
             if player ~= LocalPlayer and player.Character then
-                local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+                local hrp = GetRootPartFromCharacter(player.Character)
                 if hrp and UpdateChar() then
                     local dist = (hrp.Position - RootPart.Position).Magnitude
                     if dist < minDist then
@@ -5609,8 +7035,9 @@ end)
 RunService.Heartbeat:Connect(function()
     if Settings.TargetLock and Settings.LockedTarget and UpdateChar() then
         local target = Settings.LockedTarget
-        if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-            local targetPos = target.Character.HumanoidRootPart.Position
+        local targetRoot = target.Character and GetRootPartFromCharacter(target.Character)
+        if targetRoot then
+            local targetPos = targetRoot.Position
             Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, targetPos)
         else
             Settings.LockedTarget = nil
@@ -5658,7 +7085,7 @@ end)
 -- === NPC ESP ===
 local NPCESPData = {}
 spawn(function()
-    while task.wait(1) do
+    while task.wait(GetPerfInterval(Settings.NPCESPUpdateRate)) do
         if Settings.NPCESP and UpdateChar() then
             for npc, gui in pairs(NPCESPData) do
                 if not npc.Parent then
@@ -5863,8 +7290,8 @@ local function GetKillTargets()
     local targets = {}
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
-            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-            local hum = player.Character:FindFirstChildOfClass("Humanoid")
+            local hrp = GetRootPartFromCharacter(player.Character)
+            local hum = GetHumanoidFromCharacter(player.Character)
             if hrp and hum and hum.Health > 0 then
                 local dist = GetDistance(hrp.Position)
                 if dist <= Settings.KillRange then
@@ -5905,7 +7332,7 @@ end)
 
 -- === X-Ray 透視邏輯 ===
 spawn(function()
-    while task.wait(0.5) do
+    while task.wait(GetPerfInterval(Settings.XRayUpdateRate)) do
         if Settings.XRay then
             for _, obj in pairs(Workspace:GetDescendants()) do
                 if obj:IsA("BasePart") and obj.Transparency < 0.5 then
@@ -5952,6 +7379,8 @@ spawn(function()
                         local lastKiller = player.Character:GetAttribute("LastDamagedBy")
                         if lastKiller == LocalPlayer.Name then
                             Settings.KillCount = Settings.KillCount + 1
+                            SessionStats.Kills = SessionStats.Kills + 1
+                            AddLog("Kill", "擊殺數: " .. Settings.KillCount)
                             if Settings.KillSound then
                                 PlaySound(Settings.KillSoundID)
                             end
@@ -6174,7 +7603,13 @@ spawn(function()
                         local text = ""
                         if Settings.FPSDisplay then text = text .. "FPS: " .. fps .. " | " end
                         if Settings.PingDisplay then text = text .. "Ping: " .. ping .. "ms | " end
-                        text = text .. "Kills: " .. Settings.KillCount
+                        if Settings.SessionStats then
+                            text = text .. "Kills: " .. Settings.KillCount .. " | "
+                            text = text .. "Collect: " .. SessionStats.Collects .. " | "
+                            text = text .. "Errors: " .. SessionStats.Errors
+                        else
+                            text = text .. "Kills: " .. Settings.KillCount
+                        end
                         
                         StatsLabel.Text = text
                         frameCount = 0
@@ -6183,6 +7618,51 @@ spawn(function()
                 end
             end)
         end)
+    end
+end)
+
+-- === 紀錄浮窗 ===
+local LogOverlayLabel = nil
+spawn(function()
+    while task.wait(0.3) do
+        if Settings.LogOverlay then
+            if not LogOverlayLabel or not LogOverlayLabel.Parent then
+                pcall(function()
+                    local sg = LocalPlayer:FindFirstChild("PlayerGui"):FindFirstChild("ZyLogOverlay")
+                    if not sg then
+                        sg = Instance.new("ScreenGui")
+                        sg.Name = "ZyLogOverlay"
+                        sg.ResetOnSpawn = false
+                        sg.Parent = LocalPlayer:FindFirstChild("PlayerGui")
+                    end
+                    local label = sg:FindFirstChild("LogText")
+                    if not label then
+                        label = Instance.new("TextLabel")
+                        label.Name = "LogText"
+                        label.Size = UDim2.new(0, 320, 0, 140)
+                        label.Position = UDim2.new(0, 10, 0, 70)
+                        label.BackgroundColor3 = Color3.new(0, 0, 0)
+                        label.BackgroundTransparency = 0.4
+                        label.TextColor3 = Color3.new(1, 1, 1)
+                        label.TextXAlignment = Enum.TextXAlignment.Left
+                        label.TextYAlignment = Enum.TextYAlignment.Top
+                        label.Font = Enum.Font.Gotham
+                        label.TextSize = 12
+                        label.TextWrapped = true
+                        label.Parent = sg
+                    end
+                    LogOverlayLabel = label
+                end)
+            end
+            if LogOverlayLabel then
+                LogOverlayLabel.Text = GetRecentLogText(Settings.LogOverlayLines)
+                LogOverlayLabel.Visible = true
+            end
+        else
+            if LogOverlayLabel then
+                LogOverlayLabel.Visible = false
+            end
+        end
     end
 end)
 
@@ -6966,7 +8446,7 @@ local function GetClosestToCrosshair()
             -- 檢查是否為隊友
             if IsTeammate(player) then continue end
             
-            local part = player.Character:FindFirstChild("Head")
+            local part = GetHeadPartFromCharacter(player.Character)
             if part then
                 local screenPos, onScreen = Camera:WorldToScreenPoint(part.Position)
                 if onScreen then
@@ -7030,7 +8510,7 @@ spawn(function()
         if Settings.Rivals.HitboxExpander then
             for _, player in pairs(Players:GetPlayers()) do
                 if player ~= LocalPlayer and player.Character and not IsTeammate(player) then
-                    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+                    local hrp = GetRootPartFromCharacter(player.Character)
                     if hrp then
                         hrp.Size = Vector3.new(Settings.Rivals.HitboxSize, Settings.Rivals.HitboxSize, Settings.Rivals.HitboxSize)
                         hrp.Transparency = 0.5
